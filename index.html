@@ -370,6 +370,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <div class="tbl-scroll">
         <table>
           <thead><tr>
+            <th>Ações</th>
             <th style="min-width:150px">Processo</th>
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('cessoes','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:85px"><div class="col-hdr"><span>Exp. Liquidação</span><button class="col-sbtn" data-field="expectativaLiquidacao" onclick="toggleSort('cessoes','expectativaLiquidacao',this)">↕</button></div></th>
@@ -385,7 +386,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:60px">Cartório</th><th style="min-width:60px">Histórico</th>
             <th style="min-width:70px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('cessoes','ultimaMovimentacao',this)">↕</button></div></th>
             <th style="min-width:80px"><div class="col-hdr"><span>Prazo Fatal</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('cessoes','prazoFatal',this)">↕</button></div></th>
-            <th>Ações</th>
           </tr></thead>
           <tbody id="tb-cessoes"></tbody>
         </table>
@@ -408,6 +408,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <div class="tbl-scroll">
         <table>
           <thead><tr>
+            <th>Ações</th>
             <th style="min-width:150px">Processo</th>
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('rpv','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Liquidação</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('rpv','dataLiquidacao',this)">↕</button></div></th>
@@ -422,7 +423,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:60px">Histórico</th>
             <th style="min-width:70px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('rpv','ultimaMovimentacao',this)">↕</button></div></th>
             <th style="min-width:80px"><div class="col-hdr"><span>Prazo Fatal</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('rpv','prazoFatal',this)">↕</button></div></th>
-            <th>Ações</th>
           </tr></thead>
           <tbody id="tb-rpv"></tbody>
         </table>
@@ -446,9 +446,9 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <div class="tbl-scroll">
         <table>
           <thead><tr>
-            <th style="min-width:150px">Processo</th><th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
+            <th>Ações</th><th style="min-width:150px">Processo</th><th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
-            <th style="min-width:60px">Histórico</th><th style="min-width:85px">Última Movimentação</th><th style="min-width:80px">Prazo Fatal</th><th>Ações</th>
+            <th style="min-width:60px">Histórico</th><th style="min-width:85px">Última Movimentação</th><th style="min-width:80px">Prazo Fatal</th>
           </tr></thead>
           <tbody id="tb-requerimentos"></tbody>
         </table>
@@ -471,6 +471,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <div class="tbl-scroll">
         <table>
           <thead><tr>
+            <th>Ações</th>
             <th style="min-width:150px">Processo</th>
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('encerrados','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Liquidação</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('encerrados','dataLiquidacao',this)">↕</button></div></th>
@@ -480,7 +481,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:140px"><div class="col-hdr"><span>Cedente</span><button class="col-fbtn" data-field="cedente" onclick="openColFilter(event,'encerrados','cedente',this)">▾</button></div></th>
             <th style="min-width:160px"><div class="col-hdr"><span>Cessionário</span><button class="col-fbtn" data-field="cessionario" onclick="openColFilter(event,'encerrados','cessionario',this)">▾</button></div></th>
             <th style="min-width:110px"><div class="col-hdr"><span>Devedor</span><button class="col-fbtn" data-field="devedor" onclick="openColFilter(event,'encerrados','devedor',this)">▾</button></div></th>
-            <th style="min-width:80px">Motivo</th><th>Ações</th>
+            <th style="min-width:80px">Motivo</th>
           </tr></thead>
           <tbody id="tb-encerrados"></tbody>
         </table>
@@ -1293,6 +1294,7 @@ function cessoesRow(r,allData,isChild){
        <button class="btn btn-red  btn-xs" onclick="del('cessoes','${r.id}')" title="Excluir">🗑</button>`;
   const trCls=isChild?rowCls(r)+' child-row':rowCls(r);
   let html=`<tr class="${trCls}">
+    <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.expectativaLiquidacao)}</td>
@@ -1309,7 +1311,6 @@ function cessoesRow(r,allData,isChild){
     <td><button class="btn btn-blue btn-xs" onclick="openHist('cessoes','${r.id}')">📜 ${hc}</button></td>
     <td class="wrap">${calcUltimaMovimentacao(r)}</td>
     <td>${fatalBadge(r.prazoFatal)}</td>
-    <td><div class="acts">${actsBtns}</div></td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
     html+=childRecs.map(c=>cessoesRow(c,allData,true)).join('');
@@ -1343,6 +1344,10 @@ function renderRPV(){
     tb.innerHTML=rows.map(r=>{
       const hc=(r.historicoProcessual||[]).length;
       return`<tr class="${rowCls(r)}">
+        <td><div class="acts">
+          <button class="btn btn-blue btn-xs" onclick="openForm('rpv','${r.id}')">✏️</button>
+          <button class="btn btn-red  btn-xs" onclick="del('rpv','${r.id}')">🗑</button>
+        </div></td>
         <td>${esc(r.numeroProcesso)}</td>
         <td>${fmtDate(r.dataAquisicao)}</td>
         <td>${fmtDate(r.dataLiquidacao)}</td>
@@ -1357,10 +1362,6 @@ function renderRPV(){
         <td><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')">📜 ${hc}</button></td>
         <td class="wrap">${calcUltimaMovimentacao(r)}</td>
         <td>${fatalBadge(r.prazoFatal)}</td>
-        <td><div class="acts">
-          <button class="btn btn-blue btn-xs" onclick="openForm('rpv','${r.id}')">✏️</button>
-          <button class="btn btn-red  btn-xs" onclick="del('rpv','${r.id}')">🗑</button>
-        </div></td>
       </tr>`;
     }).join('');
   }
@@ -1637,6 +1638,10 @@ function renderReq(){
     tb.innerHTML=rows.map(r=>{
       const hc=(r.historicoProcessual||[]).length;
       return`<tr class="${rowCls(r)}">
+        <td><div class="acts">
+          <button class="btn btn-blue btn-xs" onclick="openForm('requerimentos','${r.id}')">✏️</button>
+          <button class="btn btn-red  btn-xs" onclick="del('requerimentos','${r.id}')">🗑</button>
+        </div></td>
         <td>${esc(r.numeroProcesso)}</td>
         <td><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha">🔒 ${r.senhaAcesso?1:0}</button></td>
         <td>${esc(r.natureza)||'—'}</td>
@@ -1646,10 +1651,6 @@ function renderReq(){
         <td><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')">📜 ${hc}</button></td>
         <td class="wrap">${calcUltimaMovimentacao(r)}</td>
         <td>${fatalBadge(r.prazoFatal)}</td>
-        <td><div class="acts">
-          <button class="btn btn-blue btn-xs" onclick="openForm('requerimentos','${r.id}')">✏️</button>
-          <button class="btn btn-red  btn-xs" onclick="del('requerimentos','${r.id}')">🗑</button>
-        </div></td>
       </tr>`;
     }).join('');
   }
@@ -1667,6 +1668,10 @@ function renderEnc(){
     tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">Nenhum processo encerrado</div></div></td></tr>`;
   } else {
     tb.innerHTML=rows.map(r=>`<tr>
+      <td><div class="acts">
+        <button class="btn btn-blue btn-xs" onclick="openForm('encerrados','${r.id}')">✏️</button>
+        <button class="btn btn-red  btn-xs" onclick="del('encerrados','${r.id}')">🗑</button>
+      </div></td>
       <td>${esc(r.numeroProcesso)}</td>
       <td>${fmtDate(r.dataAquisicao)}</td>
       <td>${fmtDate(r.dataLiquidacao)}</td>
@@ -1677,10 +1682,6 @@ function renderEnc(){
       <td>${esc(r.cessionario)||'—'}</td>
       <td>${esc(r.devedor)||'—'}</td>
       <td>${r.motivo?`<button class="btn btn-blue btn-xs" onclick="openMotivo('${r.id}')">📄 Ver motivo</button>`:'—'}</td>
-      <td><div class="acts">
-        <button class="btn btn-blue btn-xs" onclick="openForm('encerrados','${r.id}')">✏️</button>
-        <button class="btn btn-red  btn-xs" onclick="del('encerrados','${r.id}')">🗑</button>
-      </div></td>
     </tr>`).join('');
   }
   renderPgn('pg-encerrados',sorted.length,'encerrados');
