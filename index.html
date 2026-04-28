@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CredJuris — Controle de Cessões de Créditos</title>
+<title>Credijuris — Controle de Cessões de Créditos</title>
 <style>
 :root{
   --bg0:#07121f;--bg1:#0d1e34;--bg2:#112440;--bg3:#163055;
@@ -277,7 +277,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   <div class="lc">
     <div class="lc-logo">
       <div class="lc-icon">⚖</div>
-      <div style="font-size:22px;font-weight:700;color:var(--gold2);margin-bottom:4px">CredJuris</div>
+      <div style="font-size:22px;font-weight:700;color:var(--gold2);margin-bottom:4px">Credijuris</div>
       <div style="font-size:12px;color:var(--txt3)">Controle de Cessões de Créditos</div>
     </div>
     <div id="lc-err" class="lc-err"></div>
@@ -303,7 +303,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   <div class="hdr-logo">
     <div class="hdr-icon">⚖</div>
     <div>
-      <div class="hdr-name">CredJuris</div>
+      <div class="hdr-name">Credijuris</div>
       <div class="hdr-sub">Controle de Cessões de Créditos</div>
     </div>
   </div>
@@ -640,7 +640,7 @@ let sb=null;
     if(!lib||!lib.createClient)throw new Error('Supabase CDN não carregou');
     sb=lib.createClient(_SB_URL,_SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'cj-auth'}});
   }catch(e){
-    console.error('[CredJuris] Supabase init error:',e);
+    console.error('[Credijuris] Supabase init error:',e);
   }
 })();
 const TABLES={cessoes:'cessoes_ativas',rpv:'rpv_complementar',requerimentos:'diversos',encerrados:'encerrados'};
@@ -669,7 +669,7 @@ async function _sbSync(k,d,prev){
       const{error}=await sb.from(tbl).upsert(rows,{onConflict:'id'});
       if(error)throw error;
     }
-  }catch(e){console.error('[CredJuris] sync error',tbl,e);}
+  }catch(e){console.error('[Credijuris] sync error',tbl,e);}
 }
 
 async function _loadAllFromSupabase(){
@@ -678,7 +678,7 @@ async function _loadAllFromSupabase(){
       const{data,error}=await sb.from(tbl).select('data').order('updated_at',{ascending:true});
       CACHE[mod]=(!error&&data)?data.map(r=>r.data).filter(Boolean):[];
     }catch(e){
-      console.error('[CredJuris] load error',tbl,e);
+      console.error('[Credijuris] load error',tbl,e);
       CACHE[mod]=[];
     }
   }
@@ -692,13 +692,13 @@ function _setupRealtime(){
         try{
           const{data,error}=await sb.from(tbl).select('data').order('updated_at',{ascending:true});
           if(!error&&data)CACHE[mod]=data.map(r=>r.data).filter(Boolean);
-        }catch(e){console.error('[CredJuris] realtime reload error',tbl,e);}
+        }catch(e){console.error('[Credijuris] realtime reload error',tbl,e);}
         updateDash();
         if(curTab===mod)render(curTab);
       });
     }
     ch.subscribe();
-  }catch(e){console.error('[CredJuris] realtime setup error',e);}
+  }catch(e){console.error('[Credijuris] realtime setup error',e);}
 }
 
 /* ======================================================
@@ -771,7 +771,7 @@ async function _initApp(){
     if(session){await _onAuthenticated(session);}
     else{ls.style.display='flex';}
   }catch(e){
-    console.error('[CredJuris] getSession error:',e);
+    console.error('[Credijuris] getSession error:',e);
     ls.style.display='flex';
   }
 }
@@ -810,7 +810,7 @@ async function doMigration(){
         await _sbSync(mod,merged,[]);
       }
       localStorage.removeItem(lsk);
-    }catch(e){console.error('[CredJuris] migration error',mod,e);}
+    }catch(e){console.error('[Credijuris] migration error',mod,e);}
   }
   ls.style.display='none';
   updateDash();
