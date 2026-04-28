@@ -542,7 +542,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 
 <!-- MOVER MODAL -->
 <div id="move-ov" class="ov" onclick="ovClick(event,'move-ov')">
-  <div class="mdl" style="max-width:480px">
+  <div class="mdl" style="max-width:700px">
     <div class="mdl-hdr">
       <div class="mdl-title">⇄ Mover Processo</div>
       <button class="mdl-x" onclick="closeModal('move-ov')">✕</button>
@@ -2051,7 +2051,11 @@ function mvAutocomplete(){
   if(!q){list.classList.remove('on');return;}
   const matches=load(vMod).filter(r=>!r.vinculoPai&&(r.numeroProcesso||'').toLowerCase().includes(q)).slice(0,8);
   if(!matches.length){list.classList.remove('on');return;}
-  list.innerHTML=matches.map(r=>`<div class="mv-ac-item" onmousedown="mvSelect('${esc(r.numeroProcesso)}')">${esc(r.numeroProcesso)}</div>`).join('');
+  list.innerHTML=matches.map(r=>{
+    const info=[esc(r.cedente||''),esc(r.cessionario||'')].filter(Boolean);
+    const sub=info.length===2?` — ${info[0]} → ${info[1]}`:info.length===1?` — ${info[0]}`:'';
+    return`<div class="mv-ac-item" onmousedown="mvSelect('${esc(r.numeroProcesso)}')" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.numeroProcesso)}<span style="color:var(--txt3)">${sub}</span></div>`;
+  }).join('');
   list.classList.add('on');
 }
 
