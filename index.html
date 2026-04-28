@@ -495,22 +495,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <input id="fre-proc" placeholder="🔍 Número do processo" oninput="render('requerimentos')">
       <input id="fre-trib" placeholder="Tribunal" oninput="render('requerimentos')">
       <button class="btn btn-blue btn-sm" onclick="clearF('requerimentos')">Limpar</button>
-      <button class="btn btn-move btn-sm" onclick="toggleMovePanel('requerimentos')">⇄ Mover para...</button>
-    </div>
-    <div id="mv-requerimentos" class="mv-panel">
-      <div class="mv-ac-wrap">
-        <input id="mv-proc-requerimentos" placeholder="Número do processo..." oninput="mvAutocomplete('requerimentos')" autocomplete="off">
-        <div id="mv-ac-requerimentos" class="mv-ac-list"></div>
-      </div>
-      <select id="mv-dest-requerimentos" class="mv-dest">
-        <option value="">Selecionar destino...</option>
-        <option value="cessoes">Cessões Ativas</option>
-        <option value="rpv">RPV Complementar</option>
-        <option value="encerrados">Encerrados</option>
-      </select>
-      <button class="btn btn-gold btn-sm" onclick="doMove('requerimentos')">Mover</button>
-      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('requerimentos')">Cancelar</button>
-    </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
         <table>
