@@ -1133,7 +1133,11 @@ function updateDash(){
 /* ======================================================
    COLUMN SORT
 ====================================================== */
-const SORT_STATE={cessoes:{field:null,dir:null},rpv:{field:null,dir:null},encerrados:{field:null,dir:null}};
+const SORT_STATE={
+  cessoes:   {field:'dataAquisicao',  dir:'asc'},
+  rpv:       {field:'dataLiquidacao', dir:'asc'},
+  encerrados:{field:'dataLiquidacao', dir:'asc'}
+};
 
 const SORT_COMPUTED={
   _tempo_dec: r=>new Date(r.expectativaLiquidacao||'9999-12-31').getTime(),
@@ -1322,9 +1326,20 @@ function goP(mod,p){
 /* ======================================================
    RENDER DISPATCH
 ====================================================== */
+function syncSortUI(mod){
+  const s=SORT_STATE[mod];
+  if(!s)return;
+  document.querySelectorAll(`#pane-${mod} .col-sbtn`).forEach(b=>{
+    const f=b.getAttribute('data-field');
+    if(f===s.field){b.textContent=s.dir==='asc'?'↑':'↓';b.classList.add('active');}
+    else{b.textContent='↕';b.classList.remove('active');}
+  });
+}
+
 function render(mod){
   ({cessoes:renderCessoes,rpv:renderRPV,
     requerimentos:renderReq,encerrados:renderEnc})[mod]();
+  syncSortUI(mod);
 }
 
 /* ======================================================
