@@ -1276,20 +1276,20 @@ function cessoesRow(r,allData,isChild){
   const hc=(r.historicoProcessual||[]).length;
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
-  const isExpanded=expandedRows.has(r.id);
+  const isExpanded=expandedByMod.cessoes.has(r.id);
   let procCell;
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
+    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
   } else {
     procCell=esc(r.numeroProcesso);
   }
   const actsBtns=isChild
-    ?`<button class="btn btn-blue btn-xs" onclick="desvincular('${r.id}')" title="Desvincular">🔓</button>
+    ?`<button class="btn btn-blue btn-xs" onclick="desvincular('cessoes','${r.id}')" title="Desvincular">🔓</button>
        <button class="btn btn-blue btn-xs" onclick="openForm('cessoes','${r.id}')" title="Editar">✏️</button>
        <button class="btn btn-red  btn-xs" onclick="del('cessoes','${r.id}')" title="Excluir">🗑</button>`
-    :`<button class="btn btn-blue btn-xs" onclick="openVinculo('${r.id}')" title="Vincular processo">🔗</button>
+    :`<button class="btn btn-blue btn-xs" onclick="openVinculo('cessoes','${r.id}')" title="Vincular processo">🔗</button>
        <button class="btn btn-blue btn-xs" onclick="openForm('cessoes','${r.id}')" title="Editar">✏️</button>
        <button class="btn btn-red  btn-xs" onclick="del('cessoes','${r.id}')" title="Excluir">🗑</button>`;
   const trCls=isChild?rowCls(r)+' child-row':rowCls(r);
@@ -1334,36 +1334,59 @@ function renderCessoes(){
 /* ======================================================
    RENDER RPV
 ====================================================== */
+function rpvRow(r,allData,isChild){
+  const hc=(r.historicoProcessual||[]).length;
+  const childIds=r.vinculosFilhos||[];
+  const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
+  const isExpanded=expandedByMod.rpv.has(r.id);
+  let procCell;
+  if(isChild){
+    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}`;
+  } else if(childRecs.length>0){
+    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
+  } else {
+    procCell=esc(r.numeroProcesso);
+  }
+  const actsBtns=isChild
+    ?`<button class="btn btn-blue btn-xs" onclick="desvincular('rpv','${r.id}')" title="Desvincular">🔓</button>
+       <button class="btn btn-blue btn-xs" onclick="openForm('rpv','${r.id}')">✏️</button>
+       <button class="btn btn-red  btn-xs" onclick="del('rpv','${r.id}')">🗑</button>`
+    :`<button class="btn btn-blue btn-xs" onclick="openVinculo('rpv','${r.id}')" title="Vincular processo">🔗</button>
+       <button class="btn btn-blue btn-xs" onclick="openForm('rpv','${r.id}')">✏️</button>
+       <button class="btn btn-red  btn-xs" onclick="del('rpv','${r.id}')">🗑</button>`;
+  const trCls=isChild?rowCls(r)+' child-row':rowCls(r);
+  let html=`<tr class="${trCls}">
+    <td><div class="acts">${actsBtns}</div></td>
+    <td>${procCell}</td>
+    <td>${fmtDate(r.dataAquisicao)}</td>
+    <td>${fmtDate(r.dataLiquidacao)}</td>
+    <td>${(r.dataAquisicao&&r.dataLiquidacao)?Math.round((new Date(r.dataLiquidacao)-new Date(r.dataAquisicao))/864e5)+'d':'—'}</td>
+    <td class="wrap" style="min-width:150px">${objetoHtml(r.objeto)}</td>
+    <td>${esc(r.advogado)||'—'}</td>
+    <td>${esc(r.cedente)||'—'}</td>
+    <td>${esc(r.cessionario)||'—'}</td>
+    <td>${esc(r.devedor)||'—'}</td>
+    <td>${esc(r.tribunal)||'—'}</td>
+    <td>${esc(r.orgaoJulgador)||'—'}</td>
+    <td><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')">📜 ${hc}</button></td>
+    <td class="wrap">${calcUltimaMovimentacao(r)}</td>
+    <td>${fatalBadge(r.prazoFatal)}</td>
+  </tr>`;
+  if(!isChild&&childRecs.length>0&&isExpanded){
+    html+=childRecs.map(c=>rpvRow(c,allData,true)).join('');
+  }
+  return html;
+}
+
 function renderRPV(){
-  const sorted=sortRecs(filterRecs(load('rpv'),'rpv'),'rpv');
+  const allData=load('rpv');
+  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'rpv'),'rpv');
   const rows=paginate(sorted,'rpv');
   const tb=document.getElementById('tb-rpv');
   if(!sorted.length){
     tb.innerHTML=`<tr><td colspan="15"><div class="empty"><div class="empty-ico">📄</div><div class="empty-txt">Nenhum RPV complementar</div></div></td></tr>`;
   } else {
-    tb.innerHTML=rows.map(r=>{
-      const hc=(r.historicoProcessual||[]).length;
-      return`<tr class="${rowCls(r)}">
-        <td><div class="acts">
-          <button class="btn btn-blue btn-xs" onclick="openForm('rpv','${r.id}')">✏️</button>
-          <button class="btn btn-red  btn-xs" onclick="del('rpv','${r.id}')">🗑</button>
-        </div></td>
-        <td>${esc(r.numeroProcesso)}</td>
-        <td>${fmtDate(r.dataAquisicao)}</td>
-        <td>${fmtDate(r.dataLiquidacao)}</td>
-        <td>${(r.dataAquisicao&&r.dataLiquidacao)?Math.round((new Date(r.dataLiquidacao)-new Date(r.dataAquisicao))/864e5)+'d':'—'}</td>
-        <td class="wrap" style="min-width:150px">${objetoHtml(r.objeto)}</td>
-        <td>${esc(r.advogado)||'—'}</td>
-        <td>${esc(r.cedente)||'—'}</td>
-        <td>${esc(r.cessionario)||'—'}</td>
-        <td>${esc(r.devedor)||'—'}</td>
-        <td>${esc(r.tribunal)||'—'}</td>
-        <td>${esc(r.orgaoJulgador)||'—'}</td>
-        <td><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')">📜 ${hc}</button></td>
-        <td class="wrap">${calcUltimaMovimentacao(r)}</td>
-        <td>${fatalBadge(r.prazoFatal)}</td>
-      </tr>`;
-    }).join('');
+    tb.innerHTML=rows.map(r=>rpvRow(r,allData,false)).join('');
   }
   renderPgn('pg-rpv',sorted.length,'rpv');
 }
@@ -1628,31 +1651,54 @@ function migrateCartorios(){
 /* ======================================================
    RENDER REQUERIMENTOS
 ====================================================== */
+function reqRow(r,allData,isChild){
+  const hc=(r.historicoProcessual||[]).length;
+  const childIds=r.vinculosFilhos||[];
+  const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
+  const isExpanded=expandedByMod.requerimentos.has(r.id);
+  let procCell;
+  if(isChild){
+    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}`;
+  } else if(childRecs.length>0){
+    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
+  } else {
+    procCell=esc(r.numeroProcesso);
+  }
+  const actsBtns=isChild
+    ?`<button class="btn btn-blue btn-xs" onclick="desvincular('requerimentos','${r.id}')" title="Desvincular">🔓</button>
+       <button class="btn btn-blue btn-xs" onclick="openForm('requerimentos','${r.id}')">✏️</button>
+       <button class="btn btn-red  btn-xs" onclick="del('requerimentos','${r.id}')">🗑</button>`
+    :`<button class="btn btn-blue btn-xs" onclick="openVinculo('requerimentos','${r.id}')" title="Vincular processo">🔗</button>
+       <button class="btn btn-blue btn-xs" onclick="openForm('requerimentos','${r.id}')">✏️</button>
+       <button class="btn btn-red  btn-xs" onclick="del('requerimentos','${r.id}')">🗑</button>`;
+  const trCls=isChild?rowCls(r)+' child-row':rowCls(r);
+  let html=`<tr class="${trCls}">
+    <td><div class="acts">${actsBtns}</div></td>
+    <td>${procCell}</td>
+    <td><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha">🔒 ${r.senhaAcesso?1:0}</button></td>
+    <td>${esc(r.natureza)||'—'}</td>
+    <td>${esc(r.materia)||'—'}</td>
+    <td>${esc(r.tribunal)||'—'}</td>
+    <td>${esc(r.orgaoJulgador)||'—'}</td>
+    <td><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')">📜 ${hc}</button></td>
+    <td class="wrap">${calcUltimaMovimentacao(r)}</td>
+    <td>${fatalBadge(r.prazoFatal)}</td>
+  </tr>`;
+  if(!isChild&&childRecs.length>0&&isExpanded){
+    html+=childRecs.map(c=>reqRow(c,allData,true)).join('');
+  }
+  return html;
+}
+
 function renderReq(){
-  const all=filterRecs(load('requerimentos'),'requerimentos');
+  const allData=load('requerimentos');
+  const all=filterRecs(allData.filter(r=>!r.vinculoPai),'requerimentos');
   const rows=paginate(all,'requerimentos');
   const tb=document.getElementById('tb-requerimentos');
   if(!all.length){
     tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">Nenhum registro em Diversos</div></div></td></tr>`;
   } else {
-    tb.innerHTML=rows.map(r=>{
-      const hc=(r.historicoProcessual||[]).length;
-      return`<tr class="${rowCls(r)}">
-        <td><div class="acts">
-          <button class="btn btn-blue btn-xs" onclick="openForm('requerimentos','${r.id}')">✏️</button>
-          <button class="btn btn-red  btn-xs" onclick="del('requerimentos','${r.id}')">🗑</button>
-        </div></td>
-        <td>${esc(r.numeroProcesso)}</td>
-        <td><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha">🔒 ${r.senhaAcesso?1:0}</button></td>
-        <td>${esc(r.natureza)||'—'}</td>
-        <td>${esc(r.materia)||'—'}</td>
-        <td>${esc(r.tribunal)||'—'}</td>
-        <td>${esc(r.orgaoJulgador)||'—'}</td>
-        <td><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')">📜 ${hc}</button></td>
-        <td class="wrap">${calcUltimaMovimentacao(r)}</td>
-        <td>${fatalBadge(r.prazoFatal)}</td>
-      </tr>`;
-    }).join('');
+    tb.innerHTML=rows.map(r=>reqRow(r,allData,false)).join('');
   }
   renderPgn('pg-requerimentos',all.length,'requerimentos');
 }
@@ -1660,29 +1706,54 @@ function renderReq(){
 /* ======================================================
    RENDER ENCERRADOS
 ====================================================== */
+function encRow(r,allData,isChild){
+  const childIds=r.vinculosFilhos||[];
+  const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
+  const isExpanded=expandedByMod.encerrados.has(r.id);
+  let procCell;
+  if(isChild){
+    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}`;
+  } else if(childRecs.length>0){
+    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
+  } else {
+    procCell=esc(r.numeroProcesso);
+  }
+  const actsBtns=isChild
+    ?`<button class="btn btn-blue btn-xs" onclick="desvincular('encerrados','${r.id}')" title="Desvincular">🔓</button>
+       <button class="btn btn-blue btn-xs" onclick="openForm('encerrados','${r.id}')">✏️</button>
+       <button class="btn btn-red  btn-xs" onclick="del('encerrados','${r.id}')">🗑</button>`
+    :`<button class="btn btn-blue btn-xs" onclick="openVinculo('encerrados','${r.id}')" title="Vincular processo">🔗</button>
+       <button class="btn btn-blue btn-xs" onclick="openForm('encerrados','${r.id}')">✏️</button>
+       <button class="btn btn-red  btn-xs" onclick="del('encerrados','${r.id}')">🗑</button>`;
+  const trCls=isChild?'child-row':'';
+  let html=`<tr class="${trCls}">
+    <td><div class="acts">${actsBtns}</div></td>
+    <td>${procCell}</td>
+    <td>${fmtDate(r.dataAquisicao)}</td>
+    <td>${fmtDate(r.dataLiquidacao)}</td>
+    <td>${between(r.dataAquisicao,r.dataLiquidacao)}</td>
+    <td class="wrap" style="min-width:150px">${objetoHtml(r.objeto)}</td>
+    <td>${esc(r.advogado)||'—'}</td>
+    <td>${esc(r.cedente)||'—'}</td>
+    <td>${esc(r.cessionario)||'—'}</td>
+    <td>${esc(r.devedor)||'—'}</td>
+    <td>${r.motivo?`<button class="btn btn-blue btn-xs" onclick="openMotivo('${r.id}')">📄 Ver motivo</button>`:'—'}</td>
+  </tr>`;
+  if(!isChild&&childRecs.length>0&&isExpanded){
+    html+=childRecs.map(c=>encRow(c,allData,true)).join('');
+  }
+  return html;
+}
+
 function renderEnc(){
-  const sorted=sortRecs(filterRecs(load('encerrados'),'encerrados'),'encerrados');
+  const allData=load('encerrados');
+  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'encerrados'),'encerrados');
   const rows=paginate(sorted,'encerrados');
   const tb=document.getElementById('tb-encerrados');
   if(!sorted.length){
     tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">Nenhum processo encerrado</div></div></td></tr>`;
   } else {
-    tb.innerHTML=rows.map(r=>`<tr>
-      <td><div class="acts">
-        <button class="btn btn-blue btn-xs" onclick="openForm('encerrados','${r.id}')">✏️</button>
-        <button class="btn btn-red  btn-xs" onclick="del('encerrados','${r.id}')">🗑</button>
-      </div></td>
-      <td>${esc(r.numeroProcesso)}</td>
-      <td>${fmtDate(r.dataAquisicao)}</td>
-      <td>${fmtDate(r.dataLiquidacao)}</td>
-      <td>${between(r.dataAquisicao,r.dataLiquidacao)}</td>
-      <td class="wrap" style="min-width:150px">${objetoHtml(r.objeto)}</td>
-      <td>${esc(r.advogado)||'—'}</td>
-      <td>${esc(r.cedente)||'—'}</td>
-      <td>${esc(r.cessionario)||'—'}</td>
-      <td>${esc(r.devedor)||'—'}</td>
-      <td>${r.motivo?`<button class="btn btn-blue btn-xs" onclick="openMotivo('${r.id}')">📄 Ver motivo</button>`:'—'}</td>
-    </tr>`).join('');
+    tb.innerHTML=rows.map(r=>encRow(r,allData,false)).join('');
   }
   renderPgn('pg-encerrados',sorted.length,'encerrados');
 }
@@ -1877,16 +1948,12 @@ function saveRecord(){
 function del(mod,id){
   if(!confirm('Confirma a exclusão deste registro?'))return;
   let data=load(mod);
-  if(mod==='cessoes'){
-    const rec=data.find(r=>r.id===id);
-    if(rec){
-      (rec.vinculosFilhos||[]).forEach(cid=>{const c=data.find(r=>r.id===cid);if(c)delete c.vinculoPai;});
-      if(rec.vinculoPai){const pai=data.find(r=>r.id===rec.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==id);}
-    }
-    save(mod,data.filter(r=>r.id!==id));
-  } else {
-    save(mod,data.filter(r=>r.id!==id));
+  const rec=data.find(r=>r.id===id);
+  if(rec){
+    (rec.vinculosFilhos||[]).forEach(cid=>{const c=data.find(r=>r.id===cid);if(c)delete c.vinculoPai;});
+    if(rec.vinculoPai){const pai=data.find(r=>r.id===rec.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==id);}
   }
+  save(mod,data.filter(r=>r.id!==id));
   render(mod);updateDash();
 }
 
@@ -1932,17 +1999,19 @@ function openSenha(id){
 /* ======================================================
    PROCESSOS VINCULADOS
 ====================================================== */
-const expandedRows=new Set();
+const expandedByMod={cessoes:new Set(),rpv:new Set(),encerrados:new Set(),requerimentos:new Set()};
 let vPaiId=null;
+let vMod=null;
 
-function toggleExpand(id){
-  expandedRows.has(id)?expandedRows.delete(id):expandedRows.add(id);
-  renderCessoes();
+function toggleExpand(mod,id){
+  const s=expandedByMod[mod];
+  s.has(id)?s.delete(id):s.add(id);
+  render(mod);
 }
 
-function desvincular(filhoId){
+function desvincular(mod,filhoId){
   if(!confirm('Desvincular este processo do processo pai?'))return;
-  const data=load('cessoes');
+  const data=load(mod);
   const filho=data.find(r=>r.id===filhoId);
   if(!filho)return;
   if(filho.vinculoPai){
@@ -1950,13 +2019,13 @@ function desvincular(filhoId){
     if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==filhoId);
   }
   delete filho.vinculoPai;
-  save('cessoes',data);
-  renderCessoes();
+  save(mod,data);
+  render(mod);
 }
 
-function openVinculo(paiId){
-  vPaiId=paiId;
-  const data=load('cessoes');
+function openVinculo(mod,paiId){
+  vMod=mod;vPaiId=paiId;
+  const data=load(mod);
   const pai=data.find(r=>r.id===paiId);
   if(!pai)return;
   document.getElementById('vinculo-body').innerHTML=`
@@ -1970,7 +2039,7 @@ function openVinculo(paiId){
 
 function filterVinculo(){
   const q=document.getElementById('vinculo-search').value.toLowerCase();
-  const data=load('cessoes').filter(r=>r.id!==vPaiId&&!r.vinculoPai&&(r.numeroProcesso||'').toLowerCase().includes(q));
+  const data=load(vMod).filter(r=>r.id!==vPaiId&&!r.vinculoPai&&(r.numeroProcesso||'').toLowerCase().includes(q));
   document.getElementById('vinculo-list').innerHTML=renderVinculoList(data);
 }
 
@@ -1987,16 +2056,16 @@ function renderVinculoList(items){
 }
 
 function vincularProcesso(filhoId){
-  const data=load('cessoes');
+  const data=load(vMod);
   const pai=data.find(r=>r.id===vPaiId);
   const filho=data.find(r=>r.id===filhoId);
   if(!pai||!filho)return;
   if(!pai.vinculosFilhos)pai.vinculosFilhos=[];
   if(!pai.vinculosFilhos.includes(filhoId))pai.vinculosFilhos.push(filhoId);
   filho.vinculoPai=vPaiId;
-  save('cessoes',data);
+  save(vMod,data);
   closeModal('vinculo-ov');
-  renderCessoes();
+  render(vMod);
 }
 
 function cleanNum(s){return(s||'').replace(/[\s.\-\/]/g,'');}
