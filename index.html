@@ -119,6 +119,8 @@ tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
 .mv-dest option{background:var(--bg2)}
 .btn-ghost{background:transparent;color:var(--txt3);border:1px solid var(--brd)}
 .btn-ghost:hover{color:var(--txt);background:rgba(255,255,255,.05)}
+.btn-move{background:rgba(201,162,39,.08);color:var(--gold2);border:1px solid rgba(201,162,39,.35);margin-left:auto}
+.btn-move:hover{background:rgba(201,162,39,.18);border-color:var(--gold)}
 /* HIGHLIGHT MOVIDO */
 @keyframes mv-highlight{0%,70%{background:rgba(201,162,39,.2)!important;border-left:3px solid var(--gold)!important}100%{background:transparent!important;border-left:none!important}}
 tr.row-highlight{animation:mv-highlight 3s ease forwards}
@@ -389,7 +391,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <input id="fc-proc" placeholder="🔍 Número do processo" oninput="render('cessoes')">
       <button class="btn btn-blue btn-sm" onclick="clearF('cessoes')">Limpar</button>
-      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('cessoes')">⇄ Mover para...</button>
+      <button class="btn btn-move btn-sm" onclick="toggleMovePanel('cessoes')">⇄ Mover para...</button>
     </div>
     <div id="mv-cessoes" class="mv-panel">
       <div class="mv-ac-wrap">
@@ -441,7 +443,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <input id="fr-proc" placeholder="🔍 Número do processo" oninput="render('rpv')">
       <button class="btn btn-blue btn-sm" onclick="clearF('rpv')">Limpar</button>
-      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('rpv')">⇄ Mover para...</button>
+      <button class="btn btn-move btn-sm" onclick="toggleMovePanel('rpv')">⇄ Mover para...</button>
     </div>
     <div id="mv-rpv" class="mv-panel">
       <div class="mv-ac-wrap">
@@ -493,7 +495,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <input id="fre-proc" placeholder="🔍 Número do processo" oninput="render('requerimentos')">
       <input id="fre-trib" placeholder="Tribunal" oninput="render('requerimentos')">
       <button class="btn btn-blue btn-sm" onclick="clearF('requerimentos')">Limpar</button>
-      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('requerimentos')">⇄ Mover para...</button>
+      <button class="btn btn-move btn-sm" onclick="toggleMovePanel('requerimentos')">⇄ Mover para...</button>
     </div>
     <div id="mv-requerimentos" class="mv-panel">
       <div class="mv-ac-wrap">
@@ -533,7 +535,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <input id="fen-proc" placeholder="🔍 Número do processo" oninput="render('encerrados')">
       <button class="btn btn-blue btn-sm" onclick="clearF('encerrados')">Limpar</button>
-      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('encerrados')">⇄ Mover para...</button>
+      <button class="btn btn-move btn-sm" onclick="toggleMovePanel('encerrados')">⇄ Mover para...</button>
     </div>
     <div id="mv-encerrados" class="mv-panel">
       <div class="mv-ac-wrap">
