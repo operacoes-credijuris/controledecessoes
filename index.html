@@ -625,14 +625,24 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
+  onerror="(function(){var e=document.getElementById('lc-err');if(e){e.textContent='Falha ao carregar Supabase. Verifique sua conexão.';e.style.display='block';}})()"></script>
 <script>
 /* ======================================================
    SUPABASE CLIENT
 ====================================================== */
 const _SB_URL='https://uekoindsadcthbdkkbjt.supabase.co';
 const _SB_KEY='sb_publishable_mU_fyDVVG1xrt60gOwdrsA_TLgrz1H_';
-const sb=supabase.createClient(_SB_URL,_SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+let sb=null;
+(function(){
+  try{
+    const lib=window.supabase||window.Supabase;
+    if(!lib||!lib.createClient)throw new Error('Supabase CDN não carregou');
+    sb=lib.createClient(_SB_URL,_SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'cj-auth'}});
+  }catch(e){
+    console.error('[CredJuris] Supabase init error:',e);
+  }
+})();
 const TABLES={cessoes:'cessoes_ativas',rpv:'rpv_complementar',requerimentos:'diversos',encerrados:'encerrados'};
 const CACHE={cessoes:[],rpv:[],requerimentos:[],encerrados:[]};
 let _currentUserId=null;
@@ -664,22 +674,31 @@ async function _sbSync(k,d,prev){
 
 async function _loadAllFromSupabase(){
   for(const[mod,tbl]of Object.entries(TABLES)){
-    const{data,error}=await sb.from(tbl).select('data').order('updated_at');
-    CACHE[mod]=(!error&&data)?data.map(r=>r.data).filter(Boolean):[];
+    try{
+      const{data,error}=await sb.from(tbl).select('data').order('updated_at',{ascending:true});
+      CACHE[mod]=(!error&&data)?data.map(r=>r.data).filter(Boolean):[];
+    }catch(e){
+      console.error('[CredJuris] load error',tbl,e);
+      CACHE[mod]=[];
+    }
   }
 }
 
 function _setupRealtime(){
-  const ch=sb.channel('cj-realtime');
-  for(const[mod,tbl]of Object.entries(TABLES)){
-    ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},async()=>{
-      const{data,error}=await sb.from(tbl).select('data').order('updated_at');
-      if(!error&&data)CACHE[mod]=data.map(r=>r.data).filter(Boolean);
-      updateDash();
-      if(curTab===mod)render(curTab);
-    });
-  }
-  ch.subscribe();
+  try{
+    const ch=sb.channel('cj-realtime');
+    for(const[mod,tbl]of Object.entries(TABLES)){
+      ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},async()=>{
+        try{
+          const{data,error}=await sb.from(tbl).select('data').order('updated_at',{ascending:true});
+          if(!error&&data)CACHE[mod]=data.map(r=>r.data).filter(Boolean);
+        }catch(e){console.error('[CredJuris] realtime reload error',tbl,e);}
+        updateDash();
+        if(curTab===mod)render(curTab);
+      });
+    }
+    ch.subscribe();
+  }catch(e){console.error('[CredJuris] realtime setup error',e);}
 }
 
 /* ======================================================
@@ -690,21 +709,29 @@ async function doLogin(){
   const pass=document.getElementById('login-password').value;
   const errEl=document.getElementById('lc-err');
   const btn=document.getElementById('login-btn');
+  if(!sb){errEl.textContent='Conexão com o banco de dados indisponível. Recarregue a página.';errEl.style.display='block';return;}
   if(!email||!pass){errEl.textContent='Preencha e-mail e senha.';errEl.style.display='block';return;}
   btn.disabled=true;btn.innerHTML='<span class="spin" style="vertical-align:middle"></span> Entrando…';
   errEl.style.display='none';
-  const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
-  btn.disabled=false;btn.textContent='Entrar';
-  if(error){
-    errEl.textContent=error.message.includes('Invalid login')?'E-mail ou senha incorretos.':error.message;
+  try{
+    const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
+    btn.disabled=false;btn.textContent='Entrar';
+    if(error){
+      errEl.textContent=error.message.includes('Invalid login')||error.message.includes('invalid_credentials')?'E-mail ou senha incorretos.':error.message;
+      errEl.style.display='block';
+      return;
+    }
+    if(!data.session){errEl.textContent='Sessão não retornada. Tente novamente.';errEl.style.display='block';return;}
+    await _onAuthenticated(data.session);
+  }catch(e){
+    btn.disabled=false;btn.textContent='Entrar';
+    errEl.textContent='Erro ao conectar: '+e.message;
     errEl.style.display='block';
-    return;
   }
-  await _onAuthenticated(data.session);
 }
 
 async function doLogout(){
-  await sb.auth.signOut();
+  if(sb)await sb.auth.signOut();
 }
 
 async function _onAuthenticated(session){
@@ -723,17 +750,30 @@ async function _onAuthenticated(session){
 }
 
 async function _initApp(){
+  const ls=document.getElementById('login-screen');
+  if(!sb){
+    ls.style.display='flex';
+    const e=document.getElementById('lc-err');
+    e.textContent='Não foi possível conectar ao Supabase. Verifique sua conexão e recarregue.';
+    e.style.display='block';
+    return;
+  }
   sb.auth.onAuthStateChange(async(event,session)=>{
     if(event==='SIGNED_OUT'||event==='USER_DELETED'){
       _currentUserId=null;
       Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
       document.getElementById('logout-btn').style.display='none';
-      document.getElementById('login-screen').style.display='flex';
+      ls.style.display='flex';
     }
   });
-  const{data:{session}}=await sb.auth.getSession();
-  if(session){await _onAuthenticated(session);}
-  else{document.getElementById('login-screen').style.display='flex';}
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(session){await _onAuthenticated(session);}
+    else{ls.style.display='flex';}
+  }catch(e){
+    console.error('[CredJuris] getSession error:',e);
+    ls.style.display='flex';
+  }
 }
 
 /* ======================================================
