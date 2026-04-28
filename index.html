@@ -261,9 +261,43 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 .imp-progress-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--blue2));border-radius:2px;transition:width .3s}
 .imp-res-row td{padding:8px 12px;border-bottom:1px solid rgba(28,58,96,.3)}
 .imp-res-row:last-child td{border:none}
+/* AUTH SCREENS */
+#login-screen{position:fixed;inset:0;background:var(--bg0);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px}
+.lc{background:var(--bg1);border:1px solid var(--brd2);border-radius:16px;width:100%;max-width:380px;padding:36px;box-shadow:0 24px 64px rgba(0,0,0,.7)}
+.lc-logo{text-align:center;margin-bottom:28px}
+.lc-icon{width:52px;height:52px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--bg0);font-weight:900;margin:0 auto 12px}
+.lc-err{background:var(--red3);border:1px solid rgba(220,38,38,.3);border-radius:7px;padding:10px 14px;font-size:13px;color:var(--red2);margin-bottom:14px;display:none}
+#loading-screen{position:fixed;inset:0;background:var(--bg0);z-index:8999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="lc">
+    <div class="lc-logo">
+      <div class="lc-icon">⚖</div>
+      <div style="font-size:22px;font-weight:700;color:var(--gold2);margin-bottom:4px">CredJuris</div>
+      <div style="font-size:12px;color:var(--txt3)">Controle de Cessões de Créditos</div>
+    </div>
+    <div id="lc-err" class="lc-err"></div>
+    <div class="fg" style="margin-bottom:14px">
+      <label class="flbl">E-mail</label>
+      <input id="login-email" type="email" class="finp" placeholder="seu@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+    </div>
+    <div class="fg" style="margin-bottom:22px">
+      <label class="flbl">Senha</label>
+      <input id="login-password" type="password" class="finp" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button id="login-btn" class="btn btn-gold" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="spin" style="width:36px;height:36px;border-width:3px"></div>
+  <div style="color:var(--txt2);font-size:14px">Carregando dados…</div>
+</div>
 
 <header class="hdr">
   <div class="hdr-logo">
@@ -282,6 +316,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       📥 Importar Planilha
     </button>
     <input type="file" id="xl-input" accept=".xlsx,.xls" style="display:none">
+    <button id="logout-btn" class="btn btn-blue btn-sm" onclick="doLogout()" style="display:none">↩ Sair</button>
   </div>
 </header>
 
@@ -456,6 +491,25 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 
 </div><!-- /main -->
 
+<!-- MIGRATION MODAL -->
+<div id="migr-ov" class="ov">
+  <div class="mdl" style="max-width:480px">
+    <div class="mdl-hdr">
+      <div class="mdl-title">📦 Migrar dados locais para a nuvem</div>
+    </div>
+    <div class="mdl-body">
+      <p style="color:var(--txt2);font-size:13px;line-height:1.7;margin-bottom:16px">
+        Foram encontrados dados neste navegador (localStorage). Deseja migrá-los para o Supabase para que fiquem disponíveis para todos os usuários?
+      </p>
+      <div id="migr-counts" style="background:var(--bg0);border:1px solid var(--brd);border-radius:8px;padding:12px;font-size:13px;color:var(--txt2)"></div>
+    </div>
+    <div class="mdl-footer">
+      <button class="btn btn-blue" onclick="skipMigration()">Ignorar e apagar dados locais</button>
+      <button class="btn btn-gold" onclick="doMigration()">✅ Migrar para Supabase</button>
+    </div>
+  </div>
+</div>
+
 <!-- FORM MODAL -->
 <div id="form-ov" class="ov" onclick="ovClick(event,'form-ov')">
   <div class="mdl">
@@ -571,7 +625,18 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ======================================================
+   SUPABASE CLIENT
+====================================================== */
+const _SB_URL='https://uekoindsadcthbdkkbjt.supabase.co';
+const _SB_KEY='sb_publishable_mU_fyDVVG1xrt60gOwdrsA_TLgrz1H_';
+const sb=supabase.createClient(_SB_URL,_SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+const TABLES={cessoes:'cessoes_ativas',rpv:'rpv_complementar',requerimentos:'diversos',encerrados:'encerrados'};
+const CACHE={cessoes:[],rpv:[],requerimentos:[],encerrados:[]};
+let _currentUserId=null;
+
 /* ======================================================
    CORE DATA
 ====================================================== */
@@ -579,8 +644,143 @@ const KEYS = {cessoes:'cj_cess',rpv:'cj_rpv',cartorios:'cj_cart',requerimentos:'
 const PG = {cessoes:1,rpv:1,cartorios:1,requerimentos:1,encerrados:1};
 const PS = {cessoes:25,rpv:25,cartorios:25,requerimentos:25,encerrados:25};
 
-function load(k){try{return JSON.parse(localStorage.getItem(KEYS[k]))||[]}catch{return[]}}
-function save(k,d){localStorage.setItem(KEYS[k],JSON.stringify(d))}
+function load(k){return(CACHE[k]||[]).slice();}
+function save(k,d){const prev=(CACHE[k]||[]).slice();CACHE[k]=d.slice();_sbSync(k,d,prev);}
+
+async function _sbSync(k,d,prev){
+  const tbl=TABLES[k];
+  if(!tbl||!_currentUserId)return;
+  try{
+    const newIds=new Set(d.map(r=>r.id));
+    const delIds=(prev||[]).filter(r=>!newIds.has(r.id)).map(r=>r.id);
+    if(delIds.length){const{error}=await sb.from(tbl).delete().in('id',delIds);if(error)throw error;}
+    if(d.length){
+      const rows=d.map(r=>({id:r.id,user_id:_currentUserId,data:r,updated_at:new Date().toISOString()}));
+      const{error}=await sb.from(tbl).upsert(rows,{onConflict:'id'});
+      if(error)throw error;
+    }
+  }catch(e){console.error('[CredJuris] sync error',tbl,e);}
+}
+
+async function _loadAllFromSupabase(){
+  for(const[mod,tbl]of Object.entries(TABLES)){
+    const{data,error}=await sb.from(tbl).select('data').order('updated_at');
+    CACHE[mod]=(!error&&data)?data.map(r=>r.data).filter(Boolean):[];
+  }
+}
+
+function _setupRealtime(){
+  const ch=sb.channel('cj-realtime');
+  for(const[mod,tbl]of Object.entries(TABLES)){
+    ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},async()=>{
+      const{data,error}=await sb.from(tbl).select('data').order('updated_at');
+      if(!error&&data)CACHE[mod]=data.map(r=>r.data).filter(Boolean);
+      updateDash();
+      if(curTab===mod)render(curTab);
+    });
+  }
+  ch.subscribe();
+}
+
+/* ======================================================
+   AUTH
+====================================================== */
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-password').value;
+  const errEl=document.getElementById('lc-err');
+  const btn=document.getElementById('login-btn');
+  if(!email||!pass){errEl.textContent='Preencha e-mail e senha.';errEl.style.display='block';return;}
+  btn.disabled=true;btn.innerHTML='<span class="spin" style="vertical-align:middle"></span> Entrando…';
+  errEl.style.display='none';
+  const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false;btn.textContent='Entrar';
+  if(error){
+    errEl.textContent=error.message.includes('Invalid login')?'E-mail ou senha incorretos.':error.message;
+    errEl.style.display='block';
+    return;
+  }
+  await _onAuthenticated(data.session);
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+}
+
+async function _onAuthenticated(session){
+  _currentUserId=session.user.id;
+  document.getElementById('login-screen').style.display='none';
+  const ls=document.getElementById('loading-screen');
+  ls.style.display='flex';
+  await _loadAllFromSupabase();
+  ls.style.display='none';
+  document.getElementById('logout-btn').style.display='';
+  migrateCartorios();
+  initVinculos();
+  _setupRealtime();
+  _checkLocalMigration();
+  updateDash();
+}
+
+async function _initApp(){
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_OUT'||event==='USER_DELETED'){
+      _currentUserId=null;
+      Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+      document.getElementById('logout-btn').style.display='none';
+      document.getElementById('login-screen').style.display='flex';
+    }
+  });
+  const{data:{session}}=await sb.auth.getSession();
+  if(session){await _onAuthenticated(session);}
+  else{document.getElementById('login-screen').style.display='flex';}
+}
+
+/* ======================================================
+   MIGRATION — localStorage → Supabase
+====================================================== */
+function _checkLocalMigration(){
+  const LS_MAP=[['cj_cess','cessoes','Cessões Ativas'],['cj_rpv','rpv','RPV Complementar'],
+                ['cj_req','requerimentos','Diversos'],['cj_enc','encerrados','Encerrados']];
+  const found=[];
+  LS_MAP.forEach(([lsk,,name])=>{
+    try{const d=JSON.parse(localStorage.getItem(lsk))||[];if(d.length)found.push({lsk,name,count:d.length});}catch{}
+  });
+  if(!found.length)return;
+  document.getElementById('migr-counts').innerHTML=
+    found.map(f=>`<div style="padding:4px 0">📋 ${f.name}: <strong style="color:var(--txt)">${f.count}</strong> registro(s)</div>`).join('');
+  openModal('migr-ov');
+}
+
+async function doMigration(){
+  closeModal('migr-ov');
+  const ls=document.getElementById('loading-screen');
+  ls.style.display='flex';
+  const LS_MAP=[['cj_cess','cessoes'],['cj_rpv','rpv'],['cj_req','requerimentos'],['cj_enc','encerrados']];
+  for(const[lsk,mod]of LS_MAP){
+    try{
+      const d=JSON.parse(localStorage.getItem(lsk))||[];
+      if(!d.length){localStorage.removeItem(lsk);continue;}
+      const existing=CACHE[mod]||[];
+      const existNums=new Set(existing.map(r=>(r.numeroProcesso||'').replace(/[\s.\-\/]/g,'').toLowerCase()));
+      const toAdd=d.filter(r=>{const n=(r.numeroProcesso||'').replace(/[\s.\-\/]/g,'').toLowerCase();return n&&!existNums.has(n);});
+      if(toAdd.length){
+        const merged=[...existing,...toAdd];
+        CACHE[mod]=merged;
+        await _sbSync(mod,merged,[]);
+      }
+      localStorage.removeItem(lsk);
+    }catch(e){console.error('[CredJuris] migration error',mod,e);}
+  }
+  ls.style.display='none';
+  updateDash();
+  if(curTab!=='dashboard')render(curTab);
+}
+
+function skipMigration(){
+  closeModal('migr-ov');
+  ['cj_cess','cj_rpv','cj_req','cj_enc'].forEach(k=>localStorage.removeItem(k));
+}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
@@ -2419,9 +2619,7 @@ function showImportResult(results,total,fileName){
 /* ======================================================
    INIT
 ====================================================== */
-initVinculos();
-migrateCartorios();
-updateDash();
+_initApp();
 </script>
 <!-- COLUMN FILTER PANEL -->
 <div id="col-filter-panel">
