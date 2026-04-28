@@ -926,6 +926,10 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
     curTab=t.dataset.tab;
     document.getElementById('pane-'+curTab).classList.add('on');
+    const _gv=document.getElementById('g-search').value;
+    const _mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'};
+    const _el=document.getElementById(_mp[curTab]);
+    if(_el)_el.value=_gv;
     if(curTab==='dashboard')updateDash();
     else render(curTab);
   });
@@ -1194,7 +1198,7 @@ function filterRecs(recs,mod){
   const procId={cessoes:'fc-proc',rpv:'fr-proc',cartorios:'fca-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
   const vProc=procId?gv(procId):'';
   return recs.filter(r=>{
-    if(vProc&&!ms(r.numeroProcesso,vProc))return false;
+    if(vProc&&!(ms(r.numeroProcesso,vProc)||ms(r.advogado,vProc)||ms(r.cedente,vProc)||ms(r.cessionario,vProc)||ms(r.devedor,vProc)))return false;
     if(mod==='requerimentos'&&!ms(r.tribunal,gv('fre-trib')))return false;
     const active=COL_FILTERS[mod];
     if(active){
