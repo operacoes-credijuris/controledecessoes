@@ -1057,6 +1057,7 @@ function updateDash(){
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${prioBadge}</div>
+          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">${sub}</div>
         </div>
         <div class="al-date">${liquidacaoDiff(r.expectativaLiquidacao)}</div>
@@ -1094,6 +1095,7 @@ function updateDash(){
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}</div>
+          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">PARADO — ${r._dias}d</div>
         </div>
         <div class="al-date" style="color:${col}">${r._dias}d</div>
@@ -1123,7 +1125,11 @@ function updateDash(){
         :`PRAZO — ${diff} dias restantes`;
       return`<div class="alert-item">
         <span style="font-size:16px">${ico}</span>
-        <div><div class="al-text">${esc(r.numeroProcesso)}</div><div class="al-sub" style="color:${col}">${msg}</div></div>
+        <div style="flex:1;min-width:0">
+          <div class="al-text">${esc(r.numeroProcesso)}</div>
+          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
+          <div class="al-sub" style="color:${col}">${msg}</div>
+        </div>
         <div class="al-date" style="color:${col}">${fmtDate(r.prazoFatal)}</div>
       </div>`;
     }).join('');
