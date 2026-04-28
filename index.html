@@ -360,7 +360,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   <!-- DASHBOARD -->
   <div id="pane-dashboard" class="pane on">
     <div class="stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
-      <div class="sc"><div class="sc-lbl">Total de Processos</div><div class="sc-val" id="ds-total">0</div><div class="sc-ico">📊</div></div>
+      <div class="sc"><div class="sc-lbl">Total de Créditos</div><div class="sc-val" id="ds-total">0</div><div class="sc-ico">📊</div></div>
       <div class="sc"><div class="sc-lbl">Cessões Ativas</div><div class="sc-val" id="ds-cess">0</div><div class="sc-ico">📋</div></div>
       <div class="sc"><div class="sc-lbl">RPV Complementar</div><div class="sc-val" id="ds-rpv">0</div><div class="sc-ico">📄</div></div>
       <div class="sc"><div class="sc-lbl">Encerrados</div><div class="sc-val" id="ds-enc">0</div><div class="sc-ico">✅</div></div>
@@ -1286,9 +1286,11 @@ function clearF(mod){
     for(const k of Object.keys(COL_FILTERS[mod]))delete COL_FILTERS[mod][k];
     document.querySelectorAll(`#pane-${mod} .col-fbtn`).forEach(b=>b.classList.remove('active'));
   }
+  const SORT_DEFAULTS={cessoes:{field:'dataAquisicao',dir:'asc'},rpv:{field:'dataLiquidacao',dir:'asc'},encerrados:{field:'dataLiquidacao',dir:'asc'}};
   if(SORT_STATE[mod]){
-    SORT_STATE[mod].field=null;SORT_STATE[mod].dir=null;
-    document.querySelectorAll(`#pane-${mod} .col-sbtn`).forEach(b=>{b.textContent='↕';b.classList.remove('active');});
+    const def=SORT_DEFAULTS[mod];
+    if(def){SORT_STATE[mod].field=def.field;SORT_STATE[mod].dir=def.dir;}
+    else{SORT_STATE[mod].field=null;SORT_STATE[mod].dir=null;}
   }
   PG[mod]=1;render(mod);
 }
