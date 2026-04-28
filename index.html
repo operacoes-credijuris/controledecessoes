@@ -104,6 +104,27 @@ tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
 #pane-cessoes table,#pane-rpv table,#pane-encerrados table,#pane-requerimentos table{font-size:10px}
 #pane-cessoes thead th,#pane-rpv thead th,#pane-encerrados thead th,#pane-requerimentos thead th{font-size:9px;padding:4px 6px}
 #pane-cessoes tbody td,#pane-rpv tbody td,#pane-encerrados tbody td,#pane-requerimentos tbody td{padding:4px 6px}
+/* MOVER PARA */
+.mv-panel{display:none;background:var(--bg1);border:1px solid var(--brd2);border-radius:8px;padding:10px 14px;margin-bottom:10px;gap:10px;flex-wrap:wrap;align-items:flex-end;flex-shrink:0}
+.mv-panel.on{display:flex}
+.mv-ac-wrap{position:relative;flex:1;min-width:180px}
+.mv-ac-wrap input{background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;outline:none;width:100%}
+.mv-ac-wrap input:focus{border-color:var(--gold)}
+.mv-ac-list{position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--brd);border-radius:6px;z-index:500;max-height:160px;overflow-y:auto;display:none;margin-top:2px}
+.mv-ac-list.on{display:block}
+.mv-ac-item{padding:6px 10px;font-size:12px;cursor:pointer;color:var(--txt)}
+.mv-ac-item:hover{background:rgba(255,255,255,.07)}
+.mv-dest{background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;outline:none}
+.mv-dest:focus{border-color:var(--gold)}
+.mv-dest option{background:var(--bg2)}
+.btn-ghost{background:transparent;color:var(--txt3);border:1px solid var(--brd)}
+.btn-ghost:hover{color:var(--txt);background:rgba(255,255,255,.05)}
+/* HIGHLIGHT MOVIDO */
+@keyframes mv-highlight{0%,70%{background:rgba(201,162,39,.2)!important;border-left:3px solid var(--gold)!important}100%{background:transparent!important;border-left:none!important}}
+tr.row-highlight{animation:mv-highlight 3s ease forwards}
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:11px 22px;border-radius:9px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1}
 tr.row-red{background:rgba(220,38,38,.07)!important;border-left:3px solid var(--red)}
 tr.row-ylw{background:rgba(217,119,6,.07)!important;border-left:3px solid var(--ylw)}
 
@@ -368,6 +389,20 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <input id="fc-proc" placeholder="🔍 Número do processo" oninput="render('cessoes')">
       <button class="btn btn-blue btn-sm" onclick="clearF('cessoes')">Limpar</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('cessoes')">⇄ Mover para...</button>
+    </div>
+    <div id="mv-cessoes" class="mv-panel">
+      <div class="mv-ac-wrap">
+        <input id="mv-proc-cessoes" placeholder="Número do processo..." oninput="mvAutocomplete('cessoes')" autocomplete="off">
+        <div id="mv-ac-cessoes" class="mv-ac-list"></div>
+      </div>
+      <select id="mv-dest-cessoes" class="mv-dest">
+        <option value="">Selecionar destino...</option>
+        <option value="rpv">RPV Complementar</option>
+        <option value="encerrados">Encerrados</option>
+      </select>
+      <button class="btn btn-gold btn-sm" onclick="doMove('cessoes')">Mover</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('cessoes')">Cancelar</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -406,6 +441,20 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <input id="fr-proc" placeholder="🔍 Número do processo" oninput="render('rpv')">
       <button class="btn btn-blue btn-sm" onclick="clearF('rpv')">Limpar</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('rpv')">⇄ Mover para...</button>
+    </div>
+    <div id="mv-rpv" class="mv-panel">
+      <div class="mv-ac-wrap">
+        <input id="mv-proc-rpv" placeholder="Número do processo..." oninput="mvAutocomplete('rpv')" autocomplete="off">
+        <div id="mv-ac-rpv" class="mv-ac-list"></div>
+      </div>
+      <select id="mv-dest-rpv" class="mv-dest">
+        <option value="">Selecionar destino...</option>
+        <option value="cessoes">Cessões Ativas</option>
+        <option value="encerrados">Encerrados</option>
+      </select>
+      <button class="btn btn-gold btn-sm" onclick="doMove('rpv')">Mover</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('rpv')">Cancelar</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -444,6 +493,21 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <input id="fre-proc" placeholder="🔍 Número do processo" oninput="render('requerimentos')">
       <input id="fre-trib" placeholder="Tribunal" oninput="render('requerimentos')">
       <button class="btn btn-blue btn-sm" onclick="clearF('requerimentos')">Limpar</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('requerimentos')">⇄ Mover para...</button>
+    </div>
+    <div id="mv-requerimentos" class="mv-panel">
+      <div class="mv-ac-wrap">
+        <input id="mv-proc-requerimentos" placeholder="Número do processo..." oninput="mvAutocomplete('requerimentos')" autocomplete="off">
+        <div id="mv-ac-requerimentos" class="mv-ac-list"></div>
+      </div>
+      <select id="mv-dest-requerimentos" class="mv-dest">
+        <option value="">Selecionar destino...</option>
+        <option value="cessoes">Cessões Ativas</option>
+        <option value="rpv">RPV Complementar</option>
+        <option value="encerrados">Encerrados</option>
+      </select>
+      <button class="btn btn-gold btn-sm" onclick="doMove('requerimentos')">Mover</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('requerimentos')">Cancelar</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -469,6 +533,20 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <input id="fen-proc" placeholder="🔍 Número do processo" oninput="render('encerrados')">
       <button class="btn btn-blue btn-sm" onclick="clearF('encerrados')">Limpar</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('encerrados')">⇄ Mover para...</button>
+    </div>
+    <div id="mv-encerrados" class="mv-panel">
+      <div class="mv-ac-wrap">
+        <input id="mv-proc-encerrados" placeholder="Número do processo..." oninput="mvAutocomplete('encerrados')" autocomplete="off">
+        <div id="mv-ac-encerrados" class="mv-ac-list"></div>
+      </div>
+      <select id="mv-dest-encerrados" class="mv-dest">
+        <option value="">Selecionar destino...</option>
+        <option value="cessoes">Cessões Ativas</option>
+        <option value="rpv">RPV Complementar</option>
+      </select>
+      <button class="btn btn-gold btn-sm" onclick="doMove('encerrados')">Mover</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMovePanel('encerrados')">Cancelar</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -1295,7 +1373,7 @@ function cessoesRow(r,allData,isChild){
     :`<button class="btn btn-blue btn-xs" onclick="openVinculo('cessoes','${r.id}')" title="Vincular processo">🔗</button>
        <button class="btn btn-blue btn-xs" onclick="openForm('cessoes','${r.id}')" title="Editar">✏️</button>
        <button class="btn btn-red  btn-xs" onclick="del('cessoes','${r.id}')" title="Excluir">🗑</button>`;
-  const trCls=isChild?rowCls(r)+' child-row':rowCls(r);
+  const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
@@ -1357,7 +1435,7 @@ function rpvRow(r,allData,isChild){
     :`<button class="btn btn-blue btn-xs" onclick="openVinculo('rpv','${r.id}')" title="Vincular processo">🔗</button>
        <button class="btn btn-blue btn-xs" onclick="openForm('rpv','${r.id}')">✏️</button>
        <button class="btn btn-red  btn-xs" onclick="del('rpv','${r.id}')">🗑</button>`;
-  const trCls=isChild?rowCls(r)+' child-row':rowCls(r);
+  const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
@@ -1674,7 +1752,7 @@ function reqRow(r,allData,isChild){
     :`<button class="btn btn-blue btn-xs" onclick="openVinculo('requerimentos','${r.id}')" title="Vincular processo">🔗</button>
        <button class="btn btn-blue btn-xs" onclick="openForm('requerimentos','${r.id}')">✏️</button>
        <button class="btn btn-red  btn-xs" onclick="del('requerimentos','${r.id}')">🗑</button>`;
-  const trCls=isChild?rowCls(r)+' child-row':rowCls(r);
+  const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
@@ -1728,7 +1806,7 @@ function encRow(r,allData,isChild){
     :`<button class="btn btn-blue btn-xs" onclick="openVinculo('encerrados','${r.id}')" title="Vincular processo">🔗</button>
        <button class="btn btn-blue btn-xs" onclick="openForm('encerrados','${r.id}')">✏️</button>
        <button class="btn btn-red  btn-xs" onclick="del('encerrados','${r.id}')">🗑</button>`;
-  const trCls=isChild?'child-row':'';
+  const trCls=(isChild?'child-row':'')+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
@@ -1958,6 +2036,74 @@ function del(mod,id){
   }
   save(mod,data.filter(r=>r.id!==id));
   render(mod);updateDash();
+}
+
+/* ======================================================
+   MOVER PARA
+====================================================== */
+const highlightIds=new Set();
+const MV_LABELS={cessoes:'Cessões Ativas',rpv:'RPV Complementar',encerrados:'Encerrados',requerimentos:'Diversos'};
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),3500);
+}
+
+function toggleMovePanel(mod){
+  const p=document.getElementById('mv-'+mod);
+  const wasOn=p.classList.contains('on');
+  ['cessoes','rpv','encerrados','requerimentos'].forEach(m=>{
+    const el=document.getElementById('mv-'+m);if(el)el.classList.remove('on');
+  });
+  if(!wasOn){
+    p.classList.add('on');
+    document.getElementById('mv-proc-'+mod).value='';
+    document.getElementById('mv-ac-'+mod).classList.remove('on');
+    document.getElementById('mv-dest-'+mod).value='';
+    document.getElementById('mv-proc-'+mod).focus();
+  }
+}
+
+function mvAutocomplete(mod){
+  const q=(document.getElementById('mv-proc-'+mod).value||'').toLowerCase();
+  const list=document.getElementById('mv-ac-'+mod);
+  if(!q){list.classList.remove('on');return;}
+  const matches=load(mod).filter(r=>!r.vinculoPai&&(r.numeroProcesso||'').toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){list.classList.remove('on');return;}
+  list.innerHTML=matches.map(r=>`<div class="mv-ac-item" onmousedown="mvSelect('${mod}','${esc(r.numeroProcesso)}')">${esc(r.numeroProcesso)}</div>`).join('');
+  list.classList.add('on');
+}
+
+function mvSelect(mod,num){
+  document.getElementById('mv-proc-'+mod).value=num;
+  document.getElementById('mv-ac-'+mod).classList.remove('on');
+}
+
+function doMove(fromMod){
+  const num=(document.getElementById('mv-proc-'+fromMod).value||'').trim();
+  const toMod=document.getElementById('mv-dest-'+fromMod).value;
+  if(!num){alert('Informe o número do processo.');return;}
+  if(!toMod){alert('Selecione o destino.');return;}
+  const srcData=load(fromMod);
+  const rec=srcData.find(r=>(r.numeroProcesso||'').trim()===num);
+  if(!rec){alert('Processo não encontrado nesta aba.');return;}
+  // Copy to destination with new id
+  const copy={...rec,id:uid()};
+  delete copy.vinculoPai;delete copy.vinculosFilhos;
+  save(toMod,[...load(toMod),copy]);
+  // Clean up vinculo links in source
+  (rec.vinculosFilhos||[]).forEach(cid=>{const c=srcData.find(r=>r.id===cid);if(c)delete c.vinculoPai;});
+  if(rec.vinculoPai){const pai=srcData.find(r=>r.id===rec.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==rec.id);}
+  save(fromMod,srcData.filter(r=>r.id!==rec.id));
+  // Close panel
+  document.getElementById('mv-'+fromMod).classList.remove('on');
+  // Highlight and switch tab
+  highlightIds.add(copy.id);
+  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.tab===toMod)t.click();});
+  setTimeout(()=>{highlightIds.delete(copy.id);render(toMod);},3000);
+  showToast(`Processo ${num} movido para ${MV_LABELS[toMod]}`);
+  updateDash();
 }
 
 /* ======================================================
@@ -2752,5 +2898,6 @@ _initApp();
     <button class="btn btn-gold btn-sm" onclick="applyColFilter()">OK</button>
   </div>
 </div>
+<div id="toast" class="toast"></div>
 </body>
 </html>
