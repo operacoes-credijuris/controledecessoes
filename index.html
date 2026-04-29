@@ -149,6 +149,11 @@ tr.row-ylw{background:#f59e0b08!important;border-left:3px solid #f59e0b}
 .bdg-grn{background:var(--grn3);color:var(--grn2);border:1px solid rgba(22,163,74,.3)}
 .bdg-blue{background:rgba(37,99,235,.18);color:#93c5fd;border:1px solid rgba(37,99,235,.3)}
 
+/* COPY BUTTON */
+.cpy-btn{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0}
+tr:hover .cpy-btn,.alert-item:hover .cpy-btn{opacity:.5}
+.cpy-btn:hover{opacity:1!important}
+
 /* ACTIONS */
 .acts{display:flex;gap:5px;align-items:center}
 .btn-dots{width:28px;height:28px;background:#1e2433;border:none;border-radius:6px;color:var(--txt2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;line-height:1}
@@ -1071,7 +1076,7 @@ function updateDash(){
       return`<div class="alert-item">
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${prioBadge}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}${prioBadge}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">${sub}</div>
         </div>
@@ -1109,7 +1114,7 @@ function updateDash(){
       return`<div class="alert-item">
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span></div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">PARADO — ${r._dias}d</div>
         </div>
@@ -1144,7 +1149,7 @@ function updateDash(){
       return`<div class="alert-item">
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
-          <div class="al-text"><span class="plink" onclick="goToProcess('${r._mod}','${r.id}')">${esc(r.numeroProcesso)}</span></div>
+          <div class="al-text"><span class="plink" onclick="goToProcess('${r._mod}','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub" style="color:${col}">${msg}</div>
         </div>
@@ -1407,11 +1412,11 @@ function cessoesRow(r,allData,isChild){
   const isExpanded=expandedByMod.cessoes.has(r.id);
   let procCell;
   if(isChild){
-    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}`;
+    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
+    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
-    procCell=esc(r.numeroProcesso);
+    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'cessoes','${r.id}',${isChild})" title="Ações">⋯</button>`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -1463,11 +1468,11 @@ function rpvRow(r,allData,isChild){
   const isExpanded=expandedByMod.rpv.has(r.id);
   let procCell;
   if(isChild){
-    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}`;
+    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
+    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
-    procCell=esc(r.numeroProcesso);
+    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'rpv','${r.id}',${isChild})" title="Ações">⋯</button>`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -1774,11 +1779,11 @@ function reqRow(r,allData,isChild){
   const isExpanded=expandedByMod.requerimentos.has(r.id);
   let procCell;
   if(isChild){
-    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}`;
+    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
+    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
-    procCell=esc(r.numeroProcesso);
+    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'requerimentos','${r.id}',${isChild})" title="Ações">⋯</button>`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -1823,11 +1828,11 @@ function encRow(r,allData,isChild){
   const isExpanded=expandedByMod.encerrados.has(r.id);
   let procCell;
   if(isChild){
-    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}`;
+    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}`;
+    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
-    procCell=esc(r.numeroProcesso);
+    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>`;
   const trCls=(isChild?'child-row':'')+(highlightIds.has(r.id)?' row-highlight':'');
@@ -2082,6 +2087,18 @@ function del(mod,id){
 ====================================================== */
 const highlightIds=new Set();
 const MV_LABELS={cessoes:'Cessões Ativas',rpv:'RPV Complementar',encerrados:'Encerrados',requerimentos:'Diversos'};
+
+const _CPY_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline;vertical-align:middle"><rect x="0.75" y="3" width="7" height="8" rx="1.25" stroke="#4b5563" stroke-width="1.5"/><rect x="4.25" y="0.75" width="7" height="8" rx="1.25" stroke="#4b5563" stroke-width="1.5"/></svg>`;
+function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" onclick="cpyNum(event)">${_CPY_SVG}</button>`;}
+function cpyNum(e){
+  e.stopPropagation();
+  const num=e.currentTarget.getAttribute('data-num');
+  navigator.clipboard.writeText(num).catch(()=>{});
+  const btn=e.currentTarget;
+  btn.innerHTML='<span style="color:#22c55e;font-size:11px;line-height:1;vertical-align:middle">✓</span>';
+  btn.style.opacity='0.5';
+  setTimeout(()=>{btn.innerHTML=_CPY_SVG;btn.style.opacity='';},1500);
+}
 
 function goToProcess(mod,id){
   const data=load(mod);
