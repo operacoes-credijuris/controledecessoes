@@ -2254,10 +2254,13 @@ function renderHistBody(rec){
   const tlHtml=hist.length===0
     ?'<p style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhuma entrada no histórico.</p>'
     :`<div class="tl">${hist.map((h,i)=>`
-      <div class="tl-item">
+      <div class="tl-item" id="tl-item-${i}">
         <div class="tl-date">${fmtDate(h.data)}</div>
         <div class="tl-desc">${esc(h.descricao)}</div>
-        <button class="btn btn-red btn-xs" style="margin-top:5px" onclick="delHistEntry(${i})">Remover</button>
+        <div style="display:flex;gap:5px;margin-top:6px">
+          <button class="btn btn-xs" style="background:rgba(0,119,255,.15);color:#0077FF;border:1px solid rgba(0,119,255,.4)" onclick="editHistEntry(${i})">✏️ Editar</button>
+          <button class="btn btn-red btn-xs" onclick="delHistEntry(${i})">Remover</button>
+        </div>
       </div>`).join('')}</div>`;
 
   const today=new Date().toISOString().split('T')[0];
@@ -2297,6 +2300,45 @@ function delHistEntry(i){
   save(hMod,data);
   renderHistBody(rec);
   render(hMod);updateDash();
+}
+
+function editHistEntry(i){
+  const item=document.getElementById('tl-item-'+i);
+  if(!item)return;
+  const data=load(hMod);
+  const rec=data.find(r=>r.id===hId);
+  if(!rec||!rec.historicoProcessual[i])return;
+  const h=rec.historicoProcessual[i];
+  const inp='background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:6px;padding:5px 9px;color:var(--txt);font-size:12px;outline:none;width:100%;display:block;font-family:inherit';
+  item.innerHTML=`
+    <input type="date" id="tl-ed-date-${i}" value="${h.data}" style="${inp};margin-bottom:6px">
+    <input type="text" id="tl-ed-desc-${i}" value="${esc(h.descricao)}" style="${inp};margin-bottom:8px" onkeydown="if(event.key==='Enter')saveHistEdit(${i});if(event.key==='Escape')cancelHistEdit(${i})">
+    <div style="display:flex;gap:5px">
+      <button class="btn btn-gold btn-xs" onclick="saveHistEdit(${i})">✓ Salvar</button>
+      <button class="btn btn-blue btn-xs" onclick="cancelHistEdit(${i})">Cancelar</button>
+    </div>`;
+  const descInput=document.getElementById('tl-ed-desc-'+i);
+  if(descInput){descInput.focus();descInput.select();}
+}
+
+function saveHistEdit(i){
+  const d=document.getElementById('tl-ed-date-'+i)?.value;
+  const t=document.getElementById('tl-ed-desc-'+i)?.value.trim();
+  if(!d||!t){alert('Preencha a data e a descrição.');return;}
+  const data=load(hMod);
+  const rec=data.find(r=>r.id===hId);
+  if(!rec||!rec.historicoProcessual[i])return;
+  rec.historicoProcessual[i]={data:d,descricao:t};
+  rec.historicoProcessual.sort((a,b)=>new Date(a.data)-new Date(b.data));
+  save(hMod,data);
+  renderHistBody(rec);
+  render(hMod);updateDash();
+}
+
+function cancelHistEdit(i){
+  const data=load(hMod);
+  const rec=data.find(r=>r.id===hId);
+  if(rec)renderHistBody(rec);
 }
 
 /* ======================================================
