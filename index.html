@@ -581,7 +581,10 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 <div id="hist-ov" class="ov" onclick="ovClick(event,'hist-ov')">
   <div class="mdl" style="max-width:580px">
     <div class="mdl-hdr">
-      <div class="mdl-title" id="hist-title">Histórico Processual</div>
+      <div class="mdl-title">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Histórico</div>
+        <div id="hist-proc" style="font-family:var(--font-body);font-weight:400;font-size:12px;color:#6b7280;margin-top:2px"></div>
+      </div>
       <button class="mdl-x" onclick="closeModal('hist-ov')">✕</button>
     </div>
     <div class="mdl-body" id="hist-body"></div>
@@ -627,7 +630,10 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 <div id="senha-ov" class="ov" onclick="ovClick(event,'senha-ov')">
   <div class="mdl" style="max-width:420px">
     <div class="mdl-hdr">
-      <div class="mdl-title">🔒 Senha de Acesso</div>
+      <div class="mdl-title">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Senha de Acesso</div>
+        <div id="senha-proc" style="font-family:var(--font-body);font-weight:400;font-size:12px;color:#6b7280;margin-top:2px"></div>
+      </div>
       <button class="mdl-x" onclick="closeModal('senha-ov')">✕</button>
     </div>
     <div class="mdl-body" id="senha-body"></div>
@@ -669,7 +675,10 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 <div id="cart-ov" class="ov" onclick="ovClick(event,'cart-ov')">
   <div class="mdl" style="max-width:700px">
     <div class="mdl-hdr">
-      <div class="mdl-title" id="cart-title">🏛️ Diligências de Cartório</div>
+      <div class="mdl-title">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Cartório</div>
+        <div id="cart-proc" style="font-family:var(--font-body);font-weight:400;font-size:12px;color:#6b7280;margin-top:2px"></div>
+      </div>
       <button class="mdl-x" onclick="closeModal('cart-ov')">✕</button>
     </div>
     <div class="mdl-body" id="cart-body"></div>
@@ -1572,7 +1581,7 @@ function openCartorio(cessaoId){
   curDilId=null;
   const cess=load('cessoes').find(r=>r.id===cessaoId);
   if(!cess)return;
-  document.getElementById('cart-title').textContent='🏛️ Diligências de Cartório — '+esc(cess.numeroProcesso);
+  document.getElementById('cart-proc').textContent=cess.numeroProcesso||'';
   renderCartorioBody(cessaoId,null);
   openModal('cart-ov');
 }
@@ -2163,6 +2172,7 @@ function copiarSenha(){
 function openSenha(id){
   const rec=load('requerimentos').find(r=>r.id===id);
   if(!rec)return;
+  document.getElementById('senha-proc').textContent=rec.numeroProcesso||'';
   const s=rec.senhaAcesso||'';
   _senhaCopiar=s;
   document.getElementById('senha-body').innerHTML=`
@@ -2330,7 +2340,7 @@ function openHist(mod,id){
   const data=load(mod);
   const rec=data.find(r=>r.id===id);
   if(!rec)return;
-  document.getElementById('hist-title').textContent='Histórico — '+rec.numeroProcesso;
+  document.getElementById('hist-proc').textContent=rec.numeroProcesso||'';
   renderHistBody(rec);
   openModal('hist-ov');
 }
