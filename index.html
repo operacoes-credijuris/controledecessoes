@@ -2359,6 +2359,7 @@ function objetoHtml(v){
     else if(n.includes('honorario')&&n.includes('sucumb')){label='Hon. sucumbenciais';cls='obj-bdg obj-bdg-marsala';}
     else if(n.includes('contratua')&&!n.includes('honorario')){label='Hon. contratuais';cls='obj-bdg obj-bdg-purple';}
     else if(n.includes('sucumb')){label='Hon. sucumbenciais';cls='obj-bdg obj-bdg-marsala';}
+    else if(n.includes('agravo')&&n.includes('instrumento')){label='Ag. de Instrumento';}
     return`<div><span class="${cls}">${esc(label)}</span></div>`;
   }).join('')+'</div>';
 }
