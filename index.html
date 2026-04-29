@@ -1048,7 +1048,7 @@ document.getElementById('g-search').addEventListener('input',function(){
 function updateDash(){
   const ce=load('cessoes'),rp=load('rpv'),re=load('requerimentos'),en=load('encerrados');
   document.getElementById('ds-total').textContent=ce.length+rp.length+en.length;
-  document.getElementById('ds-cess').textContent=ce.length;
+  document.getElementById('ds-cess').textContent=ce.filter(r=>!r.vinculoPai).length;
   document.getElementById('ds-rpv').textContent=rp.length;
   document.getElementById('ds-enc').textContent=en.length;
   const withFatal=[...ce,...rp,...re].filter(r=>r.prazoFatal&&normDate(r.prazoFatal)).length;
