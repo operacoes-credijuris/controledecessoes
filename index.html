@@ -1151,11 +1151,9 @@ function updateDash(){
       const nd=normDate(r.prazoFatal);
       const diff=Math.round((new Date(nd)-new Date(todayStr()))/864e5);
       const col=lv==='exp'?'var(--red2)':lv==='urg'?'#f97316':lv==='warn'?'#fb923c':lv==='next'?'var(--ylw2)':'var(--txt3)';
-      const msg=lv==='exp'?'VENCIDO'
-        :lv==='urg'?`URGENTE — ${diff} dia${diff===1?'':'s'} restante${diff===1?'':'s'}`
-        :lv==='warn'?`ATENÇÃO — ${diff} dias restantes`
-        :lv==='next'?`PRÓXIMO — ${diff} dias restantes`
-        :`PRAZO — ${diff} dias restantes`;
+      const msg=lv==='exp'?'vencido'
+        :diff===1?`${diff} dia restante`
+        :`${diff} dias restantes`;
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
           <div class="al-text"><span class="plink" onclick="goToProcess('${r._mod}','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
