@@ -473,7 +473,9 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <div class="tbl-scroll">
         <table>
           <thead><tr>
-            <th>Ações</th><th style="min-width:150px">Processo</th><th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
+            <th>Ações</th><th style="min-width:150px">Processo</th>
+            <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↑</button></div></th>
+            <th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
             <th style="min-width:60px">Histórico</th><th style="min-width:85px">Última Movimentação</th><th style="min-width:80px">Prazo Fatal</th>
           </tr></thead>
@@ -1156,15 +1158,17 @@ function updateDash(){
    COLUMN SORT
 ====================================================== */
 const SORT_STATE={
-  cessoes:   {field:'dataAquisicao',  dir:'asc'},
-  rpv:       {field:'dataLiquidacao', dir:'asc'},
-  encerrados:{field:'dataLiquidacao', dir:'asc'}
+  cessoes:        {field:'dataAquisicao',  dir:'asc'},
+  rpv:            {field:'dataLiquidacao', dir:'asc'},
+  encerrados:     {field:'dataLiquidacao', dir:'asc'},
+  requerimentos:  {field:'protocolo',      dir:'asc'}
 };
 
 const SORT_COMPUTED={
   _tempo_dec: r=>new Date(r.expectativaLiquidacao||'9999-12-31').getTime(),
   _dur_rpv:   r=>(r.dataAquisicao&&r.dataLiquidacao)?new Date(r.dataLiquidacao)-new Date(r.dataAquisicao):0,
   _dur_enc:   r=>(r.dataAquisicao&&r.dataLiquidacao)?new Date(r.dataLiquidacao)-new Date(r.dataAquisicao):0,
+  protocolo:  r=>r.protocolo||'9999-12-31',
 };
 
 function toggleSort(mod,field,btn){
@@ -1329,7 +1333,7 @@ function clearF(mod){
     for(const k of Object.keys(COL_FILTERS[mod]))delete COL_FILTERS[mod][k];
     document.querySelectorAll(`#pane-${mod} .col-fbtn`).forEach(b=>b.classList.remove('active'));
   }
-  const SORT_DEFAULTS={cessoes:{field:'dataAquisicao',dir:'asc'},rpv:{field:'dataLiquidacao',dir:'asc'},encerrados:{field:'dataLiquidacao',dir:'asc'}};
+  const SORT_DEFAULTS={cessoes:{field:'dataAquisicao',dir:'asc'},rpv:{field:'dataLiquidacao',dir:'asc'},encerrados:{field:'dataLiquidacao',dir:'asc'},requerimentos:{field:'protocolo',dir:'asc'}};
   if(SORT_STATE[mod]){
     const def=SORT_DEFAULTS[mod];
     if(def){SORT_STATE[mod].field=def.field;SORT_STATE[mod].dir=def.dir;}
@@ -1781,6 +1785,7 @@ function reqRow(r,allData,isChild){
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
+    <td>${fmtDate(r.protocolo)}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha">🔒 ${r.senhaAcesso?1:0}</button></td>
     <td title="${esc(r.natureza||'')}">${esc(r.natureza)||'—'}</td>
     <td title="${esc(r.materia||'')}">${esc(r.materia)||'—'}</td>
@@ -1798,15 +1803,15 @@ function reqRow(r,allData,isChild){
 
 function renderReq(){
   const allData=load('requerimentos');
-  const all=filterRecs(allData.filter(r=>!r.vinculoPai),'requerimentos');
-  const rows=paginate(all,'requerimentos');
+  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'requerimentos'),'requerimentos');
+  const rows=paginate(sorted,'requerimentos');
   const tb=document.getElementById('tb-requerimentos');
-  if(!all.length){
-    tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">Nenhum registro em Diversos</div></div></td></tr>`;
+  if(!sorted.length){
+    tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">Nenhum registro em Diversos</div></div></td></tr>`;
   } else {
     tb.innerHTML=rows.map(r=>reqRow(r,allData,false)).join('');
   }
-  renderPgn('pg-requerimentos',all.length,'requerimentos');
+  renderPgn('pg-requerimentos',sorted.length,'requerimentos');
 }
 
 /* ======================================================
@@ -1961,6 +1966,7 @@ function buildForm(mod,r){
 
   if(mod==='requerimentos') return`<div class="fgrid">
     ${fg('Número do Processo',fi('numeroProcesso',r.numeroProcesso,'text','Ex: 0001234-56.2020.8.09.0001'))}
+    ${fg('Protocolo',fi('protocolo',r.protocolo,'date'))}
     ${fg('Senha de Acesso',fi('senhaAcesso',r.senhaAcesso,'text','Senha do sistema'))}
     ${fg('Natureza',fi('natureza',r.natureza,'text','Natureza'))}
     ${fg('Matéria',fi('materia',r.materia,'text','Matéria'))}
@@ -2017,9 +2023,9 @@ function saveRecord(){
     status:gf('status'),pago:gf('pago','checkbox'),resolvido:gf('resolvido','checkbox')
   };
   else if(curMod==='requerimentos') rec={
-    numeroProcesso:gf('numeroProcesso'),senhaAcesso:gf('senhaAcesso'),
-    natureza:gf('natureza'),materia:gf('materia'),tribunal:gf('tribunal'),
-    orgaoJulgador:gf('orgaoJulgador'),prazoFatal:gf('prazoFatal')
+    numeroProcesso:gf('numeroProcesso'),protocolo:gf('protocolo'),
+    senhaAcesso:gf('senhaAcesso'),natureza:gf('natureza'),materia:gf('materia'),
+    tribunal:gf('tribunal'),orgaoJulgador:gf('orgaoJulgador'),prazoFatal:gf('prazoFatal')
   };
   else if(curMod==='encerrados') rec={
     numeroProcesso:gf('numeroProcesso'),dataAquisicao:gf('dataAquisicao'),
