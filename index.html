@@ -1047,10 +1047,13 @@ document.getElementById('g-search').addEventListener('input',function(){
 ====================================================== */
 function updateDash(){
   const ce=load('cessoes'),rp=load('rpv'),re=load('requerimentos'),en=load('encerrados');
-  document.getElementById('ds-total').textContent=ce.filter(r=>!r.vinculoPai).length+rp.length+en.length;
-  document.getElementById('ds-cess').textContent=ce.filter(r=>!r.vinculoPai).length;
-  document.getElementById('ds-rpv').textContent=rp.length;
-  document.getElementById('ds-enc').textContent=en.length;
+  const cePai=ce.filter(r=>!r.vinculoPai).length;
+  const rpPai=rp.filter(r=>!r.vinculoPai).length;
+  const enPai=en.filter(r=>!r.vinculoPai).length;
+  document.getElementById('ds-total').textContent=cePai+rpPai+enPai;
+  document.getElementById('ds-cess').textContent=cePai;
+  document.getElementById('ds-rpv').textContent=rpPai;
+  document.getElementById('ds-enc').textContent=enPai;
   const withFatal=[...ce,...rp,...re].filter(r=>r.prazoFatal&&normDate(r.prazoFatal)).length;
   document.getElementById('ds-fatal').textContent=withFatal;
 
