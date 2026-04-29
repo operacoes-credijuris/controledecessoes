@@ -432,6 +432,12 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
           <thead><tr>
             <th>Ações</th>
             <th style="min-width:150px">Processo</th>
+            <th style="min-width:60px">Histórico</th>
+            <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('cessoes','ultimaMovimentacao',this)">↕</button></div></th>
+            <th style="min-width:65px">Contato</th>
+            <th style="min-width:90px"><div class="col-hdr"><span>Instrumento</span><button class="col-fbtn" data-field="instrumento" onclick="openColFilter(event,'cessoes','instrumento',this)">▾</button></div></th>
+            <th style="min-width:60px">Cartório</th>
+            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('cessoes','prazoFatal',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('cessoes','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Exp. Liq.</span><button class="col-sbtn" data-field="expectativaLiquidacao" onclick="toggleSort('cessoes','expectativaLiquidacao',this)">↕</button></div></th>
             <th style="min-width:55px"><div class="col-hdr"><span>Atraso</span><button class="col-sbtn" data-field="_tempo_dec" onclick="toggleSort('cessoes','_tempo_dec',this)">↕</button></div></th>
@@ -442,11 +448,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:110px"><div class="col-hdr"><span>Devedor</span><button class="col-fbtn" data-field="devedor" onclick="openColFilter(event,'cessoes','devedor',this)">▾</button></div></th>
             <th style="min-width:70px"><div class="col-hdr"><span>Tribunal</span><button class="col-fbtn" data-field="tribunal" onclick="openColFilter(event,'cessoes','tribunal',this)">▾</button></div></th>
             <th style="min-width:160px"><div class="col-hdr"><span>Órgão Julgador</span><button class="col-fbtn" data-field="orgaoJulgador" onclick="openColFilter(event,'cessoes','orgaoJulgador',this)">▾</button></div></th>
-            <th style="min-width:90px"><div class="col-hdr"><span>Instrumento</span><button class="col-fbtn" data-field="instrumento" onclick="openColFilter(event,'cessoes','instrumento',this)">▾</button></div></th>
-            <th style="min-width:60px">Cartório</th><th style="min-width:60px">Histórico</th>
-            <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('cessoes','ultimaMovimentacao',this)">↕</button></div></th>
-            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('cessoes','prazoFatal',this)">↕</button></div></th>
-            <th style="min-width:65px">Contato</th>
           </tr></thead>
           <tbody id="tb-cessoes"></tbody>
         </table>
@@ -471,6 +472,10 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
           <thead><tr>
             <th>Ações</th>
             <th style="min-width:150px">Processo</th>
+            <th style="min-width:60px">Histórico</th>
+            <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('rpv','ultimaMovimentacao',this)">↕</button></div></th>
+            <th style="min-width:65px">Contato</th>
+            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('rpv','prazoFatal',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('rpv','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Liquid.</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('rpv','dataLiquidacao',this)">↕</button></div></th>
             <th style="min-width:50px"><div class="col-hdr"><span>Tempo Liq.</span><button class="col-sbtn" data-field="_dur_rpv" onclick="toggleSort('rpv','_dur_rpv',this)">↕</button></div></th>
@@ -481,10 +486,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:110px"><div class="col-hdr"><span>Devedor</span><button class="col-fbtn" data-field="devedor" onclick="openColFilter(event,'rpv','devedor',this)">▾</button></div></th>
             <th style="min-width:70px"><div class="col-hdr"><span>Tribunal</span><button class="col-fbtn" data-field="tribunal" onclick="openColFilter(event,'rpv','tribunal',this)">▾</button></div></th>
             <th style="min-width:160px"><div class="col-hdr"><span>Órgão Julgador</span><button class="col-fbtn" data-field="orgaoJulgador" onclick="openColFilter(event,'rpv','orgaoJulgador',this)">▾</button></div></th>
-            <th style="min-width:60px">Histórico</th>
-            <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('rpv','ultimaMovimentacao',this)">↕</button></div></th>
-            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('rpv','prazoFatal',this)">↕</button></div></th>
-            <th style="min-width:65px">Contato</th>
           </tr></thead>
           <tbody id="tb-rpv"></tbody>
         </table>
@@ -1488,6 +1489,12 @@ function cessoesRow(r,allData,isChild){
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
+    <td><button class="btn btn-blue btn-xs" onclick="openHist('cessoes','${r.id}')">📜 ${hc}</button></td>
+    <td>${calcUltimaMovimentacao(r)}</td>
+    <td>${contatoBadge('cessoes',r)}</td>
+    <td>${instrBadge(r.instrumento)}</td>
+    <td>${cartorioBadge(r)}</td>
+    <td>${fatalBadge(r.prazoFatal)}</td>
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.expectativaLiquidacao)}</td>
     <td>${liquidacaoDiff(r.expectativaLiquidacao)}</td>
@@ -1498,12 +1505,6 @@ function cessoesRow(r,allData,isChild){
     <td title="${esc(r.devedor||'')}">${esc(r.devedor)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
     <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
-    <td>${instrBadge(r.instrumento)}</td>
-    <td>${cartorioBadge(r)}</td>
-    <td><button class="btn btn-blue btn-xs" onclick="openHist('cessoes','${r.id}')">📜 ${hc}</button></td>
-    <td>${calcUltimaMovimentacao(r)}</td>
-    <td>${fatalBadge(r.prazoFatal)}</td>
-    <td>${contatoBadge('cessoes',r)}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
     html+=childRecs.map(c=>cessoesRow(c,allData,true)).join('');
@@ -1539,6 +1540,10 @@ function rpvRow(r,allData,isChild){
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
+    <td><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')">📜 ${hc}</button></td>
+    <td>${calcUltimaMovimentacao(r)}</td>
+    <td>${contatoBadge('rpv',r)}</td>
+    <td>${fatalBadge(r.prazoFatal)}</td>
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.dataLiquidacao)}</td>
     <td>${(r.dataAquisicao&&r.dataLiquidacao)?Math.round((new Date(r.dataLiquidacao)-new Date(r.dataAquisicao))/864e5)+'d':'—'}</td>
@@ -1549,10 +1554,6 @@ function rpvRow(r,allData,isChild){
     <td title="${esc(r.devedor||'')}">${esc(r.devedor)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
     <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
-    <td><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')">📜 ${hc}</button></td>
-    <td>${calcUltimaMovimentacao(r)}</td>
-    <td>${fatalBadge(r.prazoFatal)}</td>
-    <td>${contatoBadge('rpv',r)}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
     html+=childRecs.map(c=>rpvRow(c,allData,true)).join('');
@@ -1964,8 +1965,8 @@ function buildForm(mod,r){
     <div class="fgrid">
       <div class="fg"><label class="flbl">Órgão Julgador</label><div class="finp" style="background:rgba(255,255,255,.03);cursor:default;color:var(--txt2)">${esc(r.orgaoJulgador||'')}</div></div>
       <div class="fg"><label class="flbl">Tribunal</label><div class="finp" style="background:rgba(255,255,255,.03);cursor:default;color:var(--txt2)">${esc(r.tribunal||'')||'—'}</div></div>
-      ${fg('WhatsApp',fi('whatsapp',r.whatsapp,'text','Ex: 62999990000'))}
-      ${fg('Telefone',fi('telefone',r.telefone,'text','Ex: 6233330000'))}
+      ${fg('WhatsApp',`<input type="text" id="f-whatsapp" class="finp" value="${esc(r.whatsapp||'')}" placeholder="Ex: (62) 99999-0000" oninput="maskPhone(this)">`)}
+      ${fg('Telefone',`<input type="text" id="f-telefone" class="finp" value="${esc(r.telefone||'')}" placeholder="Ex: (62) 3333-0000" oninput="maskPhone(this)">`)}
       ${fg('E-mail',fi('email',r.email,'email','contato@tribunal.jus.br'))}
       ${fg('Horário de Atendimento',fi('horario',r.horario,'text','Ex: 08h às 18h'))}
       ${fg('Contato Preferencial',fsel('contatoPreferencial',r.contatoPreferencial||'',['WhatsApp','Telefone','E-mail']))}
@@ -2563,7 +2564,7 @@ function renderContatos(){
       <td>${emailCell}</td>
       <td>${hor||'—'}</td>
       <td>${prefBadge}</td>
-      <td><button class="btn btn-blue btn-xs" onclick="editContato(${idx})">✏️ Editar</button></td>
+      <td><button class="btn btn-blue btn-xs" onclick="editContato(${idx})">Editar</button></td>
     </tr>`;
   }).join('');
   renderPgn('pg-contatos',rows.length,'contatos');
@@ -2618,6 +2619,21 @@ function editContato(idx){
   document.getElementById('form-title').textContent='Contato — '+org.orgaoJulgador;
   document.getElementById('form-body').innerHTML=buildForm('contatos',existing||{orgaoJulgador:org.orgaoJulgador,tribunal:org.tribunal,whatsapp:'',telefone:'',email:'',horario:'',contatoPreferencial:''});
   openModal('form-ov');
+}
+
+/* ======================================================
+   PHONE MASK
+====================================================== */
+function maskPhone(el){
+  let v=el.value.replace(/\D/g,'');
+  if(v.length>11)v=v.slice(0,11);
+  if(!v.length){el.value='';return;}
+  let r='';
+  if(v.length<=2){r='('+v;}
+  else if(v.length<=6){r='('+v.slice(0,2)+') '+v.slice(2);}
+  else if(v.length<=10){r='('+v.slice(0,2)+') '+v.slice(2,6)+'-'+v.slice(6);}
+  else{r='('+v.slice(0,2)+') '+v.slice(2,7)+'-'+v.slice(7);}
+  el.value=r;
 }
 
 /* ======================================================
