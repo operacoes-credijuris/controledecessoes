@@ -1005,7 +1005,7 @@ function updateDash(){
   ce.forEach(r=>{const k=(r.cessionario||'').trim().toLowerCase();if(k)cessCont[k]=(cessCont[k]||0)+1;});
 
   const liqRecs=ce
-    .filter(r=>r.expectativaLiquidacao)
+    .filter(r=>!r.vinculoPai&&r.expectativaLiquidacao)
     .map(r=>{
       const diff=liqDays(r.expectativaLiquidacao); // mesma fórmula da coluna "Tempo Decorrido"
       const ck=(r.cessionario||'').trim().toLowerCase();
