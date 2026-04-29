@@ -1091,7 +1091,7 @@ function updateDash(){
         :'';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}${cpyBtn(r.numeroProcesso||'')}${prioBadge}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}${prioBadge}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">${sub}</div>
         </div>
@@ -1129,7 +1129,7 @@ function updateDash(){
       const mesLabel=meses>=1?`HÁ MAIS DE ${meses} ${meses===1?'MÊS':'MESES'}`:'HÁ MENOS DE 1 MÊS';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}${cpyBtn(r.numeroProcesso||'')}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">${mesLabel}</div>
         </div>
@@ -1160,7 +1160,7 @@ function updateDash(){
         :`${diff} dias restantes`;
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r.id)}${cpyBtn(r.numeroProcesso||'')}</div>
+          <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r.id)}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub" style="color:${col}">${msg}</div>
         </div>
