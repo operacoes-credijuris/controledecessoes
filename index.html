@@ -92,7 +92,8 @@ a{color:inherit;text-decoration:none}
 .col-fbtn.active{color:var(--gold)}
 .col-sbtn{background:none;border:none;cursor:pointer;padding:1px 3px;font-size:11px;color:var(--txt3);border-radius:3px;line-height:1;flex-shrink:0;transition:color .15s,background .15s}
 .col-sbtn:hover,.col-sbtn.active{color:var(--gold);background:rgba(255,255,255,.07)}
-#col-filter-panel{display:none;position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--brd);border-radius:9px;box-shadow:0 8px 32px rgba(0,0,0,.6);width:250px;padding:10px;flex-direction:column;gap:7px;max-height:340px}
+#col-filter-panel{display:none;position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--brd);border-radius:9px;box-shadow:0 8px 32px rgba(0,0,0,.6);width:250px;padding:10px;gap:7px;max-height:340px}
+#col-filter-panel.open{display:flex;flex-direction:column}
 .cfp-list{overflow-y:auto;max-height:170px;display:flex;flex-direction:column;gap:1px}
 .cf-item{display:flex;align-items:center;gap:7px;padding:3px 6px;border-radius:4px;cursor:pointer;font-size:12px;color:var(--txt2);user-select:none}
 .cf-item:hover{background:rgba(255,255,255,.06);color:var(--txt)}
@@ -137,7 +138,7 @@ tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
 @keyframes mv-highlight{0%,70%{background:rgba(0,119,255,.2)!important;border-left:3px solid var(--gold)!important}100%{background:transparent!important;border-left:none!important}}
 tr.row-highlight{animation:mv-highlight 3s ease forwards}
 /* TOAST */
-.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:11px 22px;border-radius:9px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:11px 22px;border-radius:9px;font-size:13px;font-weight:600;z-index:10001;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.on{opacity:1}
 tr.row-red{background:#ef444408!important;border-left:3px solid #ef4444}
 tr.row-ylw{background:#f59e0b08!important;border-left:3px solid #f59e0b}
@@ -287,7 +288,7 @@ tr:hover .btn-expand{color:#94a3b8}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* DIVIDER */
-.div{height:1px;background:var(--brd);margin:18px 0}
+.divider{height:1px;background:var(--brd);margin:18px 0}
 
 @media(max-width:768px){
   .hdr-search{display:none}
@@ -772,7 +773,7 @@ async function _sbSync(k,d,prev){
 async function _loadAllFromSupabase(){
   for(const[mod,tbl]of Object.entries(TABLES)){
     try{
-      const{data,error}=await sb.from(tbl).select('data').order('updated_at',{ascending:true});
+      const{data,error}=await sb.from(tbl).select('data');
       CACHE[mod]=(!error&&data)?data.map(r=>r.data).filter(Boolean):[];
     }catch(e){
       console.error('[Credijuris] load error',tbl,e);
@@ -787,7 +788,7 @@ function _setupRealtime(){
     for(const[mod,tbl]of Object.entries(TABLES)){
       ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},async()=>{
         try{
-          const{data,error}=await sb.from(tbl).select('data').order('updated_at',{ascending:true});
+          const{data,error}=await sb.from(tbl).select('data');
           if(!error&&data)CACHE[mod]=data.map(r=>r.data).filter(Boolean);
         }catch(e){console.error('[Credijuris] realtime reload error',tbl,e);}
         updateDash();
@@ -840,7 +841,6 @@ async function _onAuthenticated(session){
   ls.style.display='none';
   document.getElementById('logout-btn').style.display='';
   migrateCartorios();
-  initVinculos();
   _setupRealtime();
   _checkLocalMigration();
   updateDash();
@@ -861,6 +861,8 @@ async function _initApp(){
       Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
       document.getElementById('logout-btn').style.display='none';
       ls.style.display='flex';
+    } else if(event==='TOKEN_REFRESHED'&&session){
+      _currentUserId=session.user.id;
     }
   });
   try{
@@ -1001,7 +1003,7 @@ function fatalBadge(s){
 
 function rowCls(r){
   const lv=fatalLevel(r.prazoFatal);
-  if(lv==='exp'||lv==='urg'||lv==='hoje')return'row-red';
+  if(lv==='exp'||lv==='urg')return'row-red';
   if(lv==='warn')return'row-ylw';
   return'';
 }
@@ -1049,7 +1051,7 @@ function updateDash(){
   document.getElementById('ds-cess').textContent=ce.length;
   document.getElementById('ds-rpv').textContent=rp.length;
   document.getElementById('ds-enc').textContent=en.length;
-  const withFatal=[...ce,...rp,...re].filter(r=>fatalLevel(r.prazoFatal)).length;
+  const withFatal=[...ce,...rp,...re].filter(r=>['exp','urg','warn'].includes(fatalLevel(r.prazoFatal))).length;
   document.getElementById('ds-fatal').textContent=withFatal;
 
   const today=new Date(); today.setHours(0,0,0,0);
@@ -1185,6 +1187,7 @@ const SORT_COMPUTED={
   _dur_rpv:   r=>(r.dataAquisicao&&r.dataLiquidacao)?new Date(r.dataLiquidacao)-new Date(r.dataAquisicao):0,
   _dur_enc:   r=>(r.dataAquisicao&&r.dataLiquidacao)?new Date(r.dataLiquidacao)-new Date(r.dataAquisicao):0,
   protocolo:  r=>r.protocolo||'9999-12-31',
+  ultimaMovimentacao: r=>r.ultimaMovimentacao||'',
 };
 
 function toggleSort(mod,field,btn){
@@ -1218,7 +1221,7 @@ function sortRecs(recs,mod){
 /* ======================================================
    COLUMN FILTERS — Excel-style dropdown
 ====================================================== */
-const COL_FILTERS={cessoes:{},rpv:{},encerrados:{}};
+const COL_FILTERS={cessoes:{},rpv:{},encerrados:{},requerimentos:{}};
 let _cfMod=null,_cfField=null,_cfBtn=null,_cfAllVals=[],_cfTemp=new Set();
 
 function openColFilter(event,mod,field,btn){
@@ -1238,7 +1241,7 @@ function openColFilter(event,mod,field,btn){
   _cfRenderList(_cfAllVals);
   _cfUpdateAll();
   const rect=btn.getBoundingClientRect();
-  panel.style.display='flex';
+  panel.classList.add('open');
   const left=Math.min(rect.left,window.innerWidth-258);
   panel.style.left=Math.max(4,left)+'px';
   panel.style.top=(rect.bottom+4)+'px';
@@ -1284,13 +1287,13 @@ function applyColFilter(){
 }
 
 function closeColFilterPanel(){
-  document.getElementById('col-filter-panel').style.display='none';
+  document.getElementById('col-filter-panel').classList.remove('open');
   _cfBtn=null;
 }
 
 document.addEventListener('click',e=>{
   const p=document.getElementById('col-filter-panel');
-  if(p&&p.style.display!=='none'&&!p.contains(e.target)&&e.target!==_cfBtn)closeColFilterPanel();
+  if(p&&p.classList.contains('open')&&!p.contains(e.target)&&e.target!==_cfBtn)closeColFilterPanel();
   const dd=document.getElementById('actions-dd');
   if(dd&&dd.style.display!=='none'&&!dd.contains(e.target))dd.style.display='none';
 });
@@ -1423,12 +1426,7 @@ function cessoesRow(r,allData,isChild){
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
   const isExpanded=expandedByMod.cessoes.has(r.id);
-  let procCell;
-  if(isChild){
-    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
-  } else {
-    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
-  }
+  const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'cessoes','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -1478,12 +1476,7 @@ function rpvRow(r,allData,isChild){
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
   const isExpanded=expandedByMod.rpv.has(r.id);
-  let procCell;
-  if(isChild){
-    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
-  } else {
-    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
-  }
+  const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'rpv','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -1523,89 +1516,6 @@ function renderRPV(){
   renderPgn('pg-rpv',sorted.length,'rpv');
 }
 
-/* ======================================================
-   RENDER CARTÓRIOS (agrupado por processo)
-====================================================== */
-const expandedCartorios=new Set();
-function toggleCartorios(k){
-  expandedCartorios.has(k)?expandedCartorios.delete(k):expandedCartorios.add(k);
-  renderCartorios();
-}
-
-function renderCartorios(){
-  const all=filterRecs(load('cartorios'),'cartorios');
-  const tb=document.getElementById('tb-cartorios');
-  if(!all.length){
-    tb.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-ico">🏛</div><div class="empty-txt">Nenhuma diligência de cartório</div></div></td></tr>`;
-    renderPgn('pg-cartorios',0,'cartorios');
-    return;
-  }
-
-  // Agrupar por numeroProcesso mantendo ordem de inserção
-  const groupMap=new Map();
-  all.forEach(r=>{
-    const k=r.numeroProcesso||'';
-    if(!groupMap.has(k))groupMap.set(k,[]);
-    groupMap.get(k).push(r);
-  });
-  const groups=[...groupMap.entries()];
-
-  // Paginar grupos
-  const page=PG['cartorios']||1;
-  const pageGroups=groups.slice((page-1)*PS,page*PS);
-
-  tb.innerHTML=pageGroups.map(([k,recs])=>{
-    const first=recs[0];
-    const isExp=expandedCartorios.has(k);
-    const allResolved=recs.every(r=>r.resolvido);
-    const allObj=[...new Set(recs.map(r=>r.objeto).filter(Boolean))].join(', ');
-    const statusBadge=allResolved
-      ?'<span class="bdg bdg-grn">Resolvido</span>'
-      :'<span class="bdg bdg-red">Pendente</span>';
-
-    // Linha pai — col1 mostra processo + objetos empilhados abaixo
-    let html=`<tr>
-      <td class="wrap"><div style="font-weight:600;margin-bottom:4px">${esc(k)}</div>${objetoHtml(allObj)}</td>
-      <td>${esc(first.advogado)||'—'}</td>
-      <td>${esc(first.cedente)||'—'}</td>
-      <td>${esc(first.cessionario)||'—'}</td>
-      <td>${instrBadge(first.instrumento)}</td>
-      <td>${statusBadge}</td>
-      <td><div class="acts">
-        <button class="btn btn-blue btn-xs" style="padding:2px 6px" onclick="toggleCartorios('${esc(k)}')" title="${recs.length} diligência(s)">${isExp?'▼':'▶'} ${recs.length}</button>
-        <button class="btn btn-gold btn-xs" onclick="openForm('cartorios')" title="Nova diligência">+</button>
-      </div></td>
-    </tr>`;
-
-    // Sub-linhas — mini-cabeçalho + linhas de diligência
-    if(isExp){
-      html+=`<tr style="background:#1a2744">
-        <th style="padding:5px 8px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;padding-left:24px">Objeto</th>
-        <th style="padding:5px 8px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Protocolo RTDPJ</th>
-        <th style="padding:5px 8px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Orçamento</th>
-        <th style="padding:5px 8px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Pago</th>
-        <th style="padding:5px 8px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Status</th>
-        <th style="padding:5px 8px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Resolvido</th>
-        <th style="padding:5px 8px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Ações</th>
-      </tr>`;
-      html+=recs.map(r=>`<tr class="cart-sub-row">
-        <td class="wrap" style="padding-left:24px"><span style="color:var(--txt3);margin-right:6px">↳</span>${objetoHtml(r.objeto)}</td>
-        <td>${esc(r.protocoloRTDPJ)||'—'}</td>
-        <td>${fmtBRL(r.orcamento)}</td>
-        <td>${r.pago?'<span class="bdg bdg-grn">Sim</span>':'<span class="bdg bdg-ylw">Não</span>'}</td>
-        <td>${esc(r.status)||'—'}</td>
-        <td>${r.resolvido?'<span class="bdg bdg-grn">Sim</span>':'<span class="bdg bdg-red">Não</span>'}</td>
-        <td><div class="acts">
-          <button class="btn btn-blue btn-xs" onclick="openForm('cartorios','${r.id}')" title="Editar">✏️</button>
-          <button class="btn btn-red  btn-xs" onclick="del('cartorios','${r.id}')" title="Excluir">🗑</button>
-        </div></td>
-      </tr>`).join('');
-    }
-    return html;
-  }).join('');
-
-  renderPgn('pg-cartorios',groups.length,'cartorios');
-}
 
 /* ======================================================
    DILIGÊNCIAS DE CARTÓRIO (embutidas em cessões)
@@ -1788,12 +1698,7 @@ function reqRow(r,allData,isChild){
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
   const isExpanded=expandedByMod.requerimentos.has(r.id);
-  let procCell;
-  if(isChild){
-    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
-  } else {
-    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
-  }
+  const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'requerimentos','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -1836,12 +1741,7 @@ function encRow(r,allData,isChild){
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
   const isExpanded=expandedByMod.encerrados.has(r.id);
-  let procCell;
-  if(isChild){
-    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
-  } else {
-    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
-  }
+  const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -1891,7 +1791,7 @@ function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','dj-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','move-ov','del-ov'].forEach(closeModal);}
+  if(e.key==='Escape'){['form-ov','hist-ov','dj-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','move-ov','del-ov','migr-ov'].forEach(closeModal);}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'};
     const elId=mp[curTab];
@@ -2030,12 +1930,6 @@ function saveRecord(){
     cessionario:gf('cessionario'),devedor:gf('devedor'),tribunal:gf('tribunal'),
     orgaoJulgador:gf('orgaoJulgador')
   };
-  else if(curMod==='cartorios') rec={
-    numeroProcesso:gf('numeroProcesso'),objeto:gf('objeto'),advogado:gf('advogado'),
-    cedente:gf('cedente'),cessionario:gf('cessionario'),instrumento:gf('instrumento'),
-    protocoloRTDPJ:gf('protocoloRTDPJ'),orcamento:gf('orcamento','number'),
-    status:gf('status'),pago:gf('pago','checkbox'),resolvido:gf('resolvido','checkbox')
-  };
   else if(curMod==='requerimentos') rec={
     numeroProcesso:gf('numeroProcesso'),protocolo:gf('protocolo'),
     senhaAcesso:gf('senhaAcesso'),natureza:gf('natureza'),materia:gf('materia'),
@@ -2054,7 +1948,11 @@ function saveRecord(){
     const idx=data.findIndex(r=>r.id===curId);
     if(idx!==-1){
       rec.id=curId;
-      rec.historicoProcessual=data[idx].historicoProcessual||[];
+      const old=data[idx];
+      rec.historicoProcessual=old.historicoProcessual||[];
+      if(old.diligencias!==undefined)rec.diligencias=old.diligencias;
+      if(old.vinculosFilhos!==undefined)rec.vinculosFilhos=old.vinculosFilhos;
+      if(old.vinculoPai!==undefined)rec.vinculoPai=old.vinculoPai;
       data[idx]=rec;
     }
   } else {
@@ -2125,7 +2023,7 @@ function goToProcess(mod,id){
   highlightIds.add(id);
   render(mod);
   setTimeout(()=>{const row=document.querySelector(`#tb-${mod} tr.row-highlight`);if(row)row.scrollIntoView({block:'center',behavior:'smooth'});},60);
-  setTimeout(()=>{highlightIds.delete(id);if(procId)document.getElementById(procId).value='';render(mod);},3200);
+  setTimeout(()=>{highlightIds.delete(id);render(mod);},3200);
 }
 
 function showToast(msg){
@@ -2141,71 +2039,24 @@ const MV_OPTS={
   requerimentos:[{v:'cessoes',l:'Cessões Ativas'},{v:'rpv',l:'RPV Complementar'},{v:'encerrados',l:'Encerrados'}]
 };
 
-function openMoveModal(mod){
-  vMod=mod;
-  document.getElementById('mv-proc').value='';
-  document.getElementById('mv-ac').classList.remove('on');
-  const sel=document.getElementById('mv-dest');
-  sel.innerHTML='<option value="">Selecionar destino...</option>'+
-    (MV_OPTS[mod]||[]).map(o=>`<option value="${o.v}">${o.l}</option>`).join('');
-  openModal('move-ov');
-  setTimeout(()=>document.getElementById('mv-proc').focus(),80);
-}
-
-function mvAutocomplete(){
-  const q=(document.getElementById('mv-proc').value||'').toLowerCase();
-  const list=document.getElementById('mv-ac');
-  if(!q){list.classList.remove('on');return;}
-  const matches=load(vMod).filter(r=>!r.vinculoPai&&(r.numeroProcesso||'').toLowerCase().includes(q)).slice(0,8);
-  if(!matches.length){list.classList.remove('on');return;}
-  list.innerHTML=matches.map(r=>{
-    const info=[esc(r.cedente||''),esc(r.cessionario||'')].filter(Boolean);
-    const sub=info.length===2?` — ${info[0]} → ${info[1]}`:info.length===1?` — ${info[0]}`:'';
-    return`<div class="mv-ac-item" onmousedown="mvSelect('${esc(r.numeroProcesso)}')" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.numeroProcesso)}<span style="color:var(--txt3)">${sub}</span></div>`;
-  }).join('');
-  list.classList.add('on');
-}
-
-function mvSelect(num){
-  document.getElementById('mv-proc').value=num;
-  document.getElementById('mv-ac').classList.remove('on');
-}
-
-function doMove(){
-  const num=(document.getElementById('mv-proc').value||'').trim();
-  const toMod=document.getElementById('mv-dest').value;
-  if(!num){alert('Informe o número do processo.');return;}
-  if(!toMod){alert('Selecione o destino.');return;}
-  const srcData=load(vMod);
-  const rec=srcData.find(r=>(r.numeroProcesso||'').trim()===num);
-  if(!rec){alert('Processo não encontrado nesta aba.');return;}
-  const copy={...rec,id:uid()};
-  delete copy.vinculoPai;delete copy.vinculosFilhos;
-  save(toMod,[...load(toMod),copy]);
-  (rec.vinculosFilhos||[]).forEach(cid=>{const c=srcData.find(r=>r.id===cid);if(c)delete c.vinculoPai;});
-  if(rec.vinculoPai){const pai=srcData.find(r=>r.id===rec.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==rec.id);}
-  save(vMod,srcData.filter(r=>r.id!==rec.id));
-  closeModal('move-ov');
-  highlightIds.add(copy.id);
-  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.tab===toMod)t.click();});
-  setTimeout(()=>{highlightIds.delete(copy.id);render(toMod);},3000);
-  showToast(`Processo ${num} movido para ${MV_LABELS[toMod]}`);
-  updateDash();
-}
-
 function moveItem(mod,id,toMod){
   document.getElementById('actions-dd').style.display='none';
   const srcData=load(mod);
   const rec=srcData.find(r=>r.id===id);
   if(!rec)return;
-  const copy={...rec,id:uid()};
+  const copy={...rec};
   delete copy.vinculoPai;delete copy.vinculosFilhos;
   save(toMod,[...load(toMod),copy]);
   (rec.vinculosFilhos||[]).forEach(cid=>{const c=srcData.find(r=>r.id===cid);if(c)delete c.vinculoPai;});
   if(rec.vinculoPai){const pai=srcData.find(r=>r.id===rec.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==id);}
   save(mod,srcData.filter(r=>r.id!==id));
   highlightIds.add(copy.id);
-  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.tab===toMod)t.click();});
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelector(`.tab[data-tab="${toMod}"]`).classList.add('on');
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
+  curTab=toMod;
+  document.getElementById('pane-'+toMod).classList.add('on');
+  render(toMod);
   setTimeout(()=>{highlightIds.delete(copy.id);render(toMod);},3000);
   showToast(`Processo movido para ${MV_LABELS[toMod]} com sucesso`);
   updateDash();
@@ -2324,18 +2175,6 @@ function vincularProcesso(filhoId){
 }
 
 function cleanNum(s){return(s||'').replace(/[\s.\-\/]/g,'');}
-function initVinculos(){
-  const data=load('cessoes');
-  const paiN=data.find(r=>cleanNum(r.numeroProcesso)===cleanNum('0007585-22.2003.8.09.0051'));
-  const filhoN=data.find(r=>cleanNum(r.numeroProcesso)===cleanNum('5115265-72.2026.8.09.0051'));
-  if(paiN&&filhoN&&!filhoN.vinculoPai){
-    if(!paiN.vinculosFilhos)paiN.vinculosFilhos=[];
-    if(!paiN.vinculosFilhos.includes(filhoN.id))paiN.vinculosFilhos.push(filhoN.id);
-    filhoN.vinculoPai=paiN.id;
-    save('cessoes',data);
-  }
-}
-
 /* ======================================================
    INSTRUMENTO BADGE
 ====================================================== */
@@ -2423,7 +2262,7 @@ function renderHistBody(rec){
 
   const today=new Date().toISOString().split('T')[0];
   const addHtml=`
-    <div class="div"></div>
+    <div class="divider"></div>
     <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Nova Entrada</div>
     <div class="tl-add">
       <input type="date" id="h-date" value="${today}" style="width:150px">
