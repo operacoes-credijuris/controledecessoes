@@ -502,7 +502,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↑</button></div></th>
             <th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
-            <th style="min-width:60px">Histórico</th><th style="min-width:85px">Última Movimentação</th><th style="min-width:80px">Prazo Fatal</th>
+            <th style="min-width:60px">Histórico</th><th style="min-width:85px">Última Movimentação</th><th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
           </tr></thead>
           <tbody id="tb-requerimentos"></tbody>
         </table>
@@ -1051,7 +1051,7 @@ function updateDash(){
   document.getElementById('ds-cess').textContent=ce.length;
   document.getElementById('ds-rpv').textContent=rp.length;
   document.getElementById('ds-enc').textContent=en.length;
-  const withFatal=[...ce,...rp,...re].filter(r=>['exp','urg','warn'].includes(fatalLevel(r.prazoFatal))).length;
+  const withFatal=[...ce,...rp,...re].filter(r=>r.prazoFatal&&normDate(r.prazoFatal)).length;
   document.getElementById('ds-fatal').textContent=withFatal;
 
   const today=new Date(); today.setHours(0,0,0,0);
