@@ -41,11 +41,13 @@ a{color:inherit;text-decoration:none}
 .hdr-search:focus-within .srch-ico{color:#0077ff;opacity:1}
 
 /* NAV TABS */
-.nav{background:#151820;border-bottom:1px solid #1e2433;display:flex;padding:0 20px;overflow-x:auto;gap:0;flex-shrink:0}
+.nav{background:#151820;border-bottom:1px solid #1e2433;display:flex;padding:0 20px;overflow-x:auto;gap:0;flex-shrink:0;align-items:center}
 .nav::-webkit-scrollbar{height:3px}.nav::-webkit-scrollbar-thumb{background:var(--brd2)}
 .tab{padding:13px 18px;cursor:pointer;font-size:13px;font-weight:500;color:#6b7280;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;user-select:none}
 .tab:hover{color:#94a3b8}
 .tab.on{color:#0077ff;border-bottom-color:#0077ff}
+.nav-sep{color:#2a3348;font-size:16px;padding:0 6px;user-select:none;pointer-events:none;line-height:1;flex-shrink:0}
+.nav-dot{color:#2a3348;font-size:12px;padding:0 2px;user-select:none;pointer-events:none;line-height:1;flex-shrink:0}
 
 /* MAIN */
 .main{padding:0;overflow:hidden;flex:1;min-height:0;max-width:100%}
@@ -114,9 +116,9 @@ tr.child-row{background:#1e2840!important}
 tr.child-row:hover{background:#243050!important}
 tbody td{padding:6px 8px;vertical-align:middle;white-space:nowrap}
 tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
-#pane-cessoes table,#pane-rpv table,#pane-encerrados table,#pane-requerimentos table{font-size:10px}
-#pane-cessoes thead th,#pane-rpv thead th,#pane-encerrados thead th,#pane-requerimentos thead th{font-size:9px;padding:4px 6px}
-#pane-cessoes tbody td,#pane-rpv tbody td,#pane-encerrados tbody td,#pane-requerimentos tbody td{padding:4px 6px}
+#pane-cessoes table,#pane-rpv table,#pane-encerrados table,#pane-requerimentos table,#pane-contatos table{font-size:10px}
+#pane-cessoes thead th,#pane-rpv thead th,#pane-encerrados thead th,#pane-requerimentos thead th,#pane-contatos thead th{font-size:9px;padding:4px 6px}
+#pane-cessoes tbody td,#pane-rpv tbody td,#pane-encerrados tbody td,#pane-requerimentos tbody td,#pane-contatos tbody td{padding:4px 6px}
 /* MOVER PARA */
 .mv-panel{display:none;background:var(--bg1);border:1px solid var(--brd2);border-radius:8px;padding:10px 14px;margin-bottom:10px;gap:10px;flex-wrap:wrap;align-items:flex-end;flex-shrink:0}
 .mv-panel.on{display:flex}
@@ -374,12 +376,17 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 </header>
 
 <nav class="nav">
-  <div class="tab on"  data-tab="dashboard">Dashboard</div>
+  <div class="tab on" data-tab="dashboard">Dashboard</div>
+  <span class="nav-sep">|</span>
   <div class="tab" data-tab="cessoes">Cessões Ativas</div>
+  <span class="nav-dot">·</span>
   <div class="tab" data-tab="rpv">RPV Complementar</div>
-
+  <span class="nav-dot">·</span>
   <div class="tab" data-tab="encerrados">Encerrados</div>
+  <span class="nav-sep">|</span>
   <div class="tab" data-tab="requerimentos">Diversos</div>
+  <span class="nav-sep">|</span>
+  <div class="tab" data-tab="contatos">Telefones e Contatos</div>
 </nav>
 
 <div class="main">
@@ -439,6 +446,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:60px">Cartório</th><th style="min-width:60px">Histórico</th>
             <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('cessoes','ultimaMovimentacao',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('cessoes','prazoFatal',this)">↕</button></div></th>
+            <th style="min-width:65px">Contato</th>
           </tr></thead>
           <tbody id="tb-cessoes"></tbody>
         </table>
@@ -476,6 +484,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:60px">Histórico</th>
             <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('rpv','ultimaMovimentacao',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('rpv','prazoFatal',this)">↕</button></div></th>
+            <th style="min-width:65px">Contato</th>
           </tr></thead>
           <tbody id="tb-rpv"></tbody>
         </table>
@@ -508,6 +517,31 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
         </table>
       </div>
       <div id="pg-requerimentos" class="pgn"></div>
+    </div>
+  </div>
+
+  <!-- CONTATOS -->
+  <div id="pane-contatos" class="pane">
+    <div class="sh">
+      <div class="sh-title">Telefones e Contatos</div>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr>
+            <th style="min-width:160px">Órgão Julgador</th>
+            <th style="min-width:80px">Tribunal</th>
+            <th style="min-width:120px">WhatsApp</th>
+            <th style="min-width:100px">Telefone</th>
+            <th style="min-width:140px">E-mail</th>
+            <th style="min-width:100px">Horário</th>
+            <th style="min-width:120px">Contato Preferencial</th>
+            <th style="min-width:60px">Ações</th>
+          </tr></thead>
+          <tbody id="tb-contatos"></tbody>
+        </table>
+      </div>
+      <div id="pg-contatos" class="pgn"></div>
     </div>
   </div>
 
@@ -723,6 +757,20 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   </div>
 </div>
 
+<!-- CONTATO VIEW MODAL -->
+<div id="contato-ov" class="ov" onclick="ovClick(event,'contato-ov')">
+  <div class="mdl" style="max-width:580px">
+    <div class="mdl-hdr">
+      <div class="mdl-title" id="contato-title">Contato</div>
+      <button class="mdl-x" onclick="closeModal('contato-ov')">✕</button>
+    </div>
+    <div class="mdl-body" id="contato-body"></div>
+    <div class="mdl-footer">
+      <button class="btn btn-blue" onclick="closeModal('contato-ov')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
   onerror="(function(){var e=document.getElementById('lc-err');if(e){e.textContent='Falha ao carregar Supabase. Verifique sua conexão.';e.style.display='block';}})()"></script>
 <script>
@@ -741,16 +789,16 @@ let sb=null;
     console.error('[Credijuris] Supabase init error:',e);
   }
 })();
-const TABLES={cessoes:'cessoes_ativas',rpv:'rpv_complementar',requerimentos:'diversos',encerrados:'encerrados'};
-const CACHE={cessoes:[],rpv:[],requerimentos:[],encerrados:[]};
+const TABLES={cessoes:'cessoes_ativas',rpv:'rpv_complementar',requerimentos:'diversos',encerrados:'encerrados',contatos:'contatos'};
+const CACHE={cessoes:[],rpv:[],requerimentos:[],encerrados:[],contatos:[]};
 let _currentUserId=null;
 
 /* ======================================================
    CORE DATA
 ====================================================== */
 const KEYS = {cessoes:'cj_cess',rpv:'cj_rpv',cartorios:'cj_cart',requerimentos:'cj_req',encerrados:'cj_enc'};
-const PG = {cessoes:1,rpv:1,cartorios:1,requerimentos:1,encerrados:1};
-const PS = {cessoes:25,rpv:25,cartorios:25,requerimentos:25,encerrados:25};
+const PG = {cessoes:1,rpv:1,cartorios:1,requerimentos:1,encerrados:1,contatos:1};
+const PS = {cessoes:25,rpv:25,cartorios:25,requerimentos:25,encerrados:25,contatos:25};
 
 function load(k){return(CACHE[k]||[]).slice();}
 function save(k,d){const prev=(CACHE[k]||[]).slice();CACHE[k]=d.slice();_sbSync(k,d,prev);}
@@ -763,7 +811,8 @@ async function _sbSync(k,d,prev){
     const delIds=(prev||[]).filter(r=>!newIds.has(r.id)).map(r=>r.id);
     if(delIds.length){const{error}=await sb.from(tbl).delete().in('id',delIds);if(error)throw error;}
     if(d.length){
-      const rows=d.map(r=>({id:r.id,user_id:_currentUserId,data:r,updated_at:new Date().toISOString()}));
+      const isShared=(tbl==='contatos');
+      const rows=d.map(r=>{const o={id:r.id,data:r,updated_at:new Date().toISOString()};if(!isShared)o.user_id=_currentUserId;return o;});
       const{error}=await sb.from(tbl).upsert(rows,{onConflict:'id'});
       if(error)throw error;
     }
@@ -1395,9 +1444,11 @@ function renderPgn(containerId,total,mod){
 function setPS(mod,n){PS[mod]=n;PG[mod]=1;render(mod);}
 
 function goP(mod,p){
-  const all=filterRecs(load(mod),mod);
+  let len;
+  if(mod==='contatos'){len=_contatosRows.length;}
+  else{len=filterRecs(load(mod),mod).length;}
   const ps=PS[mod];
-  const tp=ps===0?1:Math.ceil(all.length/ps)||1;
+  const tp=ps===0?1:Math.ceil(len/ps)||1;
   PG[mod]=Math.max(1,Math.min(p,tp));
   render(mod);
 }
@@ -1417,7 +1468,8 @@ function syncSortUI(mod){
 
 function render(mod){
   ({cessoes:renderCessoes,rpv:renderRPV,
-    requerimentos:renderReq,encerrados:renderEnc})[mod]();
+    requerimentos:renderReq,encerrados:renderEnc,
+    contatos:renderContatos})[mod]();
   syncSortUI(mod);
 }
 
@@ -1451,6 +1503,7 @@ function cessoesRow(r,allData,isChild){
     <td><button class="btn btn-blue btn-xs" onclick="openHist('cessoes','${r.id}')">📜 ${hc}</button></td>
     <td>${calcUltimaMovimentacao(r)}</td>
     <td>${fatalBadge(r.prazoFatal)}</td>
+    <td>${contatoBadge('cessoes',r)}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
     html+=childRecs.map(c=>cessoesRow(c,allData,true)).join('');
@@ -1464,7 +1517,7 @@ function renderCessoes(){
   const rows=paginate(sorted,'cessoes');
   const tb=document.getElementById('tb-cessoes');
   if(!sorted.length){
-    tb.innerHTML=`<tr><td colspan="17"><div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">Nenhuma cessão ativa</div></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="18"><div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">Nenhuma cessão ativa</div></div></td></tr>`;
   } else {
     tb.innerHTML=rows.map(r=>cessoesRow(r,allData,false)).join('');
   }
@@ -1499,6 +1552,7 @@ function rpvRow(r,allData,isChild){
     <td><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')">📜 ${hc}</button></td>
     <td>${calcUltimaMovimentacao(r)}</td>
     <td>${fatalBadge(r.prazoFatal)}</td>
+    <td>${contatoBadge('rpv',r)}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
     html+=childRecs.map(c=>rpvRow(c,allData,true)).join('');
@@ -1512,7 +1566,7 @@ function renderRPV(){
   const rows=paginate(sorted,'rpv');
   const tb=document.getElementById('tb-rpv');
   if(!sorted.length){
-    tb.innerHTML=`<tr><td colspan="15"><div class="empty"><div class="empty-ico">📄</div><div class="empty-txt">Nenhum RPV complementar</div></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="16"><div class="empty"><div class="empty-ico">📄</div><div class="empty-txt">Nenhum RPV complementar</div></div></td></tr>`;
   } else {
     tb.innerHTML=rows.map(r=>rpvRow(r,allData,false)).join('');
   }
@@ -1794,7 +1848,7 @@ function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','dj-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','move-ov','del-ov','migr-ov'].forEach(closeModal);}
+  if(e.key==='Escape'){['form-ov','hist-ov','dj-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','move-ov','del-ov','migr-ov','contato-ov'].forEach(closeModal);}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'};
     const elId=mp[curTab];
@@ -1903,6 +1957,19 @@ function buildForm(mod,r){
     ${fg('Devedor',fi('devedor',r.devedor,'text','Nome do devedor'))}
     ${fg('Motivo do Encerramento',fta('motivo',r.motivo,'Descreva o motivo…'),true)}
   </div>`;
+
+  if(mod==='contatos') return`
+    <input type="hidden" id="f-orgaoJulgador" value="${esc(r.orgaoJulgador||'')}">
+    <input type="hidden" id="f-tribunal" value="${esc(r.tribunal||'')}">
+    <div class="fgrid">
+      <div class="fg"><label class="flbl">Órgão Julgador</label><div class="finp" style="background:rgba(255,255,255,.03);cursor:default;color:var(--txt2)">${esc(r.orgaoJulgador||'')}</div></div>
+      <div class="fg"><label class="flbl">Tribunal</label><div class="finp" style="background:rgba(255,255,255,.03);cursor:default;color:var(--txt2)">${esc(r.tribunal||'')||'—'}</div></div>
+      ${fg('WhatsApp',fi('whatsapp',r.whatsapp,'text','Ex: 62999990000'))}
+      ${fg('Telefone',fi('telefone',r.telefone,'text','Ex: 6233330000'))}
+      ${fg('E-mail',fi('email',r.email,'email','contato@tribunal.jus.br'))}
+      ${fg('Horário de Atendimento',fi('horario',r.horario,'text','Ex: 08h às 18h'))}
+      ${fg('Contato Preferencial',fsel('contatoPreferencial',r.contatoPreferencial||'',['WhatsApp','Telefone','E-mail']))}
+    </div>`;
   return'';
 }
 
@@ -1944,8 +2011,33 @@ function saveRecord(){
     cedente:gf('cedente'),cessionario:gf('cessionario'),devedor:gf('devedor'),
     motivo:gf('motivo')
   };
+  else if(curMod==='contatos'){
+    const orgEl=document.getElementById('f-orgaoJulgador');
+    const tribEl=document.getElementById('f-tribunal');
+    rec={
+      orgaoJulgador:(orgEl?orgEl.value.trim():''),
+      tribunal:(tribEl?tribEl.value.trim():''),
+      whatsapp:gf('whatsapp'),
+      telefone:gf('telefone'),
+      email:gf('email'),
+      horario:gf('horario'),
+      contatoPreferencial:gf('contatoPreferencial')
+    };
+    if(!rec.orgaoJulgador){alert('Órgão julgador é obrigatório.');return;}
+    if(curId){
+      const idx=data.findIndex(r=>r.id===curId);
+      if(idx!==-1){rec.id=curId;data[idx]=rec;}
+    } else {
+      rec.id=uid();
+      data.push(rec);
+    }
+    save(curMod,data);
+    closeModal('form-ov');
+    render('contatos');
+    return;
+  }
 
-  if(!rec.numeroProcesso){alert('O número do processo é obrigatório.');return;}
+  if(curMod!=='contatos'&&!rec.numeroProcesso){alert('O número do processo é obrigatório.');return;}
 
   if(curId){
     const idx=data.findIndex(r=>r.id===curId);
@@ -2423,6 +2515,110 @@ async function consultDJ(){
   }
 }
 
+
+/* ======================================================
+   CONTATOS
+====================================================== */
+let _contatosRows=[];
+
+function renderContatos(){
+  // Collect unique orgaoJulgador values from cessoes and rpv (parent records only)
+  const cesPai=CACHE.cessoes.filter(r=>!r.vinculoPai);
+  const rpvPai=CACHE.rpv.filter(r=>!r.vinculoPai);
+  const orgMap={};
+  [...cesPai,...rpvPai].forEach(r=>{
+    const org=(r.orgaoJulgador||'').trim();
+    if(!org)return;
+    if(!orgMap[org])orgMap[org]={orgaoJulgador:org,tribunal:(r.tribunal||'').trim()};
+  });
+  const rows=Object.values(orgMap).sort((a,b)=>a.orgaoJulgador.localeCompare(b.orgaoJulgador,'pt-BR',{sensitivity:'base'}));
+  _contatosRows=rows;
+
+  const ps=PS.contatos;
+  const page=PG.contatos;
+  const paged=ps===0?rows:rows.slice((page-1)*ps,page*ps);
+
+  const tb=document.getElementById('tb-contatos');
+  if(!rows.length){
+    tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">📞</div><div class="empty-txt">Nenhum órgão julgador encontrado nas cessões ou RPV</div></div></td></tr>`;
+    renderPgn('pg-contatos',0,'contatos');
+    return;
+  }
+  tb.innerHTML=paged.map((org,relIdx)=>{
+    const idx=(page-1)*(ps||rows.length)+relIdx;
+    const c=CACHE.contatos.find(x=>(x.orgaoJulgador||'').trim()===org.orgaoJulgador);
+    const wa=c?esc(c.whatsapp||''):'';
+    const tel=c?esc(c.telefone||''):'';
+    const email=c?esc(c.email||''):'';
+    const hor=c?esc(c.horario||''):'';
+    const pref=c?(c.contatoPreferencial||''):'';
+    const waCell=wa?`<a href="https://wa.me/${wa.replace(/\D/g,'')}" target="_blank" rel="noopener" style="color:var(--grn2)">${wa}</a>`:'—';
+    const emailCell=email?`<a href="mailto:${email}" style="color:var(--blue2)">${email}</a>`:'—';
+    const prefBadge=pref?`<span class="bdg bdg-blue">${esc(pref)}</span>`:'—';
+    return`<tr>
+      <td title="${esc(org.orgaoJulgador)}">${esc(org.orgaoJulgador)}</td>
+      <td>${esc(org.tribunal)||'—'}</td>
+      <td>${waCell}</td>
+      <td>${tel||'—'}</td>
+      <td>${emailCell}</td>
+      <td>${hor||'—'}</td>
+      <td>${prefBadge}</td>
+      <td><button class="btn btn-blue btn-xs" onclick="editContato(${idx})">✏️ Editar</button></td>
+    </tr>`;
+  }).join('');
+  renderPgn('pg-contatos',rows.length,'contatos');
+}
+
+function contatoBadge(mod,r){
+  const org=(r.orgaoJulgador||'').trim();
+  if(!org){
+    return`<button class="btn btn-blue btn-xs" style="opacity:.35;cursor:default" title="Sem órgão julgador" disabled>📞</button>`;
+  }
+  const c=CACHE.contatos.find(x=>(x.orgaoJulgador||'').trim()===org);
+  const hasInfo=c&&(c.whatsapp||c.telefone||c.email);
+  if(!hasInfo){
+    return`<button class="btn btn-blue btn-xs" style="opacity:.35;cursor:default" title="Sem contato cadastrado" disabled>📞</button>`;
+  }
+  return`<button class="btn btn-grn btn-xs" onclick="openContatoModal('${mod}','${r.id}')" title="Ver contato">📞</button>`;
+}
+
+function openContatoModal(mod,id){
+  const rec=CACHE[mod].find(r=>r.id===id);
+  if(!rec)return;
+  const org=(rec.orgaoJulgador||'').trim();
+  const c=CACHE.contatos.find(x=>(x.orgaoJulgador||'').trim()===org);
+  document.getElementById('contato-title').textContent='Contato — '+org;
+  if(!c){
+    document.getElementById('contato-body').innerHTML='<p style="color:var(--txt3);font-size:13px">Nenhum contato cadastrado para este órgão julgador.</p>';
+    openModal('contato-ov');
+    return;
+  }
+  const waDigits=(c.whatsapp||'').replace(/\D/g,'');
+  const waLink=waDigits?`<a href="https://wa.me/${waDigits}" target="_blank" rel="noopener" class="btn btn-grn btn-sm" style="text-decoration:none;margin-left:8px">📲 Abrir WhatsApp</a>`:'';
+  const emailLink=c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--blue2)">${esc(c.email)}</a>`:'—';
+  const prefBadge=c.contatoPreferencial?`<span class="bdg bdg-blue">${esc(c.contatoPreferencial)}</span>`:'—';
+  document.getElementById('contato-body').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><span style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">Tribunal</span><div style="font-size:13px;color:var(--txt);margin-top:4px">${esc(c.tribunal||rec.tribunal||'')||'—'}</div></div>
+      <div><span style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">WhatsApp</span><div style="font-size:13px;color:var(--txt);margin-top:4px">${esc(c.whatsapp||'')||'—'}${waLink}</div></div>
+      <div><span style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">Telefone</span><div style="font-size:13px;color:var(--txt);margin-top:4px">${esc(c.telefone||'')||'—'}</div></div>
+      <div><span style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">E-mail</span><div style="font-size:13px;color:var(--txt);margin-top:4px">${emailLink}</div></div>
+      <div><span style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">Horário</span><div style="font-size:13px;color:var(--txt);margin-top:4px">${esc(c.horario||'')||'—'}</div></div>
+      <div><span style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">Contato Preferencial</span><div style="margin-top:4px">${prefBadge}</div></div>
+    </div>`;
+  openModal('contato-ov');
+}
+
+function editContato(idx){
+  const org=_contatosRows[idx];
+  if(!org)return;
+  const existing=CACHE.contatos.find(c=>(c.orgaoJulgador||'').trim()===org.orgaoJulgador.trim());
+  curMod='contatos';
+  curId=existing?existing.id:null;
+  document.getElementById('form-title').textContent='Contato — '+org.orgaoJulgador;
+  document.getElementById('form-body').innerHTML=buildForm('contatos',existing||{orgaoJulgador:org.orgaoJulgador,tribunal:org.tribunal,whatsapp:'',telefone:'',email:'',horario:'',contatoPreferencial:''});
+  openModal('form-ov');
+}
 
 /* ======================================================
    INIT
