@@ -34,8 +34,9 @@ a{color:inherit;text-decoration:none}
 .hdr-logo{display:flex;align-items:center;gap:10px}
 .hdr-name{font-size:18px;font-weight:700;color:#0077ff;letter-spacing:-.3px;font-family:var(--font-head)}
 .hdr-sub{font-size:11px;color:var(--txt3);letter-spacing:.2px}
-.hdr-search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:8px;padding:7px 14px;width:280px}
-.hdr-search input{background:none;border:none;outline:none;color:var(--txt);font-size:13px;width:100%}
+.hdr-search{position:relative;display:flex;align-items:center;background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:8px;padding:7px 14px;width:280px}
+.hdr-search input{background:none;border:none;outline:none;color:var(--txt);font-size:13px;width:100%;padding-right:20px}
+.hdr-search:focus-within .srch-ico{color:#0077ff;opacity:1}
 .hdr-search input::placeholder{color:var(--txt3)}
 
 /* NAV TABS */
@@ -352,8 +353,8 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   </div>
   <div class="hdr-actions">
     <div class="hdr-search">
-      <span style="color:var(--txt3)">🔍</span>
       <input id="g-search" type="text" placeholder="Buscar processo, advogado, cedente...">
+      <span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
     </div>
     <button id="logout-btn" class="btn btn-blue btn-sm" onclick="doLogout()" style="display:none">↩ Sair</button>
   </div>
@@ -1085,8 +1086,7 @@ function updateDash(){
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}${prioBadge}</div>
-          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
-          <div class="al-sub">${sub}</div>
+          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div class="al-date">${liquidacaoDiff(r.expectativaLiquidacao)}</div>
       </div>`;
@@ -1123,8 +1123,7 @@ function updateDash(){
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
-          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
-          <div class="al-sub">PARADO — ${r._dias}d</div>
+          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div class="al-date" style="color:${col}">${r._dias}d</div>
       </div>`;
@@ -1420,7 +1419,7 @@ function cessoesRow(r,allData,isChild){
   const isExpanded=expandedByMod.cessoes.has(r.id);
   let procCell;
   if(isChild){
-    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
+    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
@@ -1475,7 +1474,7 @@ function rpvRow(r,allData,isChild){
   const isExpanded=expandedByMod.rpv.has(r.id);
   let procCell;
   if(isChild){
-    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
+    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
@@ -1785,7 +1784,7 @@ function reqRow(r,allData,isChild){
   const isExpanded=expandedByMod.requerimentos.has(r.id);
   let procCell;
   if(isChild){
-    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
+    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
@@ -1833,7 +1832,7 @@ function encRow(r,allData,isChild){
   const isExpanded=expandedByMod.encerrados.has(r.id);
   let procCell;
   if(isChild){
-    procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
+    procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
