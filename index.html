@@ -154,10 +154,18 @@ tr.row-ylw{background:#f59e0b08!important;border-left:3px solid #f59e0b}
 tr:hover .cpy-btn,.alert-item:hover .cpy-btn{opacity:.5}
 .cpy-btn:hover{opacity:1!important}
 
+/* SEARCH WRAP */
+.srch-wrap{position:relative;display:inline-flex;align-items:center}
+.srch-wrap input{padding-right:28px}
+.srch-ico{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#4b5563;opacity:.5;pointer-events:none;transition:color .2s,opacity .2s;display:flex;align-items:center}
+.srch-wrap:focus-within .srch-ico{color:#0077ff;opacity:1}
+
 /* ACTIONS */
 .acts{display:flex;gap:5px;align-items:center}
-.btn-dots{width:28px;height:28px;background:#1e2433;border:none;border-radius:6px;color:var(--txt2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;line-height:1}
-.btn-dots:hover{background:#252d3d;color:var(--txt)}
+.btn-dots{background:none;border:none;cursor:pointer;color:#6b7280;font-size:16px;display:flex;align-items:center;justify-content:center;transition:color .15s;flex-shrink:0;line-height:1;padding:2px 4px}
+tr:hover .btn-dots,.btn-dots:hover{color:#94a3b8}
+.btn-expand{background:none;border:none;cursor:pointer;color:#6b7280;font-size:11px;padding:0;margin-right:4px;transition:color .15s;line-height:1}
+tr:hover .btn-expand{color:#94a3b8}
 .dd-item{padding:8px 14px;font-size:13px;cursor:pointer;color:var(--txt2);display:flex;align-items:center;gap:8px;transition:background .12s;white-space:nowrap;user-select:none}
 .dd-item:hover{background:rgba(255,255,255,.06);color:var(--txt)}
 .dd-item.red{color:#f87171}
@@ -394,7 +402,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <button class="btn btn-gold" onclick="openForm('cessoes')">+ Adicionar</button>
     </div>
     <div class="fb">
-      <input id="fc-proc" placeholder="🔍 Número do processo" oninput="render('cessoes')">
+      <div class="srch-wrap"><input id="fc-proc" placeholder="Número do processo" oninput="render('cessoes')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('cessoes')">Limpar</button>
       <button class="btn btn-move btn-sm" onclick="openMoveModal('cessoes')">⇄ Mover para...</button>
     </div>
@@ -433,7 +441,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <button class="btn btn-gold" onclick="openForm('rpv')">+ Adicionar</button>
     </div>
     <div class="fb">
-      <input id="fr-proc" placeholder="🔍 Número do processo" oninput="render('rpv')">
+      <div class="srch-wrap"><input id="fr-proc" placeholder="Número do processo" oninput="render('rpv')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('rpv')">Limpar</button>
       <button class="btn btn-move btn-sm" onclick="openMoveModal('rpv')">⇄ Mover para...</button>
     </div>
@@ -471,7 +479,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <button class="btn btn-gold" onclick="openForm('requerimentos')">+ Adicionar</button>
     </div>
     <div class="fb">
-      <input id="fre-proc" placeholder="🔍 Número do processo" oninput="render('requerimentos')">
+      <div class="srch-wrap"><input id="fre-proc" placeholder="Número do processo" oninput="render('requerimentos')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('requerimentos')">Limpar</button>
     </div>
     <div class="tbl-wrap">
@@ -498,7 +506,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <button class="btn btn-gold" onclick="openForm('encerrados')">+ Adicionar</button>
     </div>
     <div class="fb">
-      <input id="fen-proc" placeholder="🔍 Número do processo" oninput="render('encerrados')">
+      <div class="srch-wrap"><input id="fen-proc" placeholder="Número do processo" oninput="render('encerrados')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('encerrados')">Limpar</button>
       <button class="btn btn-move btn-sm" onclick="openMoveModal('encerrados')">⇄ Mover para...</button>
     </div>
@@ -1414,7 +1422,7 @@ function cessoesRow(r,allData,isChild){
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
+    procCell=`<button class="btn-expand" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
@@ -1470,7 +1478,7 @@ function rpvRow(r,allData,isChild){
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
+    procCell=`<button class="btn-expand" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
@@ -1781,7 +1789,7 @@ function reqRow(r,allData,isChild){
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
+    procCell=`<button class="btn-expand" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
@@ -1830,7 +1838,7 @@ function encRow(r,allData,isChild){
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else if(childRecs.length>0){
-    procCell=`<button class="btn btn-blue btn-xs" style="padding:2px 6px;margin-right:4px" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
+    procCell=`<button class="btn-expand" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
