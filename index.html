@@ -1089,7 +1089,7 @@ function updateDash(){
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}${prioBadge}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
-          <div class="al-sub" style="color:${col}">${sub}</div>
+          <div class="al-sub">${sub}</div>
         </div>
         <div class="al-date">${liquidacaoDiff(r.expectativaLiquidacao)}</div>
       </div>`;
@@ -1127,7 +1127,7 @@ function updateDash(){
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
-          <div class="al-sub" style="color:${col}">${mesLabel}</div>
+          <div class="al-sub">${mesLabel}</div>
         </div>
         <div class="al-date" style="color:${col}">${r._dias}d</div>
       </div>`;
