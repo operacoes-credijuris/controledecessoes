@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Credijuris — Controle de Cessões de Créditos</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 88 96'%3E%3Cpolyline points='38,13 22,13 22,63' fill='none' stroke='%230077ff' stroke-width='12' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolyline points='50,13 66,13 66,63' fill='none' stroke='%230077ff' stroke-width='12' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M22,63 Q22,88 44,88 Q66,88 66,63' fill='none' stroke='%230077ff' stroke-width='12' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
 :root{
   --bg0:#07121f;--bg1:#0d1e34;--bg2:#112440;--bg3:#163055;
   --brd:#1c3a60;--brd2:#254d7a;
-  --gold:#c9a227;--gold2:#f0c040;--gold3:#a07e10;
+  --gold:#0077ff;--gold2:#4db3ff;--gold3:#0055cc;
   --blue:#2563eb;--blue2:#3b82f6;--blue3:#1e40af;
   --txt:#e2e8f0;--txt2:#94a3b8;--txt3:#64748b;
   --red:#dc2626;--red2:#f87171;--red3:rgba(220,38,38,.15);
@@ -22,9 +23,8 @@ a{color:inherit;text-decoration:none}
 /* HEADER */
 .hdr{background:linear-gradient(135deg,var(--bg1),var(--bg0));border-bottom:2px solid var(--gold);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:200;box-shadow:0 4px 24px rgba(0,0,0,.5);flex-shrink:0}
 .hdr-logo{display:flex;align-items:center;gap:10px}
-.hdr-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--bg0);font-weight:900;flex-shrink:0}
-.hdr-name{font-size:18px;font-weight:700;color:var(--gold2);letter-spacing:.3px}
-.hdr-sub{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px}
+.hdr-name{font-size:18px;font-weight:700;color:#0077ff;letter-spacing:-.3px}
+.hdr-sub{font-size:11px;color:var(--txt3);letter-spacing:.2px}
 .hdr-search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:8px;padding:7px 14px;width:280px}
 .hdr-search input{background:none;border:none;outline:none;color:var(--txt);font-size:13px;width:100%}
 .hdr-search input::placeholder{color:var(--txt3)}
@@ -57,8 +57,8 @@ a{color:inherit;text-decoration:none}
 
 /* BUTTONS */
 .btn{padding:7px 14px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .18s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold3));color:var(--bg0);font-weight:700}
-.btn-gold:hover{background:linear-gradient(135deg,var(--gold2),var(--gold));transform:translateY(-1px);box-shadow:0 4px 12px rgba(201,162,39,.3)}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold3));color:#fff;font-weight:700}
+.btn-gold:hover{background:linear-gradient(135deg,var(--gold2),var(--gold));transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,119,255,.35)}
 .btn-blue{background:rgba(37,99,235,.25);color:var(--blue2);border:1px solid var(--blue3)}
 .btn-blue:hover{background:rgba(37,99,235,.4)}
 .btn-red{background:var(--red3);color:var(--red2);border:1px solid rgba(220,38,38,.35)}
@@ -119,10 +119,10 @@ tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
 .mv-dest option{background:var(--bg2)}
 .btn-ghost{background:transparent;color:var(--txt3);border:1px solid var(--brd)}
 .btn-ghost:hover{color:var(--txt);background:rgba(255,255,255,.05)}
-.btn-move{background:rgba(201,162,39,.08);color:var(--gold2);border:1px solid rgba(201,162,39,.35);margin-left:auto}
-.btn-move:hover{background:rgba(201,162,39,.18);border-color:var(--gold)}
+.btn-move{background:rgba(0,119,255,.08);color:var(--gold2);border:1px solid rgba(0,119,255,.35);margin-left:auto}
+.btn-move:hover{background:rgba(0,119,255,.18);border-color:var(--gold)}
 /* HIGHLIGHT MOVIDO */
-@keyframes mv-highlight{0%,70%{background:rgba(201,162,39,.2)!important;border-left:3px solid var(--gold)!important}100%{background:transparent!important;border-left:none!important}}
+@keyframes mv-highlight{0%,70%{background:rgba(0,119,255,.2)!important;border-left:3px solid var(--gold)!important}100%{background:transparent!important;border-left:none!important}}
 tr.row-highlight{animation:mv-highlight 3s ease forwards}
 /* TOAST */
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:11px 22px;border-radius:9px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
@@ -285,10 +285,9 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 .imp-res-row td{padding:8px 12px;border-bottom:1px solid rgba(28,58,96,.3)}
 .imp-res-row:last-child td{border:none}
 /* AUTH SCREENS */
-#login-screen{position:fixed;inset:0;background:var(--bg0);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px}
-.lc{background:var(--bg1);border:1px solid var(--brd2);border-radius:16px;width:100%;max-width:380px;padding:36px;box-shadow:0 24px 64px rgba(0,0,0,.7)}
+#login-screen{position:fixed;inset:0;background:#000;z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px}
+.lc{background:var(--bg1);border:1px solid rgba(0,119,255,.25);border-radius:16px;width:100%;max-width:380px;padding:36px;box-shadow:0 24px 64px rgba(0,0,0,.9)}
 .lc-logo{text-align:center;margin-bottom:28px}
-.lc-icon{width:52px;height:52px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--bg0);font-weight:900;margin:0 auto 12px}
 .lc-err{background:var(--red3);border:1px solid rgba(220,38,38,.3);border-radius:7px;padding:10px 14px;font-size:13px;color:var(--red2);margin-bottom:14px;display:none}
 #loading-screen{position:fixed;inset:0;background:var(--bg0);z-index:8999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
 </style>
@@ -299,9 +298,13 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 <div id="login-screen">
   <div class="lc">
     <div class="lc-logo">
-      <div class="lc-icon">⚖</div>
-      <div style="font-size:22px;font-weight:700;color:var(--gold2);margin-bottom:4px">Credijuris</div>
-      <div style="font-size:12px;color:var(--txt3)">Controle de Cessões de Créditos</div>
+      <svg height="80" viewBox="0 0 88 96" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 14px">
+        <polyline points="38,13 22,13 22,63" fill="none" stroke="#0077ff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="50,13 66,13 66,63" fill="none" stroke="#0077ff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M22,63 Q22,88 44,88 Q66,88 66,63" fill="none" stroke="#0077ff" stroke-width="12" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:28px;font-weight:700;color:#0077ff;letter-spacing:-.5px;margin-bottom:4px">credijuris</div>
+      <div style="font-size:13px;color:var(--txt3)">créditos judiciais</div>
     </div>
     <div id="lc-err" class="lc-err"></div>
     <div class="fg" style="margin-bottom:14px">
@@ -324,10 +327,14 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 
 <header class="hdr">
   <div class="hdr-logo">
-    <div class="hdr-icon">⚖</div>
+    <svg height="36" viewBox="0 0 88 96" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <polyline points="38,13 22,13 22,63" fill="none" stroke="#0077ff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="50,13 66,13 66,63" fill="none" stroke="#0077ff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M22,63 Q22,88 44,88 Q66,88 66,63" fill="none" stroke="#0077ff" stroke-width="12" stroke-linecap="round"/>
+    </svg>
     <div>
-      <div class="hdr-name">Credijuris</div>
-      <div class="hdr-sub">Controle de Cessões de Créditos</div>
+      <div class="hdr-name">credijuris</div>
+      <div class="hdr-sub">créditos judiciais</div>
     </div>
   </div>
   <div class="hdr-actions">
