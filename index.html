@@ -1446,7 +1446,7 @@ function cessoesRow(r,allData,isChild){
     <td>${instrBadge(r.instrumento)}</td>
     <td>${cartorioBadge(r)}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openHist('cessoes','${r.id}')">📜 ${hc}</button></td>
-    <td class="wrap">${calcUltimaMovimentacao(r)}</td>
+    <td>${calcUltimaMovimentacao(r)}</td>
     <td>${fatalBadge(r.prazoFatal)}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
@@ -1499,7 +1499,7 @@ function rpvRow(r,allData,isChild){
     <td>${esc(r.tribunal)||'—'}</td>
     <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')">📜 ${hc}</button></td>
-    <td class="wrap">${calcUltimaMovimentacao(r)}</td>
+    <td>${calcUltimaMovimentacao(r)}</td>
     <td>${fatalBadge(r.prazoFatal)}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
