@@ -592,6 +592,23 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 </div>
 
 
+<!-- DELETE CONFIRM MODAL -->
+<div id="del-ov" class="ov" onclick="ovClick(event,'del-ov')">
+  <div class="mdl" style="max-width:420px">
+    <div class="mdl-hdr">
+      <div class="mdl-title">Excluir processo?</div>
+      <button class="mdl-x" onclick="closeModal('del-ov')">✕</button>
+    </div>
+    <div class="mdl-body">
+      <p id="del-msg" style="font-size:14px;color:var(--txt2);line-height:1.6"></p>
+    </div>
+    <div class="mdl-footer">
+      <button class="btn btn-blue" onclick="closeModal('del-ov')">Cancelar</button>
+      <button id="del-confirm-btn" class="btn btn-red">Excluir</button>
+    </div>
+  </div>
+</div>
+
 <!-- MOTIVO MODAL -->
 <div id="motivo-ov" class="ov" onclick="ovClick(event,'motivo-ov')">
   <div class="mdl" style="max-width:520px">
@@ -1034,7 +1051,7 @@ function updateDash(){
       return`<div class="alert-item">
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${prioBadge}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${prioBadge}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">${sub}</div>
         </div>
@@ -1072,7 +1089,7 @@ function updateDash(){
       return`<div class="alert-item">
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span></div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">PARADO — ${r._dias}d</div>
         </div>
@@ -1082,8 +1099,11 @@ function updateDash(){
   }
 
   // ALERTAS — Prazos Fatais (igual ao original)
-  const alertRecs=[...ce,...rp,...re]
-    .filter(r=>r.prazoFatal&&normDate(r.prazoFatal))
+  const alertRecs=[
+    ...ce.map(r=>({...r,_mod:'cessoes'})),
+    ...rp.map(r=>({...r,_mod:'rpv'})),
+    ...re.map(r=>({...r,_mod:'requerimentos'}))
+  ].filter(r=>r.prazoFatal&&normDate(r.prazoFatal))
     .sort((a,b)=>normDate(a.prazoFatal).localeCompare(normDate(b.prazoFatal)));
 
   const ab=document.getElementById('ds-alerts-body');
@@ -1104,7 +1124,7 @@ function updateDash(){
       return`<div class="alert-item">
         <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
-          <div class="al-text">${esc(r.numeroProcesso)}</div>
+          <div class="al-text"><span class="plink" onclick="goToProcess('${r._mod}','${r.id}')">${esc(r.numeroProcesso)}</span></div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub" style="color:${col}">${msg}</div>
         </div>
@@ -1358,13 +1378,13 @@ function cessoesRow(r,allData,isChild){
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.expectativaLiquidacao)}</td>
     <td>${liquidacaoDiff(r.expectativaLiquidacao)}</td>
-    <td class="wrap" style="min-width:150px">${objetoHtml(r.objeto)}</td>
-    <td>${esc(r.advogado)||'—'}</td>
-    <td>${esc(r.cedente)||'—'}</td>
-    <td>${esc(r.cessionario)||'—'}</td>
-    <td>${esc(r.devedor)||'—'}</td>
+    <td class="wrap" style="min-width:150px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
+    <td title="${esc(r.advogado||'')}">${esc(r.advogado)||'—'}</td>
+    <td title="${esc(r.cedente||'')}">${esc(r.cedente)||'—'}</td>
+    <td title="${esc(r.cessionario||'')}">${esc(r.cessionario)||'—'}</td>
+    <td title="${esc(r.devedor||'')}">${esc(r.devedor)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
-    <td>${esc(r.orgaoJulgador)||'—'}</td>
+    <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
     <td>${instrBadge(r.instrumento)}</td>
     <td>${cartorioBadge(r)}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openHist('cessoes','${r.id}')">📜 ${hc}</button></td>
@@ -1420,13 +1440,13 @@ function rpvRow(r,allData,isChild){
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.dataLiquidacao)}</td>
     <td>${(r.dataAquisicao&&r.dataLiquidacao)?Math.round((new Date(r.dataLiquidacao)-new Date(r.dataAquisicao))/864e5)+'d':'—'}</td>
-    <td class="wrap" style="min-width:150px">${objetoHtml(r.objeto)}</td>
-    <td>${esc(r.advogado)||'—'}</td>
-    <td>${esc(r.cedente)||'—'}</td>
-    <td>${esc(r.cessionario)||'—'}</td>
-    <td>${esc(r.devedor)||'—'}</td>
+    <td class="wrap" style="min-width:150px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
+    <td title="${esc(r.advogado||'')}">${esc(r.advogado)||'—'}</td>
+    <td title="${esc(r.cedente||'')}">${esc(r.cedente)||'—'}</td>
+    <td title="${esc(r.cessionario||'')}">${esc(r.cessionario)||'—'}</td>
+    <td title="${esc(r.devedor||'')}">${esc(r.devedor)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
-    <td>${esc(r.orgaoJulgador)||'—'}</td>
+    <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')">📜 ${hc}</button></td>
     <td class="wrap">${calcUltimaMovimentacao(r)}</td>
     <td>${fatalBadge(r.prazoFatal)}</td>
@@ -1735,10 +1755,10 @@ function reqRow(r,allData,isChild){
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha">🔒 ${r.senhaAcesso?1:0}</button></td>
-    <td>${esc(r.natureza)||'—'}</td>
-    <td>${esc(r.materia)||'—'}</td>
+    <td title="${esc(r.natureza||'')}">${esc(r.natureza)||'—'}</td>
+    <td title="${esc(r.materia||'')}">${esc(r.materia)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
-    <td>${esc(r.orgaoJulgador)||'—'}</td>
+    <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')">📜 ${hc}</button></td>
     <td class="wrap">${calcUltimaMovimentacao(r)}</td>
     <td>${fatalBadge(r.prazoFatal)}</td>
@@ -1791,11 +1811,11 @@ function encRow(r,allData,isChild){
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.dataLiquidacao)}</td>
     <td>${between(r.dataAquisicao,r.dataLiquidacao)}</td>
-    <td class="wrap" style="min-width:150px">${objetoHtml(r.objeto)}</td>
-    <td>${esc(r.advogado)||'—'}</td>
-    <td>${esc(r.cedente)||'—'}</td>
-    <td>${esc(r.cessionario)||'—'}</td>
-    <td>${esc(r.devedor)||'—'}</td>
+    <td class="wrap" style="min-width:150px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
+    <td title="${esc(r.advogado||'')}">${esc(r.advogado)||'—'}</td>
+    <td title="${esc(r.cedente||'')}">${esc(r.cedente)||'—'}</td>
+    <td title="${esc(r.cessionario||'')}">${esc(r.cessionario)||'—'}</td>
+    <td title="${esc(r.devedor||'')}">${esc(r.devedor)||'—'}</td>
     <td>${r.motivo?`<button class="btn btn-blue btn-xs" onclick="openMotivo('${r.id}')">📄 Ver motivo</button>`:'—'}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
@@ -1830,7 +1850,14 @@ function openJusB(num){
 function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){['form-ov','hist-ov','dj-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','move-ov'].forEach(closeModal);}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){['form-ov','hist-ov','dj-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','move-ov','del-ov'].forEach(closeModal);}
+  if(e.ctrlKey&&e.key==='f'){
+    const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'};
+    const elId=mp[curTab];
+    if(elId){e.preventDefault();const el=document.getElementById(elId);if(el){el.focus();el.select();}}
+  }
+});
 
 /* ======================================================
    FORM MODAL
@@ -2005,15 +2032,22 @@ function saveRecord(){
    DELETE
 ====================================================== */
 function del(mod,id){
-  if(!confirm('Confirma a exclusão deste registro?'))return;
-  let data=load(mod);
+  const data=load(mod);
   const rec=data.find(r=>r.id===id);
-  if(rec){
-    (rec.vinculosFilhos||[]).forEach(cid=>{const c=data.find(r=>r.id===cid);if(c)delete c.vinculoPai;});
-    if(rec.vinculoPai){const pai=data.find(r=>r.id===rec.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==id);}
-  }
-  save(mod,data.filter(r=>r.id!==id));
-  render(mod);updateDash();
+  const num=rec?(rec.numeroProcesso||'processo'):'processo';
+  document.getElementById('del-msg').textContent=`Esta ação não pode ser desfeita. O processo ${num} será removido permanentemente.`;
+  document.getElementById('del-confirm-btn').onclick=()=>{
+    closeModal('del-ov');
+    let d=load(mod);
+    const r=d.find(x=>x.id===id);
+    if(r){
+      (r.vinculosFilhos||[]).forEach(cid=>{const c=d.find(x=>x.id===cid);if(c)delete c.vinculoPai;});
+      if(r.vinculoPai){const pai=d.find(x=>x.id===r.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==id);}
+    }
+    save(mod,d.filter(x=>x.id!==id));
+    render(mod);updateDash();
+  };
+  openModal('del-ov');
 }
 
 /* ======================================================
@@ -2021,6 +2055,23 @@ function del(mod,id){
 ====================================================== */
 const highlightIds=new Set();
 const MV_LABELS={cessoes:'Cessões Ativas',rpv:'RPV Complementar',encerrados:'Encerrados',requerimentos:'Diversos'};
+
+function goToProcess(mod,id){
+  const data=load(mod);
+  const rec=data.find(r=>r.id===id);
+  const num=rec?(rec.numeroProcesso||''):'';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelector(`.tab[data-tab="${mod}"]`).classList.add('on');
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
+  curTab=mod;
+  document.getElementById('pane-'+mod).classList.add('on');
+  const procId={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
+  if(procId)document.getElementById(procId).value=num;
+  highlightIds.add(id);
+  render(mod);
+  setTimeout(()=>{const row=document.querySelector(`#tb-${mod} tr.row-highlight`);if(row)row.scrollIntoView({block:'center',behavior:'smooth'});},60);
+  setTimeout(()=>{highlightIds.delete(id);if(procId)document.getElementById(procId).value='';render(mod);},3200);
+}
 
 function showToast(msg){
   const t=document.getElementById('toast');
