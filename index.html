@@ -157,6 +157,10 @@ tr.row-ylw{background:#f59e0b08!important;border-left:3px solid #f59e0b}
 .cpy-btn{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0}
 tr:hover .cpy-btn,.alert-item:hover .cpy-btn{opacity:.5}
 .cpy-btn:hover{opacity:1!important}
+/* ALERT NAV BUTTON */
+.al-nav-btn{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0;color:#4b5563}
+.alert-item:hover .al-nav-btn{opacity:.6}
+.al-nav-btn:hover{opacity:1!important}
 
 /* SEARCH WRAP */
 .srch-wrap{position:relative;display:inline-flex;align-items:center}
@@ -1087,7 +1091,7 @@ function updateDash(){
         :'';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}${prioBadge}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}${cpyBtn(r.numeroProcesso||'')}${prioBadge}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">${sub}</div>
         </div>
@@ -1125,7 +1129,7 @@ function updateDash(){
       const mesLabel=meses>=1?`HÁ MAIS DE ${meses} ${meses===1?'MÊS':'MESES'}`:'HÁ MENOS DE 1 MÊS';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}${cpyBtn(r.numeroProcesso||'')}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub">${mesLabel}</div>
         </div>
@@ -1156,7 +1160,7 @@ function updateDash(){
         :`${diff} dias restantes`;
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text"><span class="plink" onclick="goToProcess('${r._mod}','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
+          <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r.id)}${cpyBtn(r.numeroProcesso||'')}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
           <div class="al-sub" style="color:${col}">${msg}</div>
         </div>
@@ -2095,6 +2099,8 @@ const MV_LABELS={cessoes:'Cessões Ativas',rpv:'RPV Complementar',encerrados:'En
 
 const _CPY_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline;vertical-align:middle"><rect x="0.75" y="3" width="7" height="8" rx="1.25" stroke="#4b5563" stroke-width="1.5"/><rect x="4.25" y="0.75" width="7" height="8" rx="1.25" stroke="#4b5563" stroke-width="1.5"/></svg>`;
 function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" onclick="cpyNum(event)">${_CPY_SVG}</button>`;}
+const _NAV_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M2.5 8.5L8.5 2.5M5 2.5H8.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('${mod}','${id}')" title="Ir para o processo">${_NAV_SVG}</button>`;}
 function cpyNum(e){
   e.stopPropagation();
   const num=e.currentTarget.getAttribute('data-num');
