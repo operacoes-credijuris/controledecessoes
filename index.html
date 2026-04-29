@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1872,8 +1872,8 @@ function openForm(mod,id=null){
   openModal('form-ov');
 }
 
-function fi(id,val,type='text',ph=''){
-  return`<input type="${type}" id="f-${id}" class="finp" value="${esc(val||'')}" placeholder="${ph}">`;
+function fi(id,val,type='text',ph='',extra=''){
+  return`<input type="${type}" id="f-${id}" class="finp" value="${esc(val||'')}" placeholder="${ph}"${extra?' '+extra:''}>`;
 }
 function fsel(id,val,opts){
   const o=opts.map(x=>`<option value="${x}" ${val===x?'selected':''}>${x}</option>`).join('');
@@ -1965,8 +1965,8 @@ function buildForm(mod,r){
     <div class="fgrid">
       <div class="fg"><label class="flbl">Órgão Julgador</label><div class="finp" style="background:rgba(255,255,255,.03);cursor:default;color:var(--txt2)">${esc(r.orgaoJulgador||'')}</div></div>
       <div class="fg"><label class="flbl">Tribunal</label><div class="finp" style="background:rgba(255,255,255,.03);cursor:default;color:var(--txt2)">${esc(r.tribunal||'')||'—'}</div></div>
-      ${fg('WhatsApp',`<input type="text" id="f-whatsapp" class="finp" value="${esc(r.whatsapp||'')}" placeholder="Ex: (62) 99999-0000" oninput="maskPhone(this)">`)}
-      ${fg('Telefone',`<input type="text" id="f-telefone" class="finp" value="${esc(r.telefone||'')}" placeholder="Ex: (62) 3333-0000" oninput="maskPhone(this)">`)}
+      ${fg('WhatsApp',fi('whatsapp',r.whatsapp,'text','Ex: (62) 99999-0000','oninput="maskPhone(this)"'))}
+      ${fg('Telefone',fi('telefone',r.telefone,'text','Ex: (62) 3333-0000','oninput="maskPhone(this)"'))}
       ${fg('E-mail',fi('email',r.email,'email','contato@tribunal.jus.br'))}
       ${fg('Horário de Atendimento',fi('horario',r.horario,'text','Ex: 08h às 18h'))}
       ${fg('Contato Preferencial',fsel('contatoPreferencial',r.contatoPreferencial||'',['WhatsApp','Telefone','E-mail']))}
@@ -2619,6 +2619,7 @@ function editContato(idx){
   document.getElementById('form-title').textContent='Contato — '+org.orgaoJulgador;
   document.getElementById('form-body').innerHTML=buildForm('contatos',existing||{orgaoJulgador:org.orgaoJulgador,tribunal:org.tribunal,whatsapp:'',telefone:'',email:'',horario:'',contatoPreferencial:''});
   openModal('form-ov');
+  ['whatsapp','telefone'].forEach(id=>{const el=document.getElementById('f-'+id);if(el&&el.value)maskPhone(el);});
 }
 
 /* ======================================================
