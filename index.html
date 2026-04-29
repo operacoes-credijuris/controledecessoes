@@ -1425,7 +1425,7 @@ function cessoesRow(r,allData,isChild){
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
-  const actsBtns=`${expandBtn}<button class="btn-dots" onclick="openActMenu(event,'cessoes','${r.id}',${isChild})" title="Ações">⋯</button>`;
+  const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'cessoes','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
@@ -1480,7 +1480,7 @@ function rpvRow(r,allData,isChild){
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
-  const actsBtns=`${expandBtn}<button class="btn-dots" onclick="openActMenu(event,'rpv','${r.id}',${isChild})" title="Ações">⋯</button>`;
+  const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'rpv','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
@@ -1790,7 +1790,7 @@ function reqRow(r,allData,isChild){
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
-  const actsBtns=`${expandBtn}<button class="btn-dots" onclick="openActMenu(event,'requerimentos','${r.id}',${isChild})" title="Ações">⋯</button>`;
+  const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'requerimentos','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
@@ -1838,7 +1838,7 @@ function encRow(r,allData,isChild){
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
-  const actsBtns=`${expandBtn}<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>`;
+  const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?'child-row':'')+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
