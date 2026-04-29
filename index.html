@@ -176,6 +176,9 @@ tr:hover .btn-expand{color:#94a3b8}
 .dd-item:hover{background:rgba(255,255,255,.06);color:var(--txt)}
 .dd-item.red{color:#f87171}
 .dd-item.red:hover{background:rgba(239,68,68,.08)}
+.dd-item.has-sub{position:relative}
+.dd-sub{display:none;position:absolute;left:100%;top:-4px;background:#151820;border:1px solid #2a3348;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.55);min-width:160px;padding:4px 0;z-index:10000}
+.dd-item.has-sub:hover>.dd-sub{display:block}
 
 /* EMPTY STATE */
 .empty{padding:50px 20px;text-align:center;color:var(--txt3)}
@@ -410,7 +413,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <div class="srch-wrap"><input id="fc-proc" placeholder="Número do processo" oninput="render('cessoes')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('cessoes')">Limpar</button>
-      <button class="btn btn-move btn-sm" onclick="openMoveModal('cessoes')">⇄ Mover para...</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -449,7 +451,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <div class="srch-wrap"><input id="fr-proc" placeholder="Número do processo" oninput="render('rpv')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('rpv')">Limpar</button>
-      <button class="btn btn-move btn-sm" onclick="openMoveModal('rpv')">⇄ Mover para...</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -514,7 +515,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="fb">
       <div class="srch-wrap"><input id="fen-proc" placeholder="Número do processo" oninput="render('encerrados')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('encerrados')">Limpar</button>
-      <button class="btn btn-move btn-sm" onclick="openMoveModal('encerrados')">⇄ Mover para...</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -1302,7 +1302,10 @@ function openActMenu(e,mod,id,isChild){
   const vincItem=isChild
     ?`<div class="dd-item" onclick="dd.style.display='none';desvincular('${mod}','${id}')">Desvincular</div>`
     :`<div class="dd-item" onclick="dd.style.display='none';openVinculo('${mod}','${id}')">Vincular processo</div>`;
+  const moveOpts=(MV_OPTS[mod]||[]).map(o=>`<div class="dd-item" onclick="moveItem('${mod}','${id}','${o.v}')">${o.l}</div>`).join('');
+  const moveHtml=moveOpts?`<div class="dd-item has-sub">Mover para…<span style="margin-left:auto;font-size:10px;opacity:.5">▶</span><div class="dd-sub">${moveOpts}</div></div>`:'';
   dd.innerHTML=`${vincItem}
+    ${moveHtml}
     <div class="dd-item" onclick="dd.style.display='none';openForm('${mod}','${id}')">Editar</div>
     <div class="dd-item red" onclick="dd.style.display='none';del('${mod}','${id}')">Excluir</div>`;
   const rect=e.currentTarget.getBoundingClientRect();
@@ -1310,11 +1313,10 @@ function openActMenu(e,mod,id,isChild){
   let left=rect.right-menuW;
   let top=rect.bottom+4;
   if(left<8)left=8;
-  if(top+110>window.innerHeight)top=rect.top-114;
+  if(top+150>window.innerHeight)top=rect.top-154;
   dd.style.left=left+'px';
   dd.style.top=top+'px';
   dd.style.display='block';
-  // expose dd to inline onclick handlers
   window.dd=dd;
 }
 
@@ -2184,6 +2186,24 @@ function doMove(){
   document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.tab===toMod)t.click();});
   setTimeout(()=>{highlightIds.delete(copy.id);render(toMod);},3000);
   showToast(`Processo ${num} movido para ${MV_LABELS[toMod]}`);
+  updateDash();
+}
+
+function moveItem(mod,id,toMod){
+  document.getElementById('actions-dd').style.display='none';
+  const srcData=load(mod);
+  const rec=srcData.find(r=>r.id===id);
+  if(!rec)return;
+  const copy={...rec,id:uid()};
+  delete copy.vinculoPai;delete copy.vinculosFilhos;
+  save(toMod,[...load(toMod),copy]);
+  (rec.vinculosFilhos||[]).forEach(cid=>{const c=srcData.find(r=>r.id===cid);if(c)delete c.vinculoPai;});
+  if(rec.vinculoPai){const pai=srcData.find(r=>r.id===rec.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==id);}
+  save(mod,srcData.filter(r=>r.id!==id));
+  highlightIds.add(copy.id);
+  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.tab===toMod)t.click();});
+  setTimeout(()=>{highlightIds.delete(copy.id);render(toMod);},3000);
+  showToast(`Processo movido para ${MV_LABELS[toMod]} com sucesso`);
   updateDash();
 }
 
