@@ -109,6 +109,8 @@ thead th{background:#0d1117;padding:8px 8px;text-align:left;font-size:10px;font-
 tbody tr{border-bottom:1px solid #1e2433;transition:background .12s}
 tbody tr:nth-child(even){background:transparent}
 tbody tr:hover{background:#1a1f2e}
+tr.child-row{background:#1a1f2e}
+tr.child-row:hover{background:#202535}
 tbody td{padding:6px 8px;vertical-align:middle;white-space:nowrap}
 tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
 #pane-cessoes table,#pane-rpv table,#pane-encerrados table,#pane-requerimentos table{font-size:10px}
@@ -385,15 +387,15 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     </div>
     <div class="db-grid">
       <div class="db-card">
-        <div class="db-card-hdr">⚠️ Prazos Fatais</div>
+        <div class="db-card-hdr">Prazos Fatais</div>
         <div id="ds-alerts-body" class="db-tbl-wrap"></div>
       </div>
       <div class="db-card">
-        <div class="db-card-hdr">📅 Liquidação Próxima ou Vencida</div>
+        <div class="db-card-hdr">Liquidação Próxima ou Vencida</div>
         <div id="ds-liq-body" class="db-tbl-wrap"></div>
       </div>
       <div class="db-card">
-        <div class="db-card-hdr">⏸ Processos Paralisados</div>
+        <div class="db-card-hdr">Processos Paralisados</div>
         <div id="ds-par-body" class="db-tbl-wrap"></div>
       </div>
     </div>
@@ -1078,18 +1080,16 @@ function updateDash(){
   } else {
     lb.innerHTML=liqRecs.map(r=>{
       const d=r._diff;
-      let ico,sub;
-      if(d<0){ico='🔴';sub='VENCIDA';}
-      else if(d<30){ico='🟠';sub='EXPIRA EM';}
-      else{ico='🟡';sub='EXPIRA EM';}
+      const sub=d<0?'VENCIDA':'PRÓXIMA';
+      const col=d<0?'var(--red2)':d<60?'var(--ylw2)':'var(--grn2)';
       const prioBadge=r._prio
         ?'<span style="display:inline-block;font-size:10px;font-weight:700;color:#f59e0b;border:1px solid #f59e0b;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle;margin-left:5px">PRIORITÁRIO</span>'
         :'';
       return`<div class="alert-item">
-        <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}${prioBadge}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
+          <div class="al-sub" style="color:${col}">${sub}</div>
         </div>
         <div class="al-date">${liquidacaoDiff(r.expectativaLiquidacao)}</div>
       </div>`;
@@ -1120,13 +1120,14 @@ function updateDash(){
     pb.innerHTML='<div class="db-empty">Nenhum processo paralisado há mais de 30 dias</div>';
   } else {
     pb.innerHTML=parRecs.map(r=>{
-      const ico=r._dias>60?'🔴':'🟠';
       const col=r._dias>60?'var(--red2)':'#fb923c';
+      const meses=Math.floor(r._dias/30);
+      const mesLabel=meses>=1?`HÁ MAIS DE ${meses} ${meses===1?'MÊS':'MESES'}`:'HÁ MENOS DE 1 MÊS';
       return`<div class="alert-item">
-        <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="plink" onclick="goToProcess('cessoes','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
+          <div class="al-sub" style="color:${col}">${mesLabel}</div>
         </div>
         <div class="al-date" style="color:${col}">${r._dias}d</div>
       </div>`;
@@ -1149,7 +1150,6 @@ function updateDash(){
       const lv=fatalLevel(r.prazoFatal);
       const nd=normDate(r.prazoFatal);
       const diff=Math.round((new Date(nd)-new Date(todayStr()))/864e5);
-      const ico=lv==='exp'||lv==='urg'?'🔴':lv==='warn'?'🟠':lv==='next'?'🟡':'⚪';
       const col=lv==='exp'?'var(--red2)':lv==='urg'?'#f97316':lv==='warn'?'#fb923c':lv==='next'?'var(--ylw2)':'var(--txt3)';
       const msg=lv==='exp'?'VENCIDO'
         :lv==='urg'?`URGENTE — ${diff} dia${diff===1?'':'s'} restante${diff===1?'':'s'}`
@@ -1157,7 +1157,6 @@ function updateDash(){
         :lv==='next'?`PRÓXIMO — ${diff} dias restantes`
         :`PRAZO — ${diff} dias restantes`;
       return`<div class="alert-item">
-        <span style="font-size:16px">${ico}</span>
         <div style="flex:1;min-width:0">
           <div class="al-text"><span class="plink" onclick="goToProcess('${r._mod}','${r.id}')">${esc(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#a0aec0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
