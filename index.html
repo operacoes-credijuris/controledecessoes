@@ -109,8 +109,8 @@ thead th{background:#0d1117;padding:8px 8px;text-align:left;font-size:10px;font-
 tbody tr{border-bottom:1px solid #1e2433;transition:background .12s}
 tbody tr:nth-child(even){background:transparent}
 tbody tr:hover{background:#1a1f2e}
-tr.child-row{background:#1a1f2e}
-tr.child-row:hover{background:#202535}
+tr.child-row{background:#1e2840!important}
+tr.child-row:hover{background:#243050!important}
 tbody td{padding:6px 8px;vertical-align:middle;white-space:nowrap}
 tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
 #pane-cessoes table,#pane-rpv table,#pane-encerrados table,#pane-requerimentos table{font-size:10px}
@@ -1840,7 +1840,7 @@ function encRow(r,allData,isChild){
   }
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
-  const trCls=(isChild?'child-row':'')+(highlightIds.has(r.id)?' row-highlight':'');
+  const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
