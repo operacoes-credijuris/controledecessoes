@@ -1299,11 +1299,11 @@ function openActMenu(e,mod,id,isChild){
   e.stopPropagation();
   const dd=document.getElementById('actions-dd');
   const vincItem=isChild
-    ?`<div class="dd-item" onclick="dd.style.display='none';desvincular('${mod}','${id}')">🔓 Desvincular</div>`
-    :`<div class="dd-item" onclick="dd.style.display='none';openVinculo('${mod}','${id}')">🔗 Vincular processo</div>`;
+    ?`<div class="dd-item" onclick="dd.style.display='none';desvincular('${mod}','${id}')">Desvincular</div>`
+    :`<div class="dd-item" onclick="dd.style.display='none';openVinculo('${mod}','${id}')">Vincular processo</div>`;
   dd.innerHTML=`${vincItem}
-    <div class="dd-item" onclick="dd.style.display='none';openForm('${mod}','${id}')">✏️ Editar</div>
-    <div class="dd-item red" onclick="dd.style.display='none';del('${mod}','${id}')">🗑 Excluir</div>`;
+    <div class="dd-item" onclick="dd.style.display='none';openForm('${mod}','${id}')">Editar</div>
+    <div class="dd-item red" onclick="dd.style.display='none';del('${mod}','${id}')">Excluir</div>`;
   const rect=e.currentTarget.getBoundingClientRect();
   const menuW=168;
   let left=rect.right-menuW;
@@ -1421,12 +1421,11 @@ function cessoesRow(r,allData,isChild){
   let procCell;
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
-  } else if(childRecs.length>0){
-    procCell=`<button class="btn-expand" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
-  const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'cessoes','${r.id}',${isChild})" title="Ações">⋯</button>`;
+  const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
+  const actsBtns=`${expandBtn}<button class="btn-dots" onclick="openActMenu(event,'cessoes','${r.id}',${isChild})" title="Ações">⋯</button>`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
@@ -1477,12 +1476,11 @@ function rpvRow(r,allData,isChild){
   let procCell;
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
-  } else if(childRecs.length>0){
-    procCell=`<button class="btn-expand" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
-  const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'rpv','${r.id}',${isChild})" title="Ações">⋯</button>`;
+  const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
+  const actsBtns=`${expandBtn}<button class="btn-dots" onclick="openActMenu(event,'rpv','${r.id}',${isChild})" title="Ações">⋯</button>`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
@@ -1788,12 +1786,11 @@ function reqRow(r,allData,isChild){
   let procCell;
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
-  } else if(childRecs.length>0){
-    procCell=`<button class="btn-expand" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
-  const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'requerimentos','${r.id}',${isChild})" title="Ações">⋯</button>`;
+  const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
+  const actsBtns=`${expandBtn}<button class="btn-dots" onclick="openActMenu(event,'requerimentos','${r.id}',${isChild})" title="Ações">⋯</button>`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
@@ -1837,12 +1834,11 @@ function encRow(r,allData,isChild){
   let procCell;
   if(isChild){
     procCell=`<span class="bdg bdg-orange" style="margin-right:5px">Recurso</span>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
-  } else if(childRecs.length>0){
-    procCell=`<button class="btn-expand" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>${esc(r.numeroProcesso)}${cpyBtn(r.numeroProcesso||'')}`;
   } else {
     procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   }
-  const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>`;
+  const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
+  const actsBtns=`${expandBtn}<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>`;
   const trCls=(isChild?'child-row':'')+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
