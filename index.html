@@ -422,8 +422,8 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:150px">Processo</th>
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('cessoes','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:85px"><div class="col-hdr"><span>Exp. Liquidação</span><button class="col-sbtn" data-field="expectativaLiquidacao" onclick="toggleSort('cessoes','expectativaLiquidacao',this)">↕</button></div></th>
-            <th style="min-width:85px"><div class="col-hdr"><span>Tempo Decorrido</span><button class="col-sbtn" data-field="_tempo_dec" onclick="toggleSort('cessoes','_tempo_dec',this)">↕</button></div></th>
-            <th style="min-width:150px">Objeto</th>
+            <th style="min-width:55px"><div class="col-hdr"><span>Atraso</span><button class="col-sbtn" data-field="_tempo_dec" onclick="toggleSort('cessoes','_tempo_dec',this)">↕</button></div></th>
+            <th style="min-width:120px">Objeto</th>
             <th style="min-width:140px"><div class="col-hdr"><span>Advogado</span><button class="col-fbtn" data-field="advogado" onclick="openColFilter(event,'cessoes','advogado',this)">▾</button></div></th>
             <th style="min-width:140px"><div class="col-hdr"><span>Cedente</span><button class="col-fbtn" data-field="cedente" onclick="openColFilter(event,'cessoes','cedente',this)">▾</button></div></th>
             <th style="min-width:160px"><div class="col-hdr"><span>Cessionário</span><button class="col-fbtn" data-field="cessionario" onclick="openColFilter(event,'cessoes','cessionario',this)">▾</button></div></th>
@@ -432,8 +432,8 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:160px"><div class="col-hdr"><span>Órgão Julgador</span><button class="col-fbtn" data-field="orgaoJulgador" onclick="openColFilter(event,'cessoes','orgaoJulgador',this)">▾</button></div></th>
             <th style="min-width:90px"><div class="col-hdr"><span>Instrumento</span><button class="col-fbtn" data-field="instrumento" onclick="openColFilter(event,'cessoes','instrumento',this)">▾</button></div></th>
             <th style="min-width:60px">Cartório</th><th style="min-width:60px">Histórico</th>
-            <th style="min-width:70px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('cessoes','ultimaMovimentacao',this)">↕</button></div></th>
-            <th style="min-width:80px"><div class="col-hdr"><span>Prazo Fatal</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('cessoes','prazoFatal',this)">↕</button></div></th>
+            <th style="min-width:55px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('cessoes','ultimaMovimentacao',this)">↕</button></div></th>
+            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('cessoes','prazoFatal',this)">↕</button></div></th>
           </tr></thead>
           <tbody id="tb-cessoes"></tbody>
         </table>
@@ -461,7 +461,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('rpv','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Liquidação</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('rpv','dataLiquidacao',this)">↕</button></div></th>
             <th style="min-width:70px"><div class="col-hdr"><span>Tempo até Liq.</span><button class="col-sbtn" data-field="_dur_rpv" onclick="toggleSort('rpv','_dur_rpv',this)">↕</button></div></th>
-            <th style="min-width:150px">Objeto</th>
+            <th style="min-width:120px">Objeto</th>
             <th style="min-width:140px"><div class="col-hdr"><span>Advogado</span><button class="col-fbtn" data-field="advogado" onclick="openColFilter(event,'rpv','advogado',this)">▾</button></div></th>
             <th style="min-width:140px"><div class="col-hdr"><span>Cedente</span><button class="col-fbtn" data-field="cedente" onclick="openColFilter(event,'rpv','cedente',this)">▾</button></div></th>
             <th style="min-width:160px"><div class="col-hdr"><span>Cessionário</span><button class="col-fbtn" data-field="cessionario" onclick="openColFilter(event,'rpv','cessionario',this)">▾</button></div></th>
@@ -470,7 +470,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:160px"><div class="col-hdr"><span>Órgão Julgador</span><button class="col-fbtn" data-field="orgaoJulgador" onclick="openColFilter(event,'rpv','orgaoJulgador',this)">▾</button></div></th>
             <th style="min-width:60px">Histórico</th>
             <th style="min-width:70px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('rpv','ultimaMovimentacao',this)">↕</button></div></th>
-            <th style="min-width:80px"><div class="col-hdr"><span>Prazo Fatal</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('rpv','prazoFatal',this)">↕</button></div></th>
+            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('rpv','prazoFatal',this)">↕</button></div></th>
           </tr></thead>
           <tbody id="tb-rpv"></tbody>
         </table>
@@ -525,7 +525,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('encerrados','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:85px"><div class="col-hdr"><span>Dt. Liquidação</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('encerrados','dataLiquidacao',this)">↕</button></div></th>
             <th style="min-width:70px"><div class="col-hdr"><span>Tempo até Liq.</span><button class="col-sbtn" data-field="_dur_enc" onclick="toggleSort('encerrados','_dur_enc',this)">↕</button></div></th>
-            <th style="min-width:150px">Objeto</th>
+            <th style="min-width:120px">Objeto</th>
             <th style="min-width:140px"><div class="col-hdr"><span>Advogado</span><button class="col-fbtn" data-field="advogado" onclick="openColFilter(event,'encerrados','advogado',this)">▾</button></div></th>
             <th style="min-width:140px"><div class="col-hdr"><span>Cedente</span><button class="col-fbtn" data-field="cedente" onclick="openColFilter(event,'encerrados','cedente',this)">▾</button></div></th>
             <th style="min-width:160px"><div class="col-hdr"><span>Cessionário</span><button class="col-fbtn" data-field="cessionario" onclick="openColFilter(event,'encerrados','cessionario',this)">▾</button></div></th>
@@ -1436,7 +1436,7 @@ function cessoesRow(r,allData,isChild){
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.expectativaLiquidacao)}</td>
     <td>${liquidacaoDiff(r.expectativaLiquidacao)}</td>
-    <td class="wrap" style="min-width:150px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
+    <td class="wrap" style="min-width:120px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
     <td title="${esc(r.advogado||'')}">${esc(r.advogado)||'—'}</td>
     <td title="${esc(r.cedente||'')}">${esc(r.cedente)||'—'}</td>
     <td title="${esc(r.cessionario||'')}">${esc(r.cessionario)||'—'}</td>
@@ -1491,7 +1491,7 @@ function rpvRow(r,allData,isChild){
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.dataLiquidacao)}</td>
     <td>${(r.dataAquisicao&&r.dataLiquidacao)?Math.round((new Date(r.dataLiquidacao)-new Date(r.dataAquisicao))/864e5)+'d':'—'}</td>
-    <td class="wrap" style="min-width:150px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
+    <td class="wrap" style="min-width:120px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
     <td title="${esc(r.advogado||'')}">${esc(r.advogado)||'—'}</td>
     <td title="${esc(r.cedente||'')}">${esc(r.cedente)||'—'}</td>
     <td title="${esc(r.cessionario||'')}">${esc(r.cessionario)||'—'}</td>
@@ -1849,12 +1849,12 @@ function encRow(r,allData,isChild){
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.dataLiquidacao)}</td>
     <td>${between(r.dataAquisicao,r.dataLiquidacao)}</td>
-    <td class="wrap" style="min-width:150px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
+    <td class="wrap" style="min-width:120px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
     <td title="${esc(r.advogado||'')}">${esc(r.advogado)||'—'}</td>
     <td title="${esc(r.cedente||'')}">${esc(r.cedente)||'—'}</td>
     <td title="${esc(r.cessionario||'')}">${esc(r.cessionario)||'—'}</td>
     <td title="${esc(r.devedor||'')}">${esc(r.devedor)||'—'}</td>
-    <td>${r.motivo?`<button class="btn btn-blue btn-xs" onclick="openMotivo('${r.id}')">📄 Ver motivo</button>`:'—'}</td>
+    <td>${r.motivo?`<button class="btn btn-blue btn-xs" onclick="openMotivo('${r.id}')" title="Ver motivo">📄</button>`:'—'}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
     html+=childRecs.map(c=>encRow(c,allData,true)).join('');
@@ -2355,10 +2355,10 @@ function objetoHtml(v){
     const n=normKw(item);
     let label=item,cls='obj-bdg';
     if(n.includes('credito')&&n.includes('principal')){label='Crédito principal';cls='obj-bdg obj-bdg-blue';}
-    else if(n.includes('honorario')&&n.includes('contratua')){label='Honorários contratuais';cls='obj-bdg obj-bdg-purple';}
-    else if(n.includes('honorario')&&n.includes('sucumb')){label='Honorários sucumbenciais';cls='obj-bdg obj-bdg-marsala';}
-    else if(n.includes('contratua')&&!n.includes('honorario')){label='Honorários contratuais';cls='obj-bdg obj-bdg-purple';}
-    else if(n.includes('sucumb')){label='Honorários sucumbenciais';cls='obj-bdg obj-bdg-marsala';}
+    else if(n.includes('honorario')&&n.includes('contratua')){label='Hon. contratuais';cls='obj-bdg obj-bdg-purple';}
+    else if(n.includes('honorario')&&n.includes('sucumb')){label='Hon. sucumbenciais';cls='obj-bdg obj-bdg-marsala';}
+    else if(n.includes('contratua')&&!n.includes('honorario')){label='Hon. contratuais';cls='obj-bdg obj-bdg-purple';}
+    else if(n.includes('sucumb')){label='Hon. sucumbenciais';cls='obj-bdg obj-bdg-marsala';}
     return`<div><span class="${cls}">${esc(label)}</span></div>`;
   }).join('')+'</div>';
 }
