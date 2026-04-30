@@ -34,11 +34,28 @@ a{color:inherit;text-decoration:none}
 .hdr-logo{display:flex;align-items:center;gap:10px}
 .hdr-name{font-size:18px;font-weight:700;color:#0077ff;letter-spacing:-.3px;font-family:var(--font-head)}
 .hdr-sub{font-size:11px;color:var(--txt3);letter-spacing:.2px}
-.hdr-search{position:relative;display:flex;align-items:center;width:280px}
+.hdr-search{position:relative;display:flex;align-items:center;width:300px}
 .hdr-search input{background:#0d1117;border:1px solid #1e2433;border-radius:8px;padding:6px 32px 6px 10px;color:#e2e8f0;font-size:12px;font-family:inherit;outline:none;transition:border-color .2s;width:100%}
 .hdr-search input:focus{border-color:#0077ff}
 .hdr-search input::placeholder{color:#4b5563}
 .hdr-search:focus-within .srch-ico{color:#0077ff;opacity:1}
+/* GLOBAL SEARCH DROPDOWN */
+.gs-dd{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#151820;border:1px solid #2a3348;border-radius:10px;box-shadow:0 10px 32px rgba(0,0,0,.6);z-index:9999;max-height:380px;overflow-y:auto;display:none}
+.gs-dd.on{display:block}
+.gs-dd::-webkit-scrollbar{width:5px}.gs-dd::-webkit-scrollbar-thumb{background:#2a3348;border-radius:3px}
+.gs-group-hdr{font-size:9px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.6px;padding:8px 12px 3px;border-top:1px solid #1e2433}
+.gs-group-hdr:first-child{border-top:none}
+.gs-item{padding:6px 12px;cursor:pointer;display:flex;align-items:center;gap:7px;border-bottom:1px solid rgba(255,255,255,.03)}
+.gs-item:last-child{border:none}
+.gs-item:hover{background:rgba(255,255,255,.05)}
+.gs-badge{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;flex-shrink:0;line-height:1.4}
+.gs-badge-cess{background:rgba(0,119,255,.2);color:#60a5fa}
+.gs-badge-rpv{background:rgba(22,163,74,.2);color:#4ade80}
+.gs-badge-enc{background:rgba(100,116,139,.2);color:#94a3b8}
+.gs-badge-div{background:rgba(139,92,246,.2);color:#c4b5fd}
+.gs-proc{font-size:11px;font-weight:600;color:#e2e8f0;flex-shrink:0}
+.gs-sub{font-size:10px;color:#6b7280;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.gs-empty{padding:18px 12px;text-align:center;color:#4b5563;font-size:12px}
 
 /* NAV TABS */
 .nav{background:#151820;border-bottom:1px solid #1e2433;display:flex;padding:0 20px;overflow-x:auto;gap:0;flex-shrink:0;align-items:center}
@@ -324,8 +341,9 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   </div>
   <div class="hdr-actions">
     <div class="hdr-search">
-      <input id="g-search" type="text" placeholder="Buscar processo, advogado, cedente...">
+      <input id="g-search" type="text" placeholder="Buscar em tudo…" autocomplete="off" oninput="_gsSearch(this.value)" onkeydown="if(event.key==='Escape'){_gsClose();this.value=''}">
       <span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+      <div id="gs-dd" class="gs-dd"></div>
     </div>
     <button id="logout-btn" class="btn btn-blue btn-sm" onclick="doLogout()" style="display:none">↩ Sair</button>
   </div>
@@ -379,7 +397,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <button class="btn btn-gold" onclick="openForm('cessoes')">+ Adicionar</button>
     </div>
     <div class="fb">
-      <div class="srch-wrap"><input id="fc-proc" placeholder="Número do processo" oninput="render('cessoes')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+      <div class="srch-wrap"><input id="fc-proc" placeholder="Buscar na aba" oninput="render('cessoes')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('cessoes')">Limpar</button>
     </div>
     <div class="tbl-wrap">
@@ -419,7 +437,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <button class="btn btn-gold" onclick="openForm('rpv')">+ Adicionar</button>
     </div>
     <div class="fb">
-      <div class="srch-wrap"><input id="fr-proc" placeholder="Número do processo" oninput="render('rpv')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+      <div class="srch-wrap"><input id="fr-proc" placeholder="Buscar na aba" oninput="render('rpv')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('rpv')">Limpar</button>
     </div>
     <div class="tbl-wrap">
@@ -457,7 +475,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <button class="btn btn-gold" onclick="openForm('requerimentos')">+ Adicionar</button>
     </div>
     <div class="fb">
-      <div class="srch-wrap"><input id="fre-proc" placeholder="Número do processo" oninput="render('requerimentos')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+      <div class="srch-wrap"><input id="fre-proc" placeholder="Buscar na aba" oninput="render('requerimentos')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('requerimentos')">Limpar</button>
     </div>
     <div class="tbl-wrap">
@@ -465,10 +483,11 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
         <table>
           <thead><tr>
             <th>Ações</th><th style="min-width:150px">Processo</th>
+            <th style="min-width:60px">Histórico</th>
             <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↕</button></div></th>
             <th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
-            <th style="min-width:60px">Histórico</th><th style="min-width:85px">Última Movimentação</th><th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
+            <th style="min-width:85px">Última Movimentação</th><th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
           </tr></thead>
           <tbody id="tb-requerimentos"></tbody>
         </table>
@@ -509,7 +528,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
       <button class="btn btn-gold" onclick="openForm('encerrados')">+ Adicionar</button>
     </div>
     <div class="fb">
-      <div class="srch-wrap"><input id="fen-proc" placeholder="Número do processo" oninput="render('encerrados')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+      <div class="srch-wrap"><input id="fen-proc" placeholder="Buscar na aba" oninput="render('encerrados')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('encerrados')">Limpar</button>
     </div>
     <div class="tbl-wrap">
@@ -711,7 +730,7 @@ let _currentUserId=null;
    CORE DATA
 ====================================================== */
 const PG = {cessoes:1,rpv:1,cartorios:1,requerimentos:1,encerrados:1,contatos:1};
-const PS = {cessoes:25,rpv:25,cartorios:25,requerimentos:25,encerrados:25,contatos:25};
+const PS = {cessoes:0,rpv:0,cartorios:25,requerimentos:0,encerrados:0,contatos:0};
 
 function load(k){return(CACHE[k]||[]).slice();}
 function save(k,d){const prev=(CACHE[k]||[]).slice();CACHE[k]=d.slice();_sbSync(k,d,prev);}
@@ -978,21 +997,56 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
     curTab=t.dataset.tab;
     document.getElementById('pane-'+curTab).classList.add('on');
-    const _gv=document.getElementById('g-search').value;
-    const _mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'};
-    const _el=document.getElementById(_mp[curTab]);
-    if(_el)_el.value=_gv;
+    _gsClose();
     if(curTab==='dashboard')updateDash();
     else render(curTab);
   });
 });
 
-document.getElementById('g-search').addEventListener('input',function(){
-  const v=this.value;
-  if(curTab==='dashboard')return;
-  const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'};
-  const el=document.getElementById(mp[curTab]);
-  if(el){el.value=v;render(curTab);}
+/* ======================================================
+   GLOBAL SEARCH
+====================================================== */
+const _GS_MODS=[
+  {key:'cessoes',    label:'Cessões Ativas', cls:'gs-badge-cess'},
+  {key:'rpv',        label:'RPV',            cls:'gs-badge-rpv'},
+  {key:'encerrados', label:'Encerrados',     cls:'gs-badge-enc'},
+  {key:'requerimentos',label:'Diversos',     cls:'gs-badge-div'},
+];
+function _gsSearch(q){
+  const dd=document.getElementById('gs-dd');
+  const ql=(q||'').trim().toLowerCase();
+  if(!ql){dd.classList.remove('on');return;}
+  let html='',total=0;
+  _GS_MODS.forEach(({key,label,cls})=>{
+    const hits=load(key).filter(r=>
+      (r.numeroProcesso||'').toLowerCase().includes(ql)||
+      (r.cedente||'').toLowerCase().includes(ql)||
+      (r.cessionario||'').toLowerCase().includes(ql)||
+      (r.advogado||'').toLowerCase().includes(ql)||
+      (r.devedor||'').toLowerCase().includes(ql)||
+      (r.orgaoJulgador||'').toLowerCase().includes(ql)
+    ).slice(0,5);
+    if(!hits.length)return;
+    total+=hits.length;
+    html+=`<div class="gs-group-hdr">${label}</div>`;
+    html+=hits.map(r=>{
+      const sub=[r.cedente,r.cessionario,r.advogado].filter(Boolean).join(' · ').substring(0,38);
+      return`<div class="gs-item" onclick="_gsGo('${key}','${esc(r.id)}')"><span class="gs-badge ${cls}">${label}</span><span class="gs-proc">${esc(r.numeroProcesso||'—')}</span>${sub?`<span class="gs-sub">${esc(sub)}</span>`:''}</div>`;
+    }).join('');
+  });
+  if(!total)html=`<div class="gs-empty">Nenhum resultado para "${esc(q)}"</div>`;
+  dd.innerHTML=html;
+  dd.classList.add('on');
+}
+function _gsClose(){document.getElementById('gs-dd').classList.remove('on');}
+function _gsGo(mod,id){
+  _gsClose();
+  document.getElementById('g-search').value='';
+  goToProcess(mod,id);
+}
+document.addEventListener('click',e=>{
+  const wrap=document.querySelector('.hdr-search');
+  if(wrap&&!wrap.contains(e.target))_gsClose();
 });
 
 /* ======================================================
@@ -1665,13 +1719,13 @@ function reqRow(r,allData,isChild){
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
+    <td><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')">📜 ${hc}</button></td>
     <td>${fmtDate(r.protocolo)}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha">🔒 ${r.senhaAcesso?1:0}</button></td>
     <td title="${esc(r.natureza||'')}">${esc(r.natureza)||'—'}</td>
     <td title="${esc(r.materia||'')}">${esc(r.materia)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
     <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
-    <td><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')">📜 ${hc}</button></td>
     <td class="wrap">${calcUltimaMovimentacao(r)}</td>
     <td>${fatalBadge(r.prazoFatal)}</td>
   </tr>`;
@@ -2326,11 +2380,9 @@ function cancelHistEdit(i){
 let _contatosRows=[];
 
 function renderContatos(){
-  // Collect unique orgaoJulgador values from cessoes and rpv (parent records only)
-  const cesPai=CACHE.cessoes.filter(r=>!r.vinculoPai);
-  const rpvPai=CACHE.rpv.filter(r=>!r.vinculoPai);
+  // Collect unique orgaoJulgador from cessoes (all), rpv (all) and requerimentos
   const orgMap={};
-  [...cesPai,...rpvPai].forEach(r=>{
+  [...CACHE.cessoes,...CACHE.rpv,...CACHE.requerimentos].forEach(r=>{
     const org=(r.orgaoJulgador||'').trim();
     if(!org)return;
     if(!orgMap[org])orgMap[org]={orgaoJulgador:org,tribunal:(r.tribunal||'').trim()};
@@ -2344,7 +2396,7 @@ function renderContatos(){
 
   const tb=document.getElementById('tb-contatos');
   if(!rows.length){
-    tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">📞</div><div class="empty-txt">Nenhum órgão julgador encontrado nas cessões ou RPV</div></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">📞</div><div class="empty-txt">Nenhum órgão julgador encontrado nas cessões, RPV ou diversos</div></div></td></tr>`;
     renderPgn('pg-contatos',0,'contatos');
     return;
   }
