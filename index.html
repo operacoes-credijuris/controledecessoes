@@ -119,23 +119,6 @@ tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
 #pane-cessoes table,#pane-rpv table,#pane-encerrados table,#pane-requerimentos table,#pane-contatos table{font-size:10px}
 #pane-cessoes thead th,#pane-rpv thead th,#pane-encerrados thead th,#pane-requerimentos thead th,#pane-contatos thead th{font-size:9px;padding:4px 6px}
 #pane-cessoes tbody td,#pane-rpv tbody td,#pane-encerrados tbody td,#pane-requerimentos tbody td,#pane-contatos tbody td{padding:4px 6px}
-/* MOVER PARA */
-.mv-panel{display:none;background:var(--bg1);border:1px solid var(--brd2);border-radius:8px;padding:10px 14px;margin-bottom:10px;gap:10px;flex-wrap:wrap;align-items:flex-end;flex-shrink:0}
-.mv-panel.on{display:flex}
-.mv-ac-wrap{position:relative;flex:1;min-width:180px}
-.mv-ac-wrap input{background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;outline:none;width:100%}
-.mv-ac-wrap input:focus{border-color:var(--gold)}
-.mv-ac-list{position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--brd);border-radius:6px;z-index:500;max-height:160px;overflow-y:auto;display:none;margin-top:2px}
-.mv-ac-list.on{display:block}
-.mv-ac-item{padding:6px 10px;font-size:12px;cursor:pointer;color:var(--txt)}
-.mv-ac-item:hover{background:rgba(255,255,255,.07)}
-.mv-dest{background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;outline:none}
-.mv-dest:focus{border-color:var(--gold)}
-.mv-dest option{background:var(--bg2)}
-.btn-ghost{background:transparent;color:var(--txt3);border:1px solid var(--brd)}
-.btn-ghost:hover{color:var(--txt);background:rgba(255,255,255,.05)}
-.btn-move{background:rgba(0,119,255,.08);color:var(--gold2);border:1px solid rgba(0,119,255,.35);margin-left:auto}
-.btn-move:hover{background:rgba(0,119,255,.18);border-color:var(--gold)}
 /* HIGHLIGHT MOVIDO */
 @keyframes mv-highlight{0%,70%{background:rgba(0,119,255,.2)!important;border-left:3px solid var(--gold)!important}100%{background:transparent!important;border-left:none!important}}
 tr.row-highlight{animation:mv-highlight 3s ease forwards}
@@ -222,12 +205,6 @@ tr:hover .btn-expand{color:#94a3b8}
 .db-tbl-wrap tbody tr:hover{background:#1a1f2e}
 .db-tbl-wrap tbody td{padding:6px 10px;vertical-align:middle;white-space:nowrap}
 .db-empty{padding:24px 16px;text-align:center;color:var(--txt3);font-size:12px}
-.recent-item{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(28,58,96,.4)}
-.recent-item:last-child{border:none}
-.rdot{width:7px;height:7px;border-radius:50%;background:var(--gold);margin-top:5px;flex-shrink:0}
-.r-proc{font-size:12px;font-weight:600;color:var(--blue2)}
-.r-desc{font-size:11px;color:var(--txt2);margin-top:1px}
-.r-date{font-size:10px;color:var(--txt3);margin-left:auto;white-space:nowrap}
 .alert-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(220,38,38,.12)}
 .alert-item:last-child{border:none}
 .al-text{font-size:12px;color:var(--txt)}
@@ -272,18 +249,6 @@ tr:hover .btn-expand{color:#94a3b8}
 .tl-add input{flex:1;min-width:160px;background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:6px;padding:7px 11px;color:var(--txt);font-size:13px;outline:none}
 .tl-add input:focus{border-color:var(--gold)}
 
-/* DATAJUD */
-.djr{background:rgba(37,99,235,.08);border:1px solid var(--brd);border-radius:8px;padding:14px;margin-top:14px}
-.djr-hit{border:1px solid var(--brd);border-radius:7px;padding:12px;margin-bottom:10px}
-.djr-hit:last-child{margin:0}
-.djr-num{font-weight:700;color:var(--txt);margin-bottom:8px;font-size:13px}
-.djr-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11.5px;color:var(--txt2)}
-.djr-label{color:var(--gold);font-weight:600}
-.djr-mov{margin-top:10px}
-.djr-mov-hdr{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
-.djr-mov-item{font-size:11.5px;color:var(--txt2);padding:5px 0;border-bottom:1px solid var(--brd)}
-.djr-mov-item:last-child{border:none}
-.djr-mov-date{color:var(--txt);font-weight:600}
 
 /* SPINNER */
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
@@ -318,15 +283,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
 .senha-display{font-size:26px;font-weight:700;font-family:monospace;letter-spacing:3px;background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:8px;padding:16px 24px;color:var(--gold2);word-break:break-all}
 
 /* IMPORT MODAL */
-.imp-step{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--brd)}
-.imp-step:last-child{border:none}
-.imp-step-num{width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--bg0);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.imp-step-text{font-size:12.5px;color:var(--txt2);line-height:1.5}
-.imp-step-text strong{color:var(--txt)}
-.imp-progress{height:4px;background:var(--brd);border-radius:2px;overflow:hidden;margin:10px 0}
-.imp-progress-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--blue2));border-radius:2px;transition:width .3s}
-.imp-res-row td{padding:8px 12px;border-bottom:1px solid rgba(28,58,96,.3)}
-.imp-res-row:last-child td{border:none}
 /* AUTH SCREENS */
 #login-screen{position:fixed;inset:0;background:#000;z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px}
 .lc{background:var(--bg1);border:1px solid rgba(0,119,255,.25);border-radius:16px;width:100%;max-width:380px;padding:36px;box-shadow:0 24px 64px rgba(0,0,0,.9)}
@@ -509,7 +465,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
         <table>
           <thead><tr>
             <th>Ações</th><th style="min-width:150px">Processo</th>
-            <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↑</button></div></th>
+            <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↕</button></div></th>
             <th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
             <th style="min-width:60px">Histórico</th><th style="min-width:85px">Última Movimentação</th><th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
@@ -596,35 +552,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
     <div class="mdl-footer">
       <button class="btn btn-blue" onclick="skipMigration()">Ignorar e apagar dados locais</button>
       <button class="btn btn-gold" onclick="doMigration()">✅ Migrar para Supabase</button>
-    </div>
-  </div>
-</div>
-
-<!-- MOVER MODAL -->
-<div id="move-ov" class="ov" onclick="ovClick(event,'move-ov')">
-  <div class="mdl" style="max-width:700px">
-    <div class="mdl-hdr">
-      <div class="mdl-title">⇄ Mover Processo</div>
-      <button class="mdl-x" onclick="closeModal('move-ov')">✕</button>
-    </div>
-    <div class="mdl-body">
-      <div style="margin-bottom:14px">
-        <div style="font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Número do Processo</div>
-        <div class="mv-ac-wrap" style="width:100%">
-          <input id="mv-proc" class="finp" placeholder="Digite ou cole o número do processo..." oninput="mvAutocomplete()" autocomplete="off">
-          <div id="mv-ac" class="mv-ac-list"></div>
-        </div>
-      </div>
-      <div>
-        <div style="font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Destino</div>
-        <select id="mv-dest" class="fsel" style="width:100%">
-          <option value="">Selecionar destino...</option>
-        </select>
-      </div>
-    </div>
-    <div class="mdl-footer">
-      <button class="btn btn-blue" onclick="closeModal('move-ov')">Fechar</button>
-      <button class="btn btn-gold" onclick="doMove()">Mover</button>
     </div>
   </div>
 </div>
@@ -727,20 +654,6 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   </div>
 </div>
 
-<!-- DATAJUD MODAL -->
-<div id="dj-ov" class="ov" onclick="ovClick(event,'dj-ov')">
-  <div class="mdl" style="max-width:680px">
-    <div class="mdl-hdr">
-      <div class="mdl-title">Consulta DataJud — CNJ</div>
-      <button class="mdl-x" onclick="closeModal('dj-ov')">✕</button>
-    </div>
-    <div class="mdl-body" id="dj-body"></div>
-    <div class="mdl-footer">
-      <button class="btn btn-blue" onclick="closeModal('dj-ov')">Fechar</button>
-    </div>
-  </div>
-</div>
-
 <!-- CARTÓRIO MODAL -->
 <div id="cart-ov" class="ov" onclick="ovClick(event,'cart-ov')">
   <div class="mdl" style="max-width:700px">
@@ -797,7 +710,6 @@ let _currentUserId=null;
 /* ======================================================
    CORE DATA
 ====================================================== */
-const KEYS = {cessoes:'cj_cess',rpv:'cj_rpv',cartorios:'cj_cart',requerimentos:'cj_req',encerrados:'cj_enc'};
 const PG = {cessoes:1,rpv:1,cartorios:1,requerimentos:1,encerrados:1,contatos:1};
 const PS = {cessoes:25,rpv:25,cartorios:25,requerimentos:25,encerrados:25,contatos:25};
 
@@ -981,15 +893,6 @@ function fmtDate(s){
   const p=s.split('-');
   if(p.length!==3)return s;
   return p[2]+'/'+p[1]+'/'+p[0];
-}
-
-function elapsed(s){
-  if(!s)return'—';
-  const ms=Date.now()-new Date(s).getTime();
-  if(ms<0)return'—';
-  const d=Math.floor(ms/864e5);
-  const y=Math.floor(d/365),m=Math.floor((d%365)/30),dd=d%30;
-  return(y?y+'a ':'')+(m?m+'m ':'')+dd+'d';
 }
 
 function between(a,b){
@@ -1240,7 +1143,7 @@ const SORT_COMPUTED={
   _dur_rpv:   r=>(r.dataAquisicao&&r.dataLiquidacao)?new Date(r.dataLiquidacao)-new Date(r.dataAquisicao):0,
   _dur_enc:   r=>(r.dataAquisicao&&r.dataLiquidacao)?new Date(r.dataLiquidacao)-new Date(r.dataAquisicao):0,
   protocolo:  r=>r.protocolo||'9999-12-31',
-  ultimaMovimentacao: r=>r.ultimaMovimentacao||'',
+  ultimaMovimentacao: r=>{const h=(r.historicoProcessual||[]).slice().sort((a,b)=>b.data.localeCompare(a.data));if(!h.length)return'';for(const e of h){if(!isPartyAction(e.descricao))return e.data;}return h[0].data||'';},
 };
 
 function toggleSort(mod,field,btn){
@@ -1280,7 +1183,7 @@ let _cfMod=null,_cfField=null,_cfBtn=null,_cfAllVals=[],_cfTemp=new Set();
 function openColFilter(event,mod,field,btn){
   event.stopPropagation();
   const panel=document.getElementById('col-filter-panel');
-  if(_cfBtn===btn&&panel.style.display!=='none'){closeColFilterPanel();return;}
+  if(_cfBtn===btn&&panel.classList.contains('open')){closeColFilterPanel();return;}
   _cfMod=mod;_cfField=field;_cfBtn=btn;
   const recs=load(mod);
   _cfAllVals=[...new Set(recs.map(r=>String(r[field]||'')).filter(Boolean))].sort((a,b)=>{
@@ -1385,11 +1288,10 @@ function gv(id){const e=document.getElementById(id);return e?e.value.trim().toLo
 
 function filterRecs(recs,mod){
   const ms=(val,f)=>!f||(val||'').toLowerCase().includes(f);
-  const procId={cessoes:'fc-proc',rpv:'fr-proc',cartorios:'fca-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
+  const procId={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
   const vProc=procId?gv(procId):'';
   return recs.filter(r=>{
     if(vProc&&!(ms(r.numeroProcesso,vProc)||ms(r.advogado,vProc)||ms(r.cedente,vProc)||ms(r.cessionario,vProc)||ms(r.devedor,vProc)))return false;
-    if(mod==='requerimentos'&&!ms(r.tribunal,gv('fre-trib')))return false;
     const active=COL_FILTERS[mod];
     if(active){
       for(const[field,allowed]of Object.entries(active)){
@@ -1546,7 +1448,7 @@ function rpvRow(r,allData,isChild){
     <td>${fatalBadge(r.prazoFatal)}</td>
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.dataLiquidacao)}</td>
-    <td>${(r.dataAquisicao&&r.dataLiquidacao)?Math.round((new Date(r.dataLiquidacao)-new Date(r.dataAquisicao))/864e5)+'d':'—'}</td>
+    <td>${between(r.dataAquisicao,r.dataLiquidacao)}</td>
     <td class="wrap" style="min-width:120px" title="${esc(r.objeto||'')}">${objetoHtml(r.objeto)}</td>
     <td title="${esc(r.advogado||'')}">${esc(r.advogado)||'—'}</td>
     <td title="${esc(r.cedente||'')}">${esc(r.cedente)||'—'}</td>
@@ -1838,10 +1740,6 @@ function renderEnc(){
 /* ======================================================
    JUSBRASIL
 ====================================================== */
-function openJusB(num){
-  window.open('https://www.jusbrasil.com.br/processos/busca?q='+encodeURIComponent(num),'_blank');
-}
-
 /* ======================================================
    MODAL HELPERS
 ====================================================== */
@@ -1849,7 +1747,7 @@ function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','dj-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','move-ov','del-ov','migr-ov','contato-ov'].forEach(closeModal);}
+  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','migr-ov','contato-ov'].forEach(closeModal);}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'};
     const elId=mp[curTab];
@@ -1919,23 +1817,6 @@ function buildForm(mod,r){
     ${fg('Órgão Julgador',fi('orgaoJulgador',r.orgaoJulgador,'text','Vara / Câmara'))}
   </div>`;
 
-  if(mod==='cartorios'){
-    const statOpts=['Em andamento','Aguardando orçamento','Aguardando pagamento','Protocolado','Concluído','Cancelado'];
-    return`<div class="fgrid">
-      ${fg('Número do Processo',fi('numeroProcesso',r.numeroProcesso,'text','Ex: 0001234-56.2020.8.09.0001'))}
-      ${fg('Objeto',fi('objeto',r.objeto,'text','Objeto do processo'))}
-      ${fg('Advogado',fi('advogado',r.advogado,'text','Nome do advogado'))}
-      ${fg('Cedente',fi('cedente',r.cedente,'text','Nome do cedente'))}
-      ${fg('Cessionário',fi('cessionario',r.cessionario,'text','Nome do cessionário'))}
-      ${fg('Instrumento',fi('instrumento',r.instrumento,'text','Tipo de instrumento'))}
-      ${fg('Protocolo RTDPJ',fi('protocoloRTDPJ',r.protocoloRTDPJ,'text','Número do protocolo'))}
-      ${fg('Orçamento (R$)',fi('orcamento',r.orcamento,'number','0,00'))}
-      ${fg('Status',fsel('status',r.status,statOpts))}
-      ${fg('Pago',fck('pago',r.pago,'Sim'))}
-      ${fg('Resolvido',fck('resolvido',r.resolvido,'Sim'))}
-    </div>`;
-  }
-
   if(mod==='requerimentos') return`<div class="fgrid">
     ${fg('Número do Processo',fi('numeroProcesso',r.numeroProcesso,'text','Ex: 0001234-56.2020.8.09.0001'))}
     ${fg('Protocolo',fi('protocolo',r.protocolo,'date'))}
@@ -1956,6 +1837,8 @@ function buildForm(mod,r){
     ${fg('Cedente',fi('cedente',r.cedente,'text','Nome do cedente'))}
     ${fg('Cessionário',fi('cessionario',r.cessionario,'text','Nome do cessionário'))}
     ${fg('Devedor',fi('devedor',r.devedor,'text','Nome do devedor'))}
+    ${fg('Tribunal',fi('tribunal',r.tribunal,'text','Ex: TJGO, STJ…'))}
+    ${fg('Órgão Julgador',fi('orgaoJulgador',r.orgaoJulgador,'text','Nome do órgão julgador'))}
     ${fg('Motivo do Encerramento',fta('motivo',r.motivo,'Descreva o motivo…'),true)}
   </div>`;
 
@@ -2010,6 +1893,7 @@ function saveRecord(){
     numeroProcesso:gf('numeroProcesso'),dataAquisicao:gf('dataAquisicao'),
     dataLiquidacao:gf('dataLiquidacao'),objeto:gf('objeto'),advogado:gf('advogado'),
     cedente:gf('cedente'),cessionario:gf('cessionario'),devedor:gf('devedor'),
+    tribunal:gf('tribunal'),orgaoJulgador:gf('orgaoJulgador'),
     motivo:gf('motivo')
   };
   else if(curMod==='contatos'){
@@ -2270,7 +2154,6 @@ function vincularProcesso(filhoId){
   render(vMod);
 }
 
-function cleanNum(s){return(s||'').replace(/[\s.\-\/]/g,'');}
 /* ======================================================
    INSTRUMENTO BADGE
 ====================================================== */
@@ -2436,86 +2319,6 @@ function cancelHistEdit(i){
   const rec=data.find(r=>r.id===hId);
   if(rec)renderHistBody(rec);
 }
-
-/* ======================================================
-   DATAJUD
-====================================================== */
-function openDJ(num){
-  const today=new Date().toISOString().split('T')[0];
-  document.getElementById('dj-body').innerHTML=`
-    <div style="margin-bottom:14px">
-      <div style="font-size:12px;color:var(--txt2);margin-bottom:10px">Processo: <strong style="color:var(--gold2)">${esc(num)}</strong></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input id="dj-num" class="finp" style="flex:1;min-width:200px" value="${esc(num)}" placeholder="Número do processo">
-        <select id="dj-tribunal" class="fsel" style="width:auto">
-          <option value="api_publica_tjgo">TJGO</option>
-          <option value="api_publica_tjsp">TJSP</option>
-          <option value="api_publica_tjrj">TJRJ</option>
-          <option value="api_publica_tjmg">TJMG</option>
-          <option value="api_publica_trf1">TRF1</option>
-          <option value="api_publica_trf3">TRF3</option>
-          <option value="api_publica_stj">STJ</option>
-          <option value="api_publica_tst">TST</option>
-        </select>
-        <button class="btn btn-gold" onclick="consultDJ()">Consultar</button>
-      </div>
-      <div style="font-size:10px;color:var(--txt3);margin-top:6px">API Pública DataJud — CNJ</div>
-    </div>
-    <div id="dj-result"></div>`;
-  openModal('dj-ov');
-}
-
-async function consultDJ(){
-  const num=document.getElementById('dj-num').value.trim();
-  const trib=document.getElementById('dj-tribunal').value;
-  if(!num)return;
-  const res=document.getElementById('dj-result');
-  res.innerHTML=`<div style="display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:13px"><div class="spin"></div> Consultando DataJud…</div>`;
-  try{
-    const resp=await fetch(`https://api-publica.datajud.cnj.jus.br/${trib}/_search`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'ApiKey cDZHYzlZa0JadVREZDJCendFbXNBR3A6SkJlTzNjLV9TRENyQXk4bWFKN2tEZw=='},
-      body:JSON.stringify({query:{match:{numeroProcesso:num}},size:5})
-    });
-    if(!resp.ok)throw new Error('HTTP '+resp.status+' — '+resp.statusText);
-    const data=await resp.json();
-    const hits=(data.hits&&data.hits.hits)||[];
-    if(!hits.length){
-      res.innerHTML=`<div class="djr"><p style="color:var(--txt3);font-size:13px">Nenhum resultado para este número de processo.</p></div>`;
-      return;
-    }
-    res.innerHTML=`<div class="djr">
-      <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">${hits.length} resultado(s)</div>
-      ${hits.map(h=>{
-        const s=h._source||{};
-        const movs=(s.movimentos||[]).slice(0,5);
-        return`<div class="djr-hit">
-          <div class="djr-num">${esc(s.numeroProcesso||'—')}</div>
-          <div class="djr-grid">
-            <div><span class="djr-label">Tribunal: </span>${esc(s.tribunal?.sigla||'—')}</div>
-            <div><span class="djr-label">Classe: </span>${esc(s.classe?.nome||'—')}</div>
-            <div><span class="djr-label">Órgão: </span>${esc(s.orgaoJulgador?.nome||'—')}</div>
-            <div><span class="djr-label">Atualização: </span>${s.dataHoraUltimaAtualizacao?new Date(s.dataHoraUltimaAtualizacao).toLocaleDateString('pt-BR'):'—'}</div>
-          </div>
-          ${movs.length?`<div class="djr-mov">
-            <div class="djr-mov-hdr">Movimentações</div>
-            ${movs.map(m=>`<div class="djr-mov-item">
-              <span class="djr-mov-date">${m.dataHora?new Date(m.dataHora).toLocaleDateString('pt-BR'):'—'}</span>
-              — ${esc(m.nome||'—')}
-            </div>`).join('')}
-          </div>`:''}
-        </div>`;
-      }).join('')}
-    </div>`;
-  } catch(err){
-    res.innerHTML=`<div class="djr" style="border-color:rgba(220,38,38,.3)">
-      <div style="color:var(--red2);font-size:13px;margin-bottom:6px">⚠️ Erro ao consultar a API DataJud</div>
-      <div style="font-size:12px;color:var(--txt2)">${esc(err.message)}</div>
-      <div style="font-size:11px;color:var(--txt3);margin-top:6px">Possível restrição de CORS no navegador ou API indisponível. Tente usar um servidor local ou extensão de CORS.</div>
-    </div>`;
-  }
-}
-
 
 /* ======================================================
    CONTATOS
