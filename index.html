@@ -33,7 +33,6 @@ a{color:inherit;text-decoration:none}
 .hdr{background:#151820;border-bottom:1px solid #1e2433;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:200;flex-shrink:0}
 .hdr-logo{display:flex;align-items:center;gap:10px}
 .hdr-name{font-size:18px;font-weight:700;color:#0077ff;letter-spacing:-.3px;font-family:var(--font-head)}
-.hdr-sub{font-size:11px;color:var(--txt3);letter-spacing:.2px}
 .hdr-search{position:relative;display:flex;align-items:center;width:300px}
 .hdr-search input{background:#0d1117;border:1px solid #1e2433;border-radius:8px;padding:6px 32px 6px 10px;color:#e2e8f0;font-size:12px;font-family:inherit;outline:none;transition:border-color .2s;width:100%}
 .hdr-search input:focus{border-color:#0077ff}
@@ -77,7 +76,6 @@ a{color:inherit;text-decoration:none}
 .sc-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-family:var(--font-body)}
 .sc-val{font-size:36px;font-weight:700;color:#fff;font-family:var(--font-head)}
 .sc-val.red{color:var(--red2)}
-.sc-ico{position:absolute;right:14px;top:14px;font-size:20px;background:#0077ff15;color:#0077ff;border-radius:8px;padding:6px;line-height:1;display:flex;align-items:center;justify-content:center}
 
 /* SECTION HEADER */
 .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;flex-shrink:0}
@@ -144,10 +142,6 @@ tr.row-highlight{animation:mv-highlight 3s ease forwards}
 .toast.on{opacity:1}
 tr.row-red{background:#ef444408!important;border-left:3px solid #ef4444}
 tr.row-ylw{background:#f59e0b08!important;border-left:3px solid #f59e0b}
-
-/* PROCESS LINK */
-.plink{color:var(--blue2);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--blue2)}
-.plink:hover{color:var(--gold2);border-bottom-color:var(--gold2)}
 
 /* BADGES */
 .bdg{padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500;white-space:nowrap;font-family:var(--font-body)}
@@ -288,12 +282,6 @@ tr:hover .btn-expand{color:#94a3b8}
 
 /* VINCULOS / CHILD ROWS */
 tr.child-row td:first-child{padding-left:36px}
-/* CARTÓRIOS — tabela de largura fixa */
-.cart-tbl{table-layout:fixed;width:100%}
-.cart-tbl td,.cart-tbl th{overflow:hidden;text-overflow:ellipsis}
-.cart-tbl td.wrap{white-space:normal}
-tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--brd2)}
-.bdg-orange{background:rgba(251,146,60,.15);color:#fb923c;border:1px solid rgba(251,146,60,.35)}
 /* OBJETO CHECK LIST */
 .obj-list div{margin-bottom:4px}
 .obj-bdg{display:inline-block;background:transparent;border:1px solid #64748b;color:#94a3b8;border-radius:20px;padding:1px 8px;font-size:10px;white-space:nowrap}
@@ -488,10 +476,12 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
           <thead><tr>
             <th>Ações</th><th style="min-width:150px">Processo</th>
             <th style="min-width:60px">Histórico</th>
+            <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('requerimentos','ultimaMovimentacao',this)">↕</button></div></th>
+            <th style="min-width:65px">Contato</th>
             <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↕</button></div></th>
             <th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
-            <th style="min-width:85px">Última Movimentação</th><th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
+            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
           </tr></thead>
           <tbody id="tb-requerimentos"></tbody>
         </table>
@@ -504,6 +494,10 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
   <div id="pane-contatos" class="pane">
     <div class="sh">
       <div class="sh-title">Telefones e Contatos</div>
+    </div>
+    <div class="fb">
+      <div class="srch-wrap"><input id="fct-q" placeholder="Buscar na aba" oninput="render('contatos')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+      <button class="btn btn-blue btn-sm" onclick="document.getElementById('fct-q').value='';render('contatos')">Limpar</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -541,6 +535,7 @@ tr.cart-sub-row{background:rgba(255,255,255,.025);border-left:3px solid var(--br
           <thead><tr>
             <th>Ações</th>
             <th style="min-width:150px">Processo</th>
+            <th style="min-width:65px">Contato</th>
             <th style="min-width:60px"><div class="col-hdr"><span>Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('encerrados','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Liquid.</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('encerrados','dataLiquidacao',this)">↕</button></div></th>
             <th style="min-width:70px"><div class="col-hdr"><span>Tempo até Liq.</span><button class="col-sbtn" data-field="_dur_enc" onclick="toggleSort('encerrados','_dur_enc',this)">↕</button></div></th>
@@ -733,8 +728,8 @@ let _currentUserId=null;
 /* ======================================================
    CORE DATA
 ====================================================== */
-const PG = {cessoes:1,rpv:1,cartorios:1,requerimentos:1,encerrados:1,contatos:1};
-const PS = {cessoes:0,rpv:0,cartorios:25,requerimentos:0,encerrados:0,contatos:0};
+const PG = {cessoes:1,rpv:1,requerimentos:1,encerrados:1,contatos:1};
+const PS = {cessoes:0,rpv:0,requerimentos:0,encerrados:0,contatos:0};
 
 function load(k){return(CACHE[k]||[]).slice();}
 function save(k,d){const prev=(CACHE[k]||[]).slice();CACHE[k]=d.slice();_sbSync(k,d,prev);}
@@ -1117,17 +1112,9 @@ function updateDash(){
   }
 
   // TABELA 2 — Processos Paralisados (última mov. judicial há >30 dias)
-  function ultimaMovISO(rec){
-    const hist=(rec.historicoProcessual||[]).slice().sort((a,b)=>b.data.localeCompare(a.data));
-    if(!hist.length)return null;
-    if(hist.length===1)return hist[0].data;
-    for(const h of hist){if(!isPartyAction(h.descricao))return h.data;}
-    return hist[0].data;
-  }
-
   const parRecs=ce
     .map(r=>{
-      const d=ultimaMovISO(r);
+      const d=SORT_COMPUTED.ultimaMovimentacao(r)||null;
       if(!d)return null;
       const dias=Math.floor((today-new Date(d))/864e5);
       return{...r,_movDate:d,_dias:dias};
@@ -1309,24 +1296,25 @@ document.addEventListener('click',e=>{
   const p=document.getElementById('col-filter-panel');
   if(p&&p.classList.contains('open')&&!p.contains(e.target)&&e.target!==_cfBtn)closeColFilterPanel();
   const dd=document.getElementById('actions-dd');
-  if(dd&&dd.style.display!=='none'&&!dd.contains(e.target))dd.style.display='none';
+  if(dd&&dd.style.display!=='none'&&!dd.contains(e.target))_closeActMenu();
 });
 
 /* ======================================================
    ACTIONS DROPDOWN
 ====================================================== */
+function _closeActMenu(){document.getElementById('actions-dd').style.display='none';}
 function openActMenu(e,mod,id,isChild){
   e.stopPropagation();
   const dd=document.getElementById('actions-dd');
   const vincItem=isChild
-    ?`<div class="dd-item" onclick="dd.style.display='none';desvincular('${mod}','${id}')">Desvincular</div>`
-    :`<div class="dd-item" onclick="dd.style.display='none';openVinculo('${mod}','${id}')">Vincular processo</div>`;
-  const moveOpts=(MV_OPTS[mod]||[]).map(o=>`<div class="dd-item" onclick="moveItem('${mod}','${id}','${o.v}')">${o.l}</div>`).join('');
+    ?`<div class="dd-item" onclick="_closeActMenu();desvincular('${mod}','${id}')">Desvincular</div>`
+    :`<div class="dd-item" onclick="_closeActMenu();openVinculo('${mod}','${id}')">Vincular processo</div>`;
+  const moveOpts=(MV_OPTS[mod]||[]).map(o=>`<div class="dd-item" onclick="_closeActMenu();moveItem('${mod}','${id}','${o.v}')">${o.l}</div>`).join('');
   const moveHtml=moveOpts?`<div class="dd-item has-sub">Mover para…<span style="margin-left:auto;font-size:10px;opacity:.5">▶</span><div class="dd-sub">${moveOpts}</div></div>`:'';
   dd.innerHTML=`${vincItem}
     ${moveHtml}
-    <div class="dd-item" onclick="dd.style.display='none';openForm('${mod}','${id}')">Editar</div>
-    <div class="dd-item red" onclick="dd.style.display='none';del('${mod}','${id}')">Excluir</div>`;
+    <div class="dd-item" onclick="_closeActMenu();openForm('${mod}','${id}')">Editar</div>
+    <div class="dd-item red" onclick="_closeActMenu();del('${mod}','${id}')">Excluir</div>`;
   const rect=e.currentTarget.getBoundingClientRect();
   const menuW=168;
   let left=rect.right-menuW;
@@ -1336,7 +1324,6 @@ function openActMenu(e,mod,id,isChild){
   dd.style.left=left+'px';
   dd.style.top=top+'px';
   dd.style.display='block';
-  window.dd=dd;
 }
 
 /* ======================================================
@@ -1724,13 +1711,14 @@ function reqRow(r,allData,isChild){
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')">📜 ${hc}</button></td>
+    <td class="wrap">${calcUltimaMovimentacao(r)}</td>
+    <td>${contatoBadge('requerimentos',r)}</td>
     <td>${fmtDate(r.protocolo)}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha">🔒 ${r.senhaAcesso?1:0}</button></td>
     <td title="${esc(r.natureza||'')}">${esc(r.natureza)||'—'}</td>
     <td title="${esc(r.materia||'')}">${esc(r.materia)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
     <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
-    <td class="wrap">${calcUltimaMovimentacao(r)}</td>
     <td>${fatalCell('requerimentos',r.id,r.prazoFatal)}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
@@ -1745,7 +1733,7 @@ function renderReq(){
   const rows=paginate(sorted,'requerimentos');
   const tb=document.getElementById('tb-requerimentos');
   if(!sorted.length){
-    tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">Nenhum registro em Diversos</div></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="13"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">Nenhum registro em Diversos</div></div></td></tr>`;
   } else {
     tb.innerHTML=rows.map(r=>reqRow(r,allData,false)).join('');
   }
@@ -1762,10 +1750,12 @@ function encRow(r,allData,isChild){
   const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)">${isExpanded?'▼':'▶'}</button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
-  const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
+  // Encerrados não aplica rowCls (prazoFatal não é exibido/editável nessa aba)
+  const trCls=(isChild?'child-row':'')+(highlightIds.has(r.id)?' row-highlight':'');
   let html=`<tr class="${trCls}">
     <td><div class="acts">${actsBtns}</div></td>
     <td>${procCell}</td>
+    <td>${contatoBadge('encerrados',r)}</td>
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.dataLiquidacao)}</td>
     <td>${between(r.dataAquisicao,r.dataLiquidacao)}</td>
@@ -1788,16 +1778,13 @@ function renderEnc(){
   const rows=paginate(sorted,'encerrados');
   const tb=document.getElementById('tb-encerrados');
   if(!sorted.length){
-    tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">Nenhum processo encerrado</div></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="12"><div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">Nenhum processo encerrado</div></div></td></tr>`;
   } else {
     tb.innerHTML=rows.map(r=>encRow(r,allData,false)).join('');
   }
   renderPgn('pg-encerrados',sorted.length,'encerrados');
 }
 
-/* ======================================================
-   JUSBRASIL
-====================================================== */
 /* ======================================================
    MODAL HELPERS
 ====================================================== */
@@ -1807,7 +1794,7 @@ function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','migr-ov','contato-ov'].forEach(closeModal);}
   if(e.ctrlKey&&e.key==='f'){
-    const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'};
+    const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
     const elId=mp[curTab];
     if(elId){e.preventDefault();const el=document.getElementById(elId);if(el){el.focus();el.select();}}
   }
@@ -1850,7 +1837,6 @@ function buildForm(mod,r){
     ${fg('Número do Processo',fi('numeroProcesso',r.numeroProcesso,'text','Ex: 0001234-56.2020.8.09.0001'))}
     ${fg('Data da Aquisição',fi('dataAquisicao',r.dataAquisicao,'date'))}
     ${fg('Expectativa de Liquidação',fi('expectativaLiquidacao',r.expectativaLiquidacao,'date'))}
-    ${fg('Prazo Fatal',fi('prazoFatal',r.prazoFatal,'date'))}
     ${fg('Objeto',fi('objeto',r.objeto,'text','Objeto do processo'))}
     ${fg('Advogado',fi('advogado',r.advogado,'text','Nome do advogado'))}
     ${fg('Cedente',fi('cedente',r.cedente,'text','Nome do cedente'))}
@@ -1865,7 +1851,6 @@ function buildForm(mod,r){
     ${fg('Número do Processo',fi('numeroProcesso',r.numeroProcesso,'text','Ex: 0001234-56.2020.8.09.0001'))}
     ${fg('Data da Aquisição',fi('dataAquisicao',r.dataAquisicao,'date'))}
     ${fg('Data da Liquidação',fi('dataLiquidacao',r.dataLiquidacao,'date'))}
-    ${fg('Prazo Fatal',fi('prazoFatal',r.prazoFatal,'date'))}
     ${fg('Objeto',fi('objeto',r.objeto,'text','Objeto do processo'))}
     ${fg('Advogado',fi('advogado',r.advogado,'text','Nome do advogado'))}
     ${fg('Cedente',fi('cedente',r.cedente,'text','Nome do cedente'))}
@@ -1883,7 +1868,6 @@ function buildForm(mod,r){
     ${fg('Matéria',fi('materia',r.materia,'text','Matéria'))}
     ${fg('Tribunal',fi('tribunal',r.tribunal,'text','Ex: TJGO'))}
     ${fg('Órgão Julgador',fi('orgaoJulgador',r.orgaoJulgador,'text','Vara / Câmara'))}
-    ${fg('Prazo Fatal',fi('prazoFatal',r.prazoFatal,'date'))}
   </div>`;
 
   if(mod==='encerrados') return`<div class="fgrid">
@@ -1930,14 +1914,14 @@ function saveRecord(){
 
   if(curMod==='cessoes') rec={
     numeroProcesso:gf('numeroProcesso'),dataAquisicao:gf('dataAquisicao'),
-    expectativaLiquidacao:gf('expectativaLiquidacao'),prazoFatal:gf('prazoFatal'),
+    expectativaLiquidacao:gf('expectativaLiquidacao'),
     objeto:gf('objeto'),advogado:gf('advogado'),cedente:gf('cedente'),
     cessionario:gf('cessionario'),devedor:gf('devedor'),tribunal:gf('tribunal'),
     orgaoJulgador:gf('orgaoJulgador'),instrumento:gf('instrumento')
   };
   else if(curMod==='rpv') rec={
     numeroProcesso:gf('numeroProcesso'),dataAquisicao:gf('dataAquisicao'),
-    dataLiquidacao:gf('dataLiquidacao'),prazoFatal:gf('prazoFatal'),
+    dataLiquidacao:gf('dataLiquidacao'),
     objeto:gf('objeto'),advogado:gf('advogado'),cedente:gf('cedente'),
     cessionario:gf('cessionario'),devedor:gf('devedor'),tribunal:gf('tribunal'),
     orgaoJulgador:gf('orgaoJulgador')
@@ -1945,7 +1929,7 @@ function saveRecord(){
   else if(curMod==='requerimentos') rec={
     numeroProcesso:gf('numeroProcesso'),protocolo:gf('protocolo'),
     senhaAcesso:gf('senhaAcesso'),natureza:gf('natureza'),materia:gf('materia'),
-    tribunal:gf('tribunal'),orgaoJulgador:gf('orgaoJulgador'),prazoFatal:gf('prazoFatal')
+    tribunal:gf('tribunal'),orgaoJulgador:gf('orgaoJulgador')
   };
   else if(curMod==='encerrados') rec={
     numeroProcesso:gf('numeroProcesso'),dataAquisicao:gf('dataAquisicao'),
@@ -1988,6 +1972,7 @@ function saveRecord(){
       rec.id=curId;
       const old=data[idx];
       rec.historicoProcessual=old.historicoProcessual||[];
+      if(old.prazoFatal!==undefined)rec.prazoFatal=old.prazoFatal;
       if(old.diligencias!==undefined)rec.diligencias=old.diligencias;
       if(old.vinculosFilhos!==undefined)rec.vinculosFilhos=old.vinculosFilhos;
       if(old.vinculoPai!==undefined)rec.vinculoPai=old.vinculoPai;
@@ -2415,13 +2400,21 @@ let _contatosRows=[];
 function renderContatos(){
   // Collect unique orgaoJulgador from cessoes (all), rpv (all) and requerimentos
   const orgMap={};
-  [...CACHE.cessoes,...CACHE.rpv,...CACHE.requerimentos].forEach(r=>{
+  [...CACHE.cessoes,...CACHE.rpv,...CACHE.requerimentos,...CACHE.encerrados].forEach(r=>{
     const org=(r.orgaoJulgador||'').trim();
     if(!org)return;
     if(!orgMap[org])orgMap[org]={orgaoJulgador:org,tribunal:(r.tribunal||'').trim()};
   });
-  const rows=Object.values(orgMap).sort((a,b)=>a.orgaoJulgador.localeCompare(b.orgaoJulgador,'pt-BR',{sensitivity:'base'}));
-  _contatosRows=rows;
+  const allRows=Object.values(orgMap).sort((a,b)=>a.orgaoJulgador.localeCompare(b.orgaoJulgador,'pt-BR',{sensitivity:'base'}));
+  const _ctQ=(document.getElementById('fct-q')||{}).value||'';
+  const ctQ=_ctQ.trim().toLowerCase();
+  const rows=ctQ?allRows.filter(o=>
+    o.orgaoJulgador.toLowerCase().includes(ctQ)||
+    (o.tribunal||'').toLowerCase().includes(ctQ)||
+    (CACHE.contatos.find(c=>(c.orgaoJulgador||'').trim()===o.orgaoJulgador)?.whatsapp||'').toLowerCase().includes(ctQ)||
+    (CACHE.contatos.find(c=>(c.orgaoJulgador||'').trim()===o.orgaoJulgador)?.email||'').toLowerCase().includes(ctQ)
+  ):allRows;
+  _contatosRows=allRows; // index always maps to full list for editContato
 
   const ps=PS.contatos;
   const page=PG.contatos;
@@ -2452,7 +2445,7 @@ function renderContatos(){
       <td>${emailCell}</td>
       <td>${hor||'—'}</td>
       <td>${prefBadge}</td>
-      <td><button class="btn btn-blue btn-xs" onclick="editContato(${idx})">Editar</button></td>
+      <td><button class="btn btn-blue btn-xs" onclick="editContato('${esc(org.orgaoJulgador)}')">Editar</button></td>
     </tr>`;
   }).join('');
   renderPgn('pg-contatos',rows.length,'contatos');
@@ -2498,8 +2491,8 @@ function openContatoModal(mod,id){
   openModal('contato-ov');
 }
 
-function editContato(idx){
-  const org=_contatosRows[idx];
+function editContato(orgName){
+  const org=_contatosRows.find(o=>o.orgaoJulgador===orgName);
   if(!org)return;
   const existing=CACHE.contatos.find(c=>(c.orgaoJulgador||'').trim()===org.orgaoJulgador.trim());
   curMod='contatos';
