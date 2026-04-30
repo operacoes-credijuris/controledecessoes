@@ -2400,7 +2400,7 @@ let _contatosRows=[];
 function renderContatos(){
   // Collect unique orgaoJulgador from cessoes (all), rpv (all) and requerimentos
   const orgMap={};
-  [...CACHE.cessoes,...CACHE.rpv,...CACHE.requerimentos,...CACHE.encerrados].forEach(r=>{
+  [...CACHE.cessoes,...CACHE.rpv,...CACHE.requerimentos].forEach(r=>{
     const org=(r.orgaoJulgador||'').trim();
     if(!org)return;
     if(!orgMap[org])orgMap[org]={orgaoJulgador:org,tribunal:(r.tribunal||'').trim()};
