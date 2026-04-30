@@ -2600,38 +2600,42 @@ async function syncAdvbox(){
   const setBtn=n=>{btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Sincronizando… ${n}/${total}`;};
   setBtn(0);
 
+  const{data:{session}}=await sb.auth.getSession();
+  const _authHdr=session?.access_token?{'Authorization':'Bearer '+session.access_token}:{};
+  const _PROXY=`${_SB_URL}/functions/v1/advbox-proxy`;
+
   for(const{mod,rec}of allRecs){
     try{
-      // 1. Buscar lawsuit_id no Advbox
+      // 1. Buscar lawsuit_id via proxy (evita CORS)
       let srRaw;
       try{
-        srRaw=await fetch(`${_ADVBOX_BASE}/lawsuits?process_number=${encodeURIComponent(rec.numeroProcesso)}`,
-          {headers:{Authorization:'Bearer '+_ADVBOX_TOKEN}});
+        srRaw=await fetch(`${_PROXY}?action=lawsuits&process_number=${encodeURIComponent(rec.numeroProcesso)}`,
+          {headers:{..._authHdr,'apikey':_SB_KEY}});
       }catch(netErr){
-        throw new Error('Falha de rede/CORS ao chamar Advbox lawsuits: '+netErr.message);
+        throw new Error('Falha de rede ao chamar proxy lawsuits: '+netErr.message);
       }
       if(srRaw.status===204||srRaw.status===404){done++;setBtn(done);await _sleep(2000);continue;}
       if(!srRaw.ok){
         let body='';try{body=await srRaw.text();}catch{}
-        throw new Error(`Advbox lawsuits HTTP ${srRaw.status}: ${body.slice(0,200)}`);
+        throw new Error(`Proxy lawsuits HTTP ${srRaw.status}: ${body.slice(0,200)}`);
       }
       const sd=await srRaw.json();
       const lawsuits=Array.isArray(sd)?sd:(sd.results||sd.data||[]);
       if(!lawsuits.length){done++;setBtn(done);await _sleep(2000);continue;}
       const lid=lawsuits[0].id;
 
-      // 2. Buscar movimentações do tribunal
+      // 2. Buscar movimentações via proxy (evita CORS)
       let mrRaw;
       try{
-        mrRaw=await fetch(`${_ADVBOX_BASE}/movements/${lid}?origin=TRIBUNAL`,
-          {headers:{Authorization:'Bearer '+_ADVBOX_TOKEN}});
+        mrRaw=await fetch(`${_PROXY}?action=movements&lawsuit_id=${lid}`,
+          {headers:{..._authHdr,'apikey':_SB_KEY}});
       }catch(netErr){
-        throw new Error('Falha de rede/CORS ao chamar Advbox movements: '+netErr.message);
+        throw new Error('Falha de rede ao chamar proxy movements: '+netErr.message);
       }
       if(mrRaw.status===204){done++;setBtn(done);await _sleep(2000);continue;}
       if(!mrRaw.ok){
         let body='';try{body=await mrRaw.text();}catch{}
-        throw new Error(`Advbox movements HTTP ${mrRaw.status}: ${body.slice(0,200)}`);
+        throw new Error(`Proxy movements HTTP ${mrRaw.status}: ${body.slice(0,200)}`);
       }
       const md=await mrRaw.json();
       const movs=Array.isArray(md)?md:(md.results||md.data||[]);
