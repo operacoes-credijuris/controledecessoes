@@ -478,10 +478,10 @@ tr.child-row td:first-child{padding-left:36px}
             <th style="min-width:60px">Histórico</th>
             <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('requerimentos','ultimaMovimentacao',this)">↕</button></div></th>
             <th style="min-width:65px">Contato</th>
+            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
             <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↕</button></div></th>
             <th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
-            <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
           </tr></thead>
           <tbody id="tb-requerimentos"></tbody>
         </table>
@@ -1717,13 +1717,13 @@ function reqRow(r,allData,isChild){
     <td><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')">📜 ${hc}</button></td>
     <td class="wrap">${calcUltimaMovimentacao(r)}</td>
     <td>${contatoBadge('requerimentos',r)}</td>
+    <td>${fatalCell('requerimentos',r.id,r.prazoFatal)}</td>
     <td>${fmtDate(r.protocolo)}</td>
     <td><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha">🔒 ${r.senhaAcesso?1:0}</button></td>
     <td title="${esc(r.natureza||'')}">${esc(r.natureza)||'—'}</td>
     <td title="${esc(r.materia||'')}">${esc(r.materia)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
     <td title="${esc(r.orgaoJulgador||'')}">${esc(r.orgaoJulgador)||'—'}</td>
-    <td>${fatalCell('requerimentos',r.id,r.prazoFatal)}</td>
   </tr>`;
   if(!isChild&&childRecs.length>0&&isExpanded){
     html+=childRecs.map(c=>reqRow(c,allData,true)).join('');
