@@ -713,8 +713,8 @@ tr.child-row td:first-child{padding-left:36px}
 ====================================================== */
 const _SB_URL='https://uekoindsadcthbdkkbjt.supabase.co';
 const _SB_KEY='sb_publishable_mU_fyDVVG1xrt60gOwdrsA_TLgrz1H_';
-// ⚠️ Tokens sensíveis — não commitar com valores reais (substituir por variáveis no Supabase em produção)
-let _ADVBOX_TOKEN='E0UpCS55i4BBNRSWSHRA9xlmjtHCNEgfvYneZ5OfUGlrs6AvZuLZsJH3nD8v';
+// Tokens carregados dinamicamente do Supabase (tabela configuracoes) — não hardcodar aqui
+let _ADVBOX_TOKEN='';
 const _ADVBOX_BASE='https://app.advbox.com.br/api/v1';
 let _ANTHROPIC_KEY=''; // Preencher com a chave da API da Anthropic para resumo com IA
 let sb=null;
@@ -818,12 +818,20 @@ async function doLogout(){
   if(sb)await sb.auth.signOut();
 }
 
+async function _loadAdvboxToken(){
+  if(!sb)return;
+  try{
+    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave','advbox_token').single();
+    if(!error&&data?.valor)_ADVBOX_TOKEN=data.valor;
+  }catch(e){console.warn('[Credijuris] _loadAdvboxToken:',e);}
+}
+
 async function _onAuthenticated(session){
   _currentUserId=session.user.id;
   document.getElementById('login-screen').style.display='none';
   const ls=document.getElementById('loading-screen');
   ls.style.display='flex';
-  await _loadAllFromSupabase();
+  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken()]);
   ls.style.display='none';
   document.getElementById('logout-btn').style.display='';
   migrateCartorios();
