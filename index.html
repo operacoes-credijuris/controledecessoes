@@ -140,6 +140,7 @@ tr.row-highlight{animation:mv-highlight 3s ease forwards}
 /* TOAST */
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:11px 22px;border-radius:9px;font-size:13px;font-weight:600;z-index:10001;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.on{opacity:1}
+@keyframes spin{to{transform:rotate(360deg)}}
 tr.row-red{background:#ef444408!important;border-left:3px solid #ef4444}
 tr.row-ylw{background:#f59e0b08!important;border-left:3px solid #f59e0b}
 
@@ -337,6 +338,7 @@ tr.child-row td:first-child{padding-left:36px}
       <span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
       <div id="gs-dd" class="gs-dd"></div>
     </div>
+    <button id="sync-btn" class="btn btn-blue btn-sm" onclick="syncAdvbox()">↺ Sincronizar</button>
     <button id="logout-btn" class="btn btn-blue btn-sm" onclick="doLogout()" style="display:none">↩ Sair</button>
   </div>
 </header>
@@ -711,6 +713,10 @@ tr.child-row td:first-child{padding-left:36px}
 ====================================================== */
 const _SB_URL='https://uekoindsadcthbdkkbjt.supabase.co';
 const _SB_KEY='sb_publishable_mU_fyDVVG1xrt60gOwdrsA_TLgrz1H_';
+// ⚠️ Tokens sensíveis — não commitar com valores reais (substituir por variáveis no Supabase em produção)
+let _ADVBOX_TOKEN='E0UpCS55i4BBNRSWSHRA9xlmjtHCNEgfvYneZ5OfUGlrs6AvZuLZsJH3nD8v';
+const _ADVBOX_BASE='https://app.advbox.com.br/api/v1';
+let _ANTHROPIC_KEY=''; // Preencher com a chave da API da Anthropic para resumo com IA
 let sb=null;
 (function(){
   try{
@@ -2520,6 +2526,119 @@ function maskPhone(el){
   else if(v.length<=10){r='('+v.slice(0,2)+') '+v.slice(2,6)+'-'+v.slice(6);}
   else{r='('+v.slice(0,2)+') '+v.slice(2,7)+'-'+v.slice(7);}
   el.value=r;
+}
+
+/* ======================================================
+   ADVBOX SYNC
+====================================================== */
+function _sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function _summarizeMovimentos(movs){
+  // Monta array normalizado com data + texto bruto
+  const items=movs.map((mv,i)=>({
+    i,
+    data:(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10),
+    texto:(mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1500)
+  }));
+  // Sem chave Anthropic: usa texto bruto truncado
+  if(!_ANTHROPIC_KEY){
+    return items.map(x=>({data:x.data,descricao:x.texto.slice(0,300)}));
+  }
+  try{
+    const prompt=`Você receberá uma lista de movimentações judiciais em JSON. Para cada item resuma em no máximo 2 frases curtas em português, mantendo as informações essenciais. Retorne APENAS um JSON array no formato [{i:0,resumo:"..."}, ...] sem texto adicional.\n\n${JSON.stringify(items.map(x=>({i:x.i,texto:x.texto})))}`;
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'x-api-key':_ANTHROPIC_KEY,
+        'anthropic-version':'2023-06-01',
+        'content-type':'application/json',
+        'anthropic-dangerous-allow-browser':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-3-5-haiku-20241022',
+        max_tokens:2048,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if(!res.ok)throw new Error('Anthropic HTTP '+res.status);
+    const d=await res.json();
+    const txt=(d.content?.[0]?.text)||'[]';
+    const m=txt.match(/\[[\s\S]*\]/);
+    const summaries=m?JSON.parse(m[0]):[];
+    const map=Object.fromEntries(summaries.map(s=>[String(s.i),s.resumo||'']));
+    return items.map(x=>({data:x.data,descricao:map[String(x.i)]||x.texto.slice(0,300)}));
+  }catch(e){
+    console.warn('[Advbox] Anthropic summarize error:',e);
+    return items.map(x=>({data:x.data,descricao:x.texto.slice(0,300)}));
+  }
+}
+
+async function syncAdvbox(){
+  const btn=document.getElementById('sync-btn');
+  if(!btn||btn.disabled)return;
+  if(!_ADVBOX_TOKEN){showToast('Token Advbox não configurado.');return;}
+
+  const mods=['cessoes','rpv','requerimentos'];
+  const allRecs=[];
+  for(const mod of mods){
+    load(mod).forEach(r=>{if(r.numeroProcesso)allRecs.push({mod,rec:r});});
+  }
+  if(!allRecs.length){showToast('Nenhum processo encontrado.');return;}
+
+  btn.disabled=true;
+  const total=allRecs.length;
+  let done=0,synced=0,failed=0;
+  const setBtn=n=>{btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Sincronizando… ${n}/${total}`;};
+  setBtn(0);
+
+  for(const{mod,rec}of allRecs){
+    try{
+      // 1. Buscar lawsuit_id no Advbox
+      const sr=await fetch(`${_ADVBOX_BASE}/lawsuits?process_number=${encodeURIComponent(rec.numeroProcesso)}`,
+        {headers:{Authorization:'Bearer '+_ADVBOX_TOKEN}});
+      if(sr.status===204||sr.status===404){done++;setBtn(done);await _sleep(2000);continue;}
+      if(!sr.ok)throw new Error('Advbox lawsuits HTTP '+sr.status);
+      const sd=await sr.json();
+      const lawsuits=Array.isArray(sd)?sd:(sd.results||sd.data||[]);
+      if(!lawsuits.length){done++;setBtn(done);await _sleep(2000);continue;}
+      const lid=lawsuits[0].id;
+
+      // 2. Buscar movimentações do tribunal
+      const mr=await fetch(`${_ADVBOX_BASE}/movements/${lid}?origin=TRIBUNAL`,
+        {headers:{Authorization:'Bearer '+_ADVBOX_TOKEN}});
+      if(!mr.ok)throw new Error('Advbox movements HTTP '+mr.status);
+      const md=await mr.json();
+      const movs=Array.isArray(md)?md:(md.results||md.data||[]);
+      if(!movs.length){done++;setBtn(done);await _sleep(2000);continue;}
+
+      // 3. Resumir com IA (1 chamada por processo)
+      const newHist=await _summarizeMovimentos(movs);
+      newHist.sort((a,b)=>a.data.localeCompare(b.data));
+
+      // 4. Substituir historicoProcessual e salvar no Supabase
+      const arr=load(mod);
+      const idx=arr.findIndex(r=>r.id===rec.id);
+      if(idx!==-1){
+        arr[idx]={...arr[idx],historicoProcessual:newHist};
+        save(mod,arr);
+      }
+      synced++;
+    }catch(e){
+      console.error('[Advbox] Erro no processo',rec.numeroProcesso,e);
+      failed++;
+    }
+    done++;
+    setBtn(done);
+    await _sleep(2000);
+  }
+
+  btn.disabled=false;
+  btn.innerHTML='↺ Sincronizar';
+  let msg=`Sincronização concluída: ${synced} processo(s) atualizado(s)`;
+  if(failed)msg+=`, ${failed} com erro`;
+  showToast(msg);
+  render(curTab);
+  updateDash();
 }
 
 /* ======================================================
