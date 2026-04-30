@@ -1879,8 +1879,6 @@ function buildForm(mod,r){
     ${fg('Cedente',fi('cedente',r.cedente,'text','Nome do cedente'))}
     ${fg('Cessionário',fi('cessionario',r.cessionario,'text','Nome do cessionário'))}
     ${fg('Devedor',fi('devedor',r.devedor,'text','Nome do devedor'))}
-    ${fg('Tribunal',fi('tribunal',r.tribunal,'text','Ex: TJGO, STJ…'))}
-    ${fg('Órgão Julgador',fi('orgaoJulgador',r.orgaoJulgador,'text','Nome do órgão julgador'))}
     ${fg('Motivo do Encerramento',fta('motivo',r.motivo,'Descreva o motivo…'),true)}
   </div>`;
 
@@ -1935,8 +1933,8 @@ function saveRecord(){
     numeroProcesso:gf('numeroProcesso'),dataAquisicao:gf('dataAquisicao'),
     dataLiquidacao:gf('dataLiquidacao'),objeto:gf('objeto'),advogado:gf('advogado'),
     cedente:gf('cedente'),cessionario:gf('cessionario'),devedor:gf('devedor'),
-    tribunal:gf('tribunal'),orgaoJulgador:gf('orgaoJulgador'),
     motivo:gf('motivo')
+    // tribunal e orgaoJulgador não exibidos no form; preservados pelo branch de edição abaixo
   };
   else if(curMod==='contatos'){
     const orgEl=document.getElementById('f-orgaoJulgador');
@@ -1973,6 +1971,8 @@ function saveRecord(){
       const old=data[idx];
       rec.historicoProcessual=old.historicoProcessual||[];
       if(old.prazoFatal!==undefined)rec.prazoFatal=old.prazoFatal;
+      if(old.tribunal!==undefined&&rec.tribunal===undefined)rec.tribunal=old.tribunal;
+      if(old.orgaoJulgador!==undefined&&rec.orgaoJulgador===undefined)rec.orgaoJulgador=old.orgaoJulgador;
       if(old.diligencias!==undefined)rec.diligencias=old.diligencias;
       if(old.vinculosFilhos!==undefined)rec.vinculosFilhos=old.vinculosFilhos;
       if(old.vinculoPai!==undefined)rec.vinculoPai=old.vinculoPai;
