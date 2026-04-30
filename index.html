@@ -2096,10 +2096,10 @@ function goToProcess(mod,id){
   setTimeout(()=>{highlightIds.delete(id);render(mod);},3200);
 }
 
-function showToast(msg){
+function showToast(msg,duration=3500){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('on');
-  setTimeout(()=>t.classList.remove('on'),3500);
+  setTimeout(()=>t.classList.remove('on'),duration);
 }
 
 const MV_OPTS={
@@ -2596,26 +2596,44 @@ async function syncAdvbox(){
   btn.disabled=true;
   const total=allRecs.length;
   let done=0,synced=0,failed=0;
+  const erros=[];
   const setBtn=n=>{btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Sincronizando… ${n}/${total}`;};
   setBtn(0);
 
   for(const{mod,rec}of allRecs){
     try{
       // 1. Buscar lawsuit_id no Advbox
-      const sr=await fetch(`${_ADVBOX_BASE}/lawsuits?process_number=${encodeURIComponent(rec.numeroProcesso)}`,
-        {headers:{Authorization:'Bearer '+_ADVBOX_TOKEN}});
-      if(sr.status===204||sr.status===404){done++;setBtn(done);await _sleep(2000);continue;}
-      if(!sr.ok)throw new Error('Advbox lawsuits HTTP '+sr.status);
-      const sd=await sr.json();
+      let srRaw;
+      try{
+        srRaw=await fetch(`${_ADVBOX_BASE}/lawsuits?process_number=${encodeURIComponent(rec.numeroProcesso)}`,
+          {headers:{Authorization:'Bearer '+_ADVBOX_TOKEN}});
+      }catch(netErr){
+        throw new Error('Falha de rede/CORS ao chamar Advbox lawsuits: '+netErr.message);
+      }
+      if(srRaw.status===204||srRaw.status===404){done++;setBtn(done);await _sleep(2000);continue;}
+      if(!srRaw.ok){
+        let body='';try{body=await srRaw.text();}catch{}
+        throw new Error(`Advbox lawsuits HTTP ${srRaw.status}: ${body.slice(0,200)}`);
+      }
+      const sd=await srRaw.json();
       const lawsuits=Array.isArray(sd)?sd:(sd.results||sd.data||[]);
       if(!lawsuits.length){done++;setBtn(done);await _sleep(2000);continue;}
       const lid=lawsuits[0].id;
 
       // 2. Buscar movimentações do tribunal
-      const mr=await fetch(`${_ADVBOX_BASE}/movements/${lid}?origin=TRIBUNAL`,
-        {headers:{Authorization:'Bearer '+_ADVBOX_TOKEN}});
-      if(!mr.ok)throw new Error('Advbox movements HTTP '+mr.status);
-      const md=await mr.json();
+      let mrRaw;
+      try{
+        mrRaw=await fetch(`${_ADVBOX_BASE}/movements/${lid}?origin=TRIBUNAL`,
+          {headers:{Authorization:'Bearer '+_ADVBOX_TOKEN}});
+      }catch(netErr){
+        throw new Error('Falha de rede/CORS ao chamar Advbox movements: '+netErr.message);
+      }
+      if(mrRaw.status===204){done++;setBtn(done);await _sleep(2000);continue;}
+      if(!mrRaw.ok){
+        let body='';try{body=await mrRaw.text();}catch{}
+        throw new Error(`Advbox movements HTTP ${mrRaw.status}: ${body.slice(0,200)}`);
+      }
+      const md=await mrRaw.json();
       const movs=Array.isArray(md)?md:(md.results||md.data||[]);
       if(!movs.length){done++;setBtn(done);await _sleep(2000);continue;}
 
@@ -2633,6 +2651,7 @@ async function syncAdvbox(){
       synced++;
     }catch(e){
       console.error('[Advbox] Erro no processo',rec.numeroProcesso,e);
+      erros.push(`${rec.numeroProcesso}: ${e.message}`);
       failed++;
     }
     done++;
@@ -2643,8 +2662,20 @@ async function syncAdvbox(){
   btn.disabled=false;
   btn.innerHTML='↺ Sincronizar';
   let msg=`Sincronização concluída: ${synced} processo(s) atualizado(s)`;
-  if(failed)msg+=`, ${failed} com erro`;
-  showToast(msg);
+  if(failed){
+    msg+=`, ${failed} com erro`;
+    if(erros.length){
+      const primerroDetalhe=erros[0];
+      console.warn('[Advbox] Primeiro erro detalhado:',primerroDetalhe);
+      msg+=`\nPrimeiro erro: ${primerroDetalhe}`;
+    }
+  }
+  showToast(msg,failed?8000:3500);
+  if(erros.length){
+    console.group('[Advbox] Erros de sincronização ('+erros.length+')');
+    erros.forEach(e=>console.warn(e));
+    console.groupEnd();
+  }
   render(curTab);
   updateDash();
 }
