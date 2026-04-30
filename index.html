@@ -2321,11 +2321,9 @@ function openHist(mod,id){
 function renderHistBody(rec){
   const hist=rec.historicoProcessual||[];
   const sorted=hist.slice().sort((a,b)=>b.data.localeCompare(a.data));
-  const visible=sorted.slice(0,15);
-  const hidden=sorted.length-visible.length;
   const tlHtml=hist.length===0
     ?'<p style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhuma entrada no histórico.</p>'
-    :`<div class="tl">${visible.map((h)=>{const i=hist.indexOf(h);return`
+    :`<div class="tl">${sorted.map((h)=>{const i=hist.indexOf(h);return`
       <div class="tl-item" id="tl-item-${i}">
         <div class="tl-date">${fmtDate(h.data)}</div>
         <div class="tl-desc">${esc(_limparDescricao(h.descricao))}</div>
@@ -2333,7 +2331,7 @@ function renderHistBody(rec){
           <button class="btn btn-xs" style="background:rgba(0,119,255,.15);color:#0077FF;border:1px solid rgba(0,119,255,.4)" onclick="editHistEntry(${i})">Editar</button>
           <button class="btn btn-red btn-xs" onclick="delHistEntry(${i})">Remover</button>
         </div>
-      </div>`;}).join('')}${hidden>0?`<p style="color:var(--txt3);font-size:12px;padding:6px 0 0">+ ${hidden} movimentação(ões) mais antiga(s) não exibida(s).</p>`:''}</div>`;
+      </div>`;}).join('')}</div>`;
 
   const today=new Date().toISOString().split('T')[0];
   const addHtml=`
