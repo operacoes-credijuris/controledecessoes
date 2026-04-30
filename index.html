@@ -2328,7 +2328,7 @@ function renderHistBody(rec){
     :`<div class="tl">${visible.map((h)=>{const i=hist.indexOf(h);return`
       <div class="tl-item" id="tl-item-${i}">
         <div class="tl-date">${fmtDate(h.data)}</div>
-        <div class="tl-desc">${esc(h.descricao)}</div>
+        <div class="tl-desc">${esc(_limparDescricao(h.descricao))}</div>
         <div style="display:flex;gap:5px;margin-top:6px">
           <button class="btn btn-xs" style="background:rgba(0,119,255,.15);color:#0077FF;border:1px solid rgba(0,119,255,.4)" onclick="editHistEntry(${i})">Editar</button>
           <button class="btn btn-red btn-xs" onclick="delHistEntry(${i})">Remover</button>
