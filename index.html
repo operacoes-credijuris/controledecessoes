@@ -2541,14 +2541,25 @@ function maskPhone(el){
 ====================================================== */
 function _sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
+function _limparDescricao(txt){
+  if(!txt||txt==='(sem descrição)')return txt;
+  // Title case
+  let s=txt.trim().toLowerCase()
+    .replace(/(^|[\s\-\(\/→])(\S)/g,(_,sep,c)=>sep+c.toUpperCase());
+  // Remove palavras ou pares de palavras duplicados consecutivos
+  s=s.replace(/\b(\w+(?:\s+\w+)?)\s+\1\b/gi,'$1');
+  // Limpa espaços múltiplos
+  return s.replace(/\s{2,}/g,' ').trim();
+}
+
 async function _summarizeMovimentos(movs){
-  // Monta array normalizado com data + texto bruto
+  // Monta array normalizado com data + texto limpo
   const items=movs.map((mv,i)=>({
     i,
     data:(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10),
-    texto:(mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1500)
+    texto:_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1500))
   }));
-  // Sem chave Anthropic: usa texto bruto truncado
+  // Sem chave Anthropic: usa texto limpo truncado
   if(!_ANTHROPIC_KEY){
     return items.map(x=>({data:x.data,descricao:x.texto.slice(0,300)}));
   }
