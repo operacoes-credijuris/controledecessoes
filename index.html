@@ -1029,7 +1029,9 @@ function _gsSearch(q){
     total+=hits.length;
     html+=`<div class="gs-group-hdr">${label}</div>`;
     html+=hits.map(r=>{
-      const sub=[r.cedente,r.cessionario,r.advogado].filter(Boolean).join(' · ').substring(0,80);
+      const sub=(r.cedente||r.cessionario)
+        ?`${r.cedente||''}${r.cedente&&r.cessionario?' v. ':''}${r.cessionario||''}`
+        :'';
       return`<div class="gs-item" onclick="_gsGo('${key}','${esc(r.id)}')"><span class="gs-badge ${cls}">${label}</span><span class="gs-proc">${esc(r.numeroProcesso||'—')}</span>${sub?`<span class="gs-sub" style="margin-left:8px">· ${esc(sub)}</span>`:''}</div>`;
     }).join('');
   });
