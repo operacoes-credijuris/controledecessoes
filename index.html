@@ -1030,7 +1030,7 @@ function _gsSearch(q){
     html+=`<div class="gs-group-hdr">${label}</div>`;
     html+=hits.map(r=>{
       const sub=key==='requerimentos'
-        ?(r.materia||'')
+        ?[r.tribunal,r.materia].filter(Boolean).join(' · ')
         :(r.cedente||r.cessionario)
           ?`${r.cedente||''}${r.cedente&&r.cessionario?' v. ':''}${r.cessionario||''}`
           :'';
