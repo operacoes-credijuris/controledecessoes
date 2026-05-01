@@ -3097,31 +3097,18 @@ async function syncAdvbox(){
     await _sleep(2000);
   }
 
-  // FASE 2 — Chamar Gemini em lotes de 40 processos (respeita limite de 250K TPM)
+  // FASE 2 — Uma única chamada ao Gemini com todas as movimentações
   if(pendentes.length){
-    const LOTE=20;
-    const totalLotes=Math.ceil(pendentes.length/LOTE);
-    const rmap={};
-    for(let li=0;li<totalLotes;li++){
-      const chunk=pendentes.slice(li*LOTE,(li+1)*LOTE);
-      btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> IA: lote ${li+1}/${totalLotes}…`;
-      const allItems=chunk.flatMap(({movs,pi})=>
-        movs.map((mv,mi)=>({
-          pi,mi,
-          data:(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10),
-          texto:_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500))
-        }))
-      );
-      const resumidos=await _summarizeBatch(allItems);
-      for(const r of resumidos) rmap[`${r.pi}:${r.mi}`]=r.resumo;
-      // Aguardar 65s entre lotes para respeitar TPM (exceto no último)
-      if(li<totalLotes-1){
-        for(let s=65;s>0;s--){
-          btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Aguardando API… ${s}s (lote ${li+2}/${totalLotes})`;
-          await _sleep(1000);
-        }
-      }
-    }
+    btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Resumindo com IA…`;
+    const allItems=pendentes.flatMap(({movs,pi})=>
+      movs.map((mv,mi)=>({
+        pi,mi,
+        data:(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10),
+        texto:_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500))
+      }))
+    );
+    const resumidos=await _summarizeBatch(allItems);
+    const rmap=Object.fromEntries(resumidos.map(r=>[`${r.pi}:${r.mi}`,r.resumo]));
 
     // FASE 3 — Salvar histórico por processo
     for(const{mod,arr,idx,movs,pi}of pendentes){
@@ -3129,7 +3116,7 @@ async function syncAdvbox(){
       const hist=movs.map((mv,mi)=>{
         const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
         const texto=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500));
-        return{data,descricao:rmap[`${pi}:${mi}`]||texto.slice(0,300)};
+        return{data,descricao:rmap[`${pi}:${mi}`]||texto};
       }).sort((a,b)=>a.data.localeCompare(b.data));
       arr[idx]={...arr[idx],historicoProcessual:hist,_advboxMovCount:movs.length};
       save(mod,arr);
