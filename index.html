@@ -830,12 +830,20 @@ async function _loadAdvboxToken(){
   }catch(e){console.warn('[Credijuris] _loadAdvboxToken:',e);}
 }
 
+async function _loadAnthropicKey(){
+  if(!sb)return;
+  try{
+    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave','anthropic_key').single();
+    if(!error&&data?.valor)_ANTHROPIC_KEY=data.valor;
+  }catch(e){console.warn('[Credijuris] _loadAnthropicKey:',e);}
+}
+
 async function _onAuthenticated(session){
   _currentUserId=session.user.id;
   document.getElementById('login-screen').style.display='none';
   const ls=document.getElementById('loading-screen');
   ls.style.display='flex';
-  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken()]);
+  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken(),_loadAnthropicKey()]);
   ls.style.display='none';
   document.getElementById('logout-btn').style.display='';
   migrateCartorios();
