@@ -2572,7 +2572,7 @@ async function _summarizeBatch(items){
   const instrucao=`Você é um assistente jurídico. Receberá movimentações processuais em JSON. Para cada item, resuma em 1-2 frases curtas em português, destacando o ato principal e omitindo referências a leis, datas entre parênteses, CNJ e detalhes de publicação. Retorne APENAS um JSON array no formato [{pi:0,mi:0,resumo:"..."},...] sem texto adicional.`;
   const payload=JSON.stringify(items.map(x=>({pi:x.pi,mi:x.mi,texto:x.texto})));
   try{
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${_GEMINI_KEY}`,{
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${_GEMINI_KEY}`,{
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({
