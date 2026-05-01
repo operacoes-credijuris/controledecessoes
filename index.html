@@ -476,17 +476,7 @@ tr.child-row td:first-child{padding-left:36px}
       <!-- TERCEIRA COLUNA — Calendário de Prazos -->
       <div style="display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;background:transparent;border:none">
         <div class="cal-widget">
-          <div class="cal-nav">
-            <span class="cal-month" id="cal-month-lbl"></span>
-            <div class="cal-nav-btns">
-              <button class="cal-nav-btn" onclick="calNav(-1)" title="Mês anterior">‹</button>
-              <button class="cal-nav-btn" onclick="calNav(1)" title="Próximo mês">›</button>
-            </div>
-          </div>
-          <div class="cal-dow-row">
-            <div class="cal-dow">D</div><div class="cal-dow">S</div><div class="cal-dow">T</div><div class="cal-dow">Q</div><div class="cal-dow">Q</div><div class="cal-dow">S</div><div class="cal-dow">S</div>
-          </div>
-          <div id="cal-days"></div>
+          <div id="cal-container"></div>
         </div>
         <span id="ds-cnt-cal" style="display:none"></span>
       </div>
@@ -1493,66 +1483,93 @@ function calNav(dir){
 }
 
 function renderCalendario(){
-  const ce=load('cessoes'),rp=load('rpv'),re=load('requerimentos');
-  const today=new Date(); today.setHours(0,0,0,0);
-  const todayStr2=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const cal=document.getElementById('cal-container');
+  const ano=_calYear, mes=_calMonth;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const todayStr=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
 
-  // Coletar todos os prazos fatais
-  const prazoMap={}; // 'YYYY-MM-DD' → [{proc, cedente, cessionario, diff}]
+  // Mapa de prazos fatais
+  const ce=load('cessoes'),rp=load('rpv'),re=load('requerimentos');
+  const prazoMap={};
   [...ce,...rp,...re].forEach(r=>{
     if(!r.prazoFatal)return;
-    const nd=normDate(r.prazoFatal);
-    if(!nd)return;
+    const nd=normDate(r.prazoFatal); if(!nd)return;
     if(!prazoMap[nd])prazoMap[nd]=[];
-    const diff=Math.round((new Date(nd)-today)/864e5);
+    const diff=Math.round((new Date(nd)-hoje)/864e5);
     prazoMap[nd].push({proc:r.numeroProcesso||'—',cedente:r.cedente||'',cessionario:r.cessionario||'',diff});
   });
 
-  // Contador total de dias com prazo no mês exibido
-  const totalNoMes=Object.keys(prazoMap).filter(d=>d.startsWith(`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`)).length;
+  // Contador do mês
+  const totalNoMes=Object.keys(prazoMap).filter(d=>d.startsWith(`${ano}-${String(mes+1).padStart(2,'0')}`)).length;
   document.getElementById('ds-cnt-cal').textContent=totalNoMes?`· ${totalNoMes} dia${totalNoMes>1?'s':''} com prazo`:'';
 
-  // Label do mês
+  const nomes=['D','S','T','Q','Q','S','S'];
   const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  document.getElementById('cal-month-lbl').textContent=`${meses[_calMonth]} ${_calYear}`;
-
-  // Construir grade
-  const firstDay=new Date(_calYear,_calMonth,1).getDay(); // 0=Dom
-  const daysInMonth=new Date(_calYear,_calMonth+1,0).getDate();
-  const daysInPrev=new Date(_calYear,_calMonth,0).getDate();
-
-  const cells=[];
-  // dias do mês anterior
-  for(let i=firstDay-1;i>=0;i--)cells.push({day:daysInPrev-i,cur:false});
-  // dias do mês atual
-  for(let d=1;d<=daysInMonth;d++)cells.push({day:d,cur:true});
-  // completar última semana
-  const rem=(7-cells.length%7)%7;
-  for(let d=1;d<=rem;d++)cells.push({day:d,cur:false});
-
   const _lvCol={exp:'#f87171',urg:'#f97316',warn:'#fb923c',next:'#fbbf24',future:'#4ade80'};
-  function _renderCell({day,cur}){
-    if(!cur)return`<div class="cal-day other-month">${day}</div>`;
-    const dateStr=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+
+  const primeiroDia=new Date(ano,mes,1).getDay();
+  const diasNoMes=new Date(ano,mes+1,0).getDate();
+  const diasMesAnterior=new Date(ano,mes,0).getDate();
+
+  // ── Header ──────────────────────────────────────────────
+  let html=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:0 4px">
+      <span style="font-size:22px;font-weight:700;color:#e2e8f0;font-family:var(--font-head)">${meses[mes]} ${ano}</span>
+      <div style="display:flex;gap:6px">
+        <button onclick="calNav(-1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">‹</button>
+        <button onclick="calNav(1)"  style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">›</button>
+      </div>
+    </div>`;
+
+  // ── Labels dias da semana ────────────────────────────────
+  html+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:8px">`;
+  nomes.forEach(n=>{html+=`<div style="text-align:center;font-size:11px;font-weight:600;color:#374151;padding-bottom:8px">${n}</div>`;});
+  html+=`</div>`;
+
+  // ── Grade de dias ────────────────────────────────────────
+  html+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);row-gap:4px">`;
+
+  // dias mês anterior
+  for(let i=primeiroDia-1;i>=0;i--){
+    html+=`<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#1e2433">${diasMesAnterior-i}</div></div>`;
+  }
+
+  // dias mês atual
+  for(let d=1;d<=diasNoMes;d++){
+    const dateStr=`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isHoje=dateStr===todayStr;
     const prazos=prazoMap[dateStr];
-    const isToday=dateStr===todayStr2;
     let col='';
     if(prazos){const lv=fatalLevel(dateStr)||'future';col=_lvCol[lv]||'#4ade80';}
-    const todayCls=isToday?' today-num':'';
-    const dot=(prazos&&!isToday)?`<span class="cal-day-dot" style="background:${col}"></span>`:'';
-    const tipLines=prazos?prazos.map(p=>{
-      const label=p.diff<0?'vencido':p.diff===0?'hoje':p.diff===1?'1 dia restante':`${p.diff} dias restantes`;
-      const partes=(p.cedente||p.cessionario)?` — ${p.cedente||''}${p.cedente&&p.cessionario?' v. ':''}${p.cessionario||''}`:'';
-      return`• ${p.proc}${partes} (${label})`;
-    }).join('\n'):'';
-    const tip=prazos?`<div class="cal-tip"><strong>${fmtDate(dateStr)}</strong><br>${tipLines.replace(/\n/g,'<br>')}</div>`:'';
-    const style=(!isToday&&col)?` style="color:${col}"`:(!isToday?` style="color:#6b7280"`:'');
-    return`<div class="cal-day${todayCls}"${style}>${day}${dot}${tip}</div>`;
+
+    let bg='transparent',txtColor='#6b7280',fw='400';
+    if(isHoje){bg='#0077ff';txtColor='#fff';fw='700';}
+    else if(col){txtColor=col;}
+
+    const dot=(prazos&&!isHoje)?`<div style="width:4px;height:4px;border-radius:50%;background:${col};margin:2px auto 0;flex-shrink:0"></div>`:'';
+
+    let tip='';
+    if(prazos){
+      const tipLines=prazos.map(p=>{
+        const label=p.diff<0?'vencido':p.diff===0?'hoje':p.diff===1?'1 dia restante':`${p.diff} dias restantes`;
+        const partes=(p.cedente||p.cessionario)?` — ${p.cedente||''}${p.cedente&&p.cessionario?' v. ':''}${p.cessionario||''}`:'';
+        return`• ${p.proc}${partes} (${label})`;
+      }).join('<br>');
+      tip=`<div class="cal-tip"><strong>${fmtDate(dateStr)}</strong><br>${tipLines}</div>`;
+    }
+
+    html+=`<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${bg};font-size:13px;color:${txtColor};font-weight:${fw};cursor:default;position:relative;transition:background .15s" onmouseenter="this.style.background='${isHoje?'#005fcc':bg==='transparent'?'rgba(255,255,255,.05)':bg}'" onmouseleave="this.style.background='${bg}'">${d}${dot}${tip}</div></div>`;
   }
-  // Agrupar em semanas (linhas de 7)
-  const weeks=[];
-  for(let i=0;i<cells.length;i+=7)weeks.push(cells.slice(i,i+7));
-  document.getElementById('cal-days').innerHTML=weeks.map(w=>`<div class="cal-week">${w.map(_renderCell).join('')}</div>`).join('');
+
+  // dias mês seguinte
+  const totalCells=primeiroDia+diasNoMes;
+  const restantes=totalCells%7===0?0:7-(totalCells%7);
+  for(let i=1;i<=restantes;i++){
+    html+=`<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#1e2433">${i}</div></div>`;
+  }
+
+  html+=`</div>`;
+  cal.innerHTML=html;
 }
 
 /* ======================================================
