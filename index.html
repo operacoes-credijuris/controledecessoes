@@ -250,6 +250,19 @@ tr:hover .btn-expand{color:#94a3b8}
 .mov-group-hdr:hover{background:#1a1f2e}
 .mov-arrow{font-size:9px;color:#4b5563;flex-shrink:0;transition:color .15s}
 .mov-group-hdr:hover .mov-arrow{color:#6b7280}
+/* CALENDÁRIO */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #1e2433;flex-shrink:0}
+.cal-nav-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:14px;padding:2px 8px;border-radius:4px;transition:color .15s,background .15s;line-height:1}
+.cal-nav-btn:hover{color:#e2e8f0;background:rgba(255,255,255,.06)}
+.cal-month{font-size:12px;font-weight:600;color:#94a3b8;font-family:var(--font-head)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:8px}
+.cal-dow{font-size:10px;color:#4b5563;text-align:center;padding:2px 0;font-weight:500}
+.cal-day{width:100%;aspect-ratio:1;border-radius:6px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:default;position:relative;color:#4b5563;transition:background .15s}
+.cal-day.other-month{opacity:.25}
+.cal-day.today-num{outline:1px solid #4b5563}
+.cal-day[title]:hover{z-index:10}
+.cal-tip{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#0d1117;border:1px solid #2a3348;border-radius:6px;padding:6px 10px;font-size:10px;color:#e2e8f0;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;min-width:180px;max-width:260px;white-space:normal;line-height:1.5}
+.cal-day:hover .cal-tip{opacity:1}
 .db-card{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
 .db-card-hdr{padding:13px 16px;border-bottom:1px solid var(--brd);font-size:13px;font-weight:600;color:var(--txt2);flex-shrink:0;font-family:var(--font-head)}
 .db-tbl-wrap{overflow-y:auto;flex:1;min-height:0}
@@ -454,8 +467,19 @@ tr.child-row td:first-child{padding-left:36px}
         <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(0,119,255,.08);border-left:3px solid rgba(0,119,255,.4)">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('movimentacoes')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
-      <!-- TERCEIRA COLUNA — reservada -->
-      <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;min-height:0"></div>
+      <!-- TERCEIRA COLUNA — Calendário de Prazos -->
+      <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(139,92,246,.08);border-left:3px solid rgba(139,92,246,.4)">Calendário de Prazos<span id="ds-cnt-cal" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" style="margin-left:auto" disabled style="opacity:0;pointer-events:none"></button></div>
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+          <span class="cal-month" id="cal-month-lbl"></span>
+          <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+        </div>
+        <div class="cal-grid" id="cal-dow-row">
+          <div class="cal-dow">D</div><div class="cal-dow">S</div><div class="cal-dow">T</div><div class="cal-dow">Q</div><div class="cal-dow">Q</div><div class="cal-dow">S</div><div class="cal-dow">S</div>
+        </div>
+        <div class="cal-grid" id="cal-days" style="padding-top:0;overflow-y:auto;flex:1;min-height:0;align-content:start"></div>
+      </div>
     </div>
   </div>
 
@@ -1442,6 +1466,85 @@ function updateDash(){
       </div>`;
     }).join('');
   }
+  renderCalendario();
+}
+
+/* ======================================================
+   CALENDÁRIO DE PRAZOS
+====================================================== */
+let _calYear=new Date().getFullYear();
+let _calMonth=new Date().getMonth(); // 0-based
+
+function calNav(dir){
+  _calMonth+=dir;
+  if(_calMonth>11){_calMonth=0;_calYear++;}
+  if(_calMonth<0){_calMonth=11;_calYear--;}
+  renderCalendario();
+}
+
+function renderCalendario(){
+  const ce=load('cessoes'),rp=load('rpv'),re=load('requerimentos');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const todayStr2=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  // Coletar todos os prazos fatais
+  const prazoMap={}; // 'YYYY-MM-DD' → [{proc, cedente, cessionario, diff}]
+  [...ce,...rp,...re].forEach(r=>{
+    if(!r.prazoFatal)return;
+    const nd=normDate(r.prazoFatal);
+    if(!nd)return;
+    if(!prazoMap[nd])prazoMap[nd]=[];
+    const diff=Math.round((new Date(nd)-today)/864e5);
+    prazoMap[nd].push({proc:r.numeroProcesso||'—',cedente:r.cedente||'',cessionario:r.cessionario||'',diff});
+  });
+
+  // Contador total de dias com prazo no mês exibido
+  const totalNoMes=Object.keys(prazoMap).filter(d=>d.startsWith(`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`)).length;
+  document.getElementById('ds-cnt-cal').textContent=totalNoMes?`· ${totalNoMes}`:'';
+
+  // Label do mês
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('cal-month-lbl').textContent=`${meses[_calMonth]} ${_calYear}`;
+
+  // Construir grade
+  const firstDay=new Date(_calYear,_calMonth,1).getDay(); // 0=Dom
+  const daysInMonth=new Date(_calYear,_calMonth+1,0).getDate();
+  const daysInPrev=new Date(_calYear,_calMonth,0).getDate();
+
+  const cells=[];
+  // dias do mês anterior
+  for(let i=firstDay-1;i>=0;i--)cells.push({day:daysInPrev-i,cur:false});
+  // dias do mês atual
+  for(let d=1;d<=daysInMonth;d++)cells.push({day:d,cur:true});
+  // completar última semana
+  const rem=(7-cells.length%7)%7;
+  for(let d=1;d<=rem;d++)cells.push({day:d,cur:false});
+
+  const grid=document.getElementById('cal-days');
+  grid.innerHTML=cells.map(({day,cur})=>{
+    if(!cur)return`<div class="cal-day other-month">${day}</div>`;
+    const dateStr=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const prazos=prazoMap[dateStr];
+    const isToday=dateStr===todayStr2;
+    let bg='',col='',fw='';
+    if(prazos){
+      const diff=prazos[0].diff;
+      if(diff<0){bg='rgba(239,68,68,.15)';col='#f87171';}
+      else if(diff===0){bg='rgba(239,68,68,.3)';col='#f87171';fw='font-weight:700';}
+      else if(diff<=3){bg='rgba(249,115,22,.15)';col='#fb923c';}
+      else if(diff<=7){bg='rgba(217,119,6,.15)';col='#fbbf24';}
+      else{bg='rgba(22,163,74,.1)';col='#4ade80';}
+    }
+    const dot=prazos?`<span style="position:absolute;top:2px;right:3px;width:4px;height:4px;border-radius:50%;background:${col}"></span>`:'';
+    const todayCls=isToday?' today-num':'';
+    const tipLines=prazos?prazos.map(p=>{
+      const label=p.diff<0?'vencido':p.diff===0?'hoje':p.diff===1?'1 dia restante':`${p.diff} dias restantes`;
+      const partes=(p.cedente||p.cessionario)?` — ${p.cedente||''}${p.cedente&&p.cessionario?' v. ':''}${p.cessionario||''}`:'';
+      return`• ${p.proc}${partes} (${label})`;
+    }).join('\n'):'';
+    const tip=prazos?`<div class="cal-tip">${fmtDate(dateStr)}\n${tipLines}`.replace(/\n/g,'<br>')+'</div>':'';
+    return`<div class="cal-day${todayCls}" style="background:${bg};color:${col||'#4b5563'};${fw}">${dot}${day}${tip}</div>`;
+  }).join('');
 }
 
 /* ======================================================
