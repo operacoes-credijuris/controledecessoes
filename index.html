@@ -1305,7 +1305,7 @@ function updateDash(){
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}${prioBadge}</div>
-          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
+          ${(r.cedente||r.cessionario)?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
           <span style="font-size:10px;color:#6b7280">${sub}</span>
@@ -1338,7 +1338,7 @@ function updateDash(){
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}</div>
-          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
+          ${(r.cedente||r.cessionario)?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
           <span style="font-size:10px;color:#6b7280">${mesLabel}</span>
@@ -1372,7 +1372,7 @@ function updateDash(){
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
           <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r.id)}</div>
-          ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
+          ${(r.cedente||r.cessionario)?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
           <span style="font-size:10px;color:#6b7280">${msg}</span>
@@ -1417,7 +1417,7 @@ function updateDash(){
   } else {
     mb.innerHTML=gruposArr.map(({mod,r,movs})=>{
       const partes=(r.cedente||r.cessionario)
-        ?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
+        ?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
       const movsHtml=movs.map(m=>`<div style="padding:6px 16px 6px 24px;border-top:1px solid #1e2433;font-size:11px">
           <span style="color:#6b7280;margin-right:8px">${fmtDate(m.data)}</span><span style="color:var(--txt2)">${esc(m.desc)||'<span style="color:#4b5563">—</span>'}</span>
         </div>`).join('');
