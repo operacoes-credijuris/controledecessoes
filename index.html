@@ -2569,7 +2569,8 @@ async function _summarizeMovimentos(movs){
     return items.map(x=>({data:x.data,descricao:x.texto.slice(0,300)}));
   }
   try{
-    const prompt=`Você receberá uma lista de movimentações judiciais em JSON. Para cada item resuma em no máximo 2 frases curtas em português, mantendo as informações essenciais. Retorne APENAS um JSON array no formato [{i:0,resumo:"..."}, ...] sem texto adicional.\n\n${JSON.stringify(items.map(x=>({i:x.i,texto:x.texto})))}`;
+    const systemPrompt=`Você é um assistente jurídico especializado em resumir movimentações processuais.\n\nReceba o texto da movimentação e reescreva em no máximo duas linhas curtas, destacando apenas:\n- O que aconteceu (ato processual principal)\n- Quem está envolvido, se relevante\n- Referência a decisão ou prazo, se houver\n\nElimine: referências a leis, datas entre parênteses, CNJ, horários, detalhes de publicação, e qualquer informação redundante.\nUse linguagem direta, sem abreviações truncadas. Responda apenas com o resumo, sem explicações.`;
+    const userPrompt=`Você receberá uma lista de movimentações judiciais em JSON. Para cada item resuma em no máximo 2 frases curtas em português, mantendo as informações essenciais. Retorne APENAS um JSON array no formato [{i:0,resumo:"..."}, ...] sem texto adicional.\n\n${JSON.stringify(items.map(x=>({i:x.i,texto:x.texto})))}`;
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{
@@ -2581,7 +2582,8 @@ async function _summarizeMovimentos(movs){
       body:JSON.stringify({
         model:'claude-3-5-haiku-20241022',
         max_tokens:2048,
-        messages:[{role:'user',content:prompt}]
+        system:systemPrompt,
+        messages:[{role:'user',content:userPrompt}]
       })
     });
     if(!res.ok)throw new Error('Anthropic HTTP '+res.status);
