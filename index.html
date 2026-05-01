@@ -1276,7 +1276,10 @@ function updateDash(){
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}${prioBadge}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
-        <div class="al-date" style="color:${col}">${liquidacaoDiff(r.expectativaLiquidacao)}</div>
+        <div style="text-align:right;flex-shrink:0;white-space:nowrap">
+          <div style="font-size:10px;color:${col};margin-bottom:2px">${sub}</div>
+          <div style="font-size:12px;font-weight:600;color:${col}">${liquidacaoDiff(r.expectativaLiquidacao)}</div>
+        </div>
       </div>`;
     }).join('');
   }
@@ -1305,7 +1308,10 @@ function updateDash(){
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
-        <div class="al-date" style="color:${col}">${r._dias}d</div>
+        <div style="text-align:right;flex-shrink:0;white-space:nowrap">
+          <div style="font-size:10px;color:${col};margin-bottom:2px">${mesLabel}</div>
+          <div style="font-size:12px;font-weight:600;color:${col}">${r._dias}d</div>
+        </div>
       </div>`;
     }).join('');
   }
@@ -1365,7 +1371,6 @@ function updateDash(){
     mb.innerHTML=movTop.map(({mod,r,data,desc})=>{
       const partes=(r.cedente||r.cessionario)
         ?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
-      const descTrunc=desc.length>60?desc.slice(0,60)+'…':desc;
       return`<div class="db-mov-item">
         <div style="font-size:11px;color:#6b7280;min-width:62px;flex-shrink:0;padding-top:1px">${fmtDate(data)}</div>
         <div style="flex:1;min-width:0;overflow:hidden">
@@ -1373,7 +1378,7 @@ function updateDash(){
             <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso||'')}</span>${cpyBtn(r.numeroProcesso||'')}${navBtn(mod,r.id)}
           </div>
           ${partes}
-          <div style="font-size:11px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px" title="${esc(desc)}">${esc(descTrunc)||'<span style="color:#4b5563">—</span>'}</div>
+          <div style="font-size:11px;color:var(--txt2);overflow:hidden;white-space:normal;margin-top:2px">${esc(desc)||'<span style="color:#4b5563">—</span>'}</div>
         </div>
         <div style="flex-shrink:0"><span class="bdg ${modBdg[mod]}" style="font-size:10px">${modLabel[mod]}</span></div>
       </div>`;
