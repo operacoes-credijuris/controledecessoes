@@ -1277,7 +1277,7 @@ function updateDash(){
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
-          <span style="font-size:11px;color:#6b7280">${sub}</span>
+          <span style="font-size:10px;color:#6b7280">${sub}</span>
           <span style="font-size:11px;font-weight:600;color:${col}">${liquidacaoDiff(r.expectativaLiquidacao)}</span>
         </div>
       </div>`;
@@ -1309,7 +1309,7 @@ function updateDash(){
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
-          <span style="font-size:11px;color:#6b7280">${mesLabel}</span>
+          <span style="font-size:10px;color:#6b7280">${mesLabel}</span>
           <span style="font-size:11px;font-weight:600;color:${col}">${r._dias}d</span>
         </div>
       </div>`;
@@ -1342,7 +1342,7 @@ function updateDash(){
           ${(r.cedente||r.cessionario)?`<div style="font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
-          <span style="font-size:11px;color:#6b7280">${msg}</span>
+          <span style="font-size:10px;color:#6b7280">${msg}</span>
           <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r.prazoFatal)}</span>
         </div>
       </div>`;
