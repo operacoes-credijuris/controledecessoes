@@ -234,10 +234,13 @@ tr:hover .btn-expand{color:#94a3b8}
 /* DASHBOARD */
 .db-grid{display:grid;grid-template-columns:60fr 40fr;gap:20px;margin-top:20px;flex:1;min-height:0}
 @media(max-width:900px){.db-grid{grid-template-columns:1fr}}
-.db-prio{display:flex;flex-direction:column;gap:0;height:100%;border:1px solid var(--brd);border-radius:16px;overflow:hidden;background:var(--bg2)}
-.db-prio-sec{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;border-bottom:1px solid var(--brd)}
-.db-prio-sec:last-child{border-bottom:none}
+.db-prio{display:flex;flex-direction:column;gap:12px;height:100%}
+.db-prio-sec{flex:1;min-height:0;display:flex;flex-direction:column;background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden}
+.db-prio-hdr{border-left:3px solid #0077ff;padding:10px 14px;font-size:13px;font-weight:600;color:var(--txt2);background:#0d1117;flex-shrink:0;font-family:var(--font-head);border-bottom:1px solid #1e2433}
 .db-prio-body{flex:1;overflow-y:auto;min-height:0}
+.db-mov-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-bottom:1px solid #1e2433}
+.db-mov-item:last-child{border-bottom:none}
+.db-mov-item:hover{background:#1a1f2e}
 .db-card{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
 .db-card-hdr{padding:13px 16px;border-bottom:1px solid var(--brd);font-size:13px;font-weight:600;color:var(--txt2);flex-shrink:0;font-family:var(--font-head)}
 .db-tbl-wrap{overflow-y:auto;flex:1;min-height:0}
@@ -425,22 +428,22 @@ tr.child-row td:first-child{padding-left:36px}
       <!-- COLUNA ESQUERDA — Prioridades (60%) -->
       <div class="db-prio">
         <div class="db-prio-sec">
-          <div class="db-card-hdr">Prazos Fatais</div>
+          <div class="db-prio-hdr">Prazos Fatais</div>
           <div id="ds-alerts-body" class="db-prio-body"></div>
         </div>
         <div class="db-prio-sec">
-          <div class="db-card-hdr">Liquidação Próxima ou Vencida</div>
+          <div class="db-prio-hdr">Liquidação Próxima ou Vencida</div>
           <div id="ds-liq-body" class="db-prio-body"></div>
         </div>
         <div class="db-prio-sec">
-          <div class="db-card-hdr">Processos Paralisados</div>
+          <div class="db-prio-hdr">Processos Paralisados</div>
           <div id="ds-par-body" class="db-prio-body"></div>
         </div>
       </div>
       <!-- COLUNA DIREITA — Últimas Movimentações (40%) -->
-      <div class="db-card">
-        <div class="db-card-hdr">Últimas Movimentações</div>
-        <div id="ds-mov-body" class="db-tbl-wrap" style="flex:1;overflow-y:auto;min-height:0"></div>
+      <div style="background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;height:100%">
+        <div class="db-prio-hdr">Últimas Movimentações</div>
+        <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
     </div>
   </div>
@@ -1360,25 +1363,21 @@ function updateDash(){
   if(!movTop.length){
     mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 30 dias</div>';
   } else {
-    mb.innerHTML=`<table style="width:100%;border-collapse:collapse">
-      <tbody>${movTop.map(({mod,r,data,desc})=>{
-        const partes=(r.cedente||r.cessionario)
-          ?`<div style="font-size:11px;color:#6b7280;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
-        return`<tr style="border-bottom:1px solid #1e2433">
-          <td style="padding:6px 8px;vertical-align:middle;white-space:nowrap;min-width:80px;font-size:12px;color:#a0aec0">${fmtDate(data)}</td>
-          <td style="padding:6px 8px;vertical-align:middle;max-width:160px">
-            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(r.numeroProcesso||'')}${cpyBtn(r.numeroProcesso||'')}${navBtn(mod,r.id)}</div>
-            ${partes}
-          </td>
-          <td style="padding:6px 8px;vertical-align:middle;max-width:200px">
-            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#e2e8f0" title="${esc(desc)}">${esc(desc)}</div>
-          </td>
-          <td style="padding:6px 8px;vertical-align:middle;white-space:nowrap">
-            <span class="bdg ${modBdg[mod]}" style="font-size:10px">${modLabel[mod]}</span>
-          </td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
+    mb.innerHTML=movTop.map(({mod,r,data,desc})=>{
+      const partes=(r.cedente||r.cessionario)
+        ?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
+      return`<div class="db-mov-item">
+        <div style="font-size:11px;color:#6b7280;min-width:62px;flex-shrink:0;padding-top:1px">${fmtDate(data)}</div>
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:4px;overflow:hidden">
+            <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso||'')}</span>${cpyBtn(r.numeroProcesso||'')}${navBtn(mod,r.id)}
+          </div>
+          ${partes}
+          <div style="font-size:11px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px" title="${esc(desc)}">${esc(desc)||'<span style="color:#4b5563">—</span>'}</div>
+        </div>
+        <div style="flex-shrink:0"><span class="bdg ${modBdg[mod]}" style="font-size:10px">${modLabel[mod]}</span></div>
+      </div>`;
+    }).join('');
   }
 }
 
