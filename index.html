@@ -118,7 +118,7 @@ a{color:inherit;text-decoration:none}
 .btn-grn:hover{background:rgba(22,163,74,.2)}
 .btn-sm{padding:4px 9px;font-size:12px}
 .btn-xs{padding:2px 5px;font-size:11px}
-.td-icon{text-align:center;vertical-align:middle}
+.td-icon{text-align:center;vertical-align:middle;white-space:nowrap;width:1%}
 
 /* FILTER BAR */
 .fb{background:var(--bg2);border:1px solid var(--brd);border-radius:9px;padding:13px 16px;margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;flex-shrink:0}
@@ -509,11 +509,11 @@ tr.child-row td:first-child{padding-left:36px}
           <thead><tr>
             <th>Ações</th>
             <th style="min-width:150px">Processo</th>
-            <th style="min-width:60px">Histórico</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Histórico</th>
             <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('cessoes','ultimaMovimentacao',this)">↕</button></div></th>
-            <th style="min-width:65px">Contato</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Contato</th>
             <th style="min-width:90px"><div class="col-hdr"><span>Instrumento</span><button class="col-fbtn" data-field="instrumento" onclick="openColFilter(event,'cessoes','instrumento',this)">▾</button></div></th>
-            <th style="min-width:60px">Cartório</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Cartório</th>
             <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('cessoes','prazoFatal',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('cessoes','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Exp. Liq.</span><button class="col-sbtn" data-field="expectativaLiquidacao" onclick="toggleSort('cessoes','expectativaLiquidacao',this)">↕</button></div></th>
@@ -549,9 +549,9 @@ tr.child-row td:first-child{padding-left:36px}
           <thead><tr>
             <th>Ações</th>
             <th style="min-width:150px">Processo</th>
-            <th style="min-width:60px">Histórico</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Histórico</th>
             <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('rpv','ultimaMovimentacao',this)">↕</button></div></th>
-            <th style="min-width:65px">Contato</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Contato</th>
             <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('rpv','prazoFatal',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('rpv','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Liquid.</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('rpv','dataLiquidacao',this)">↕</button></div></th>
@@ -586,12 +586,12 @@ tr.child-row td:first-child{padding-left:36px}
         <table>
           <thead><tr>
             <th>Ações</th><th style="min-width:150px">Processo</th>
-            <th style="min-width:60px">Histórico</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Histórico</th>
             <th style="min-width:40px"><div class="col-hdr"><span>Última Mov.</span><button class="col-sbtn" data-field="ultimaMovimentacao" onclick="toggleSort('requerimentos','ultimaMovimentacao',this)">↕</button></div></th>
-            <th style="min-width:65px">Contato</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Contato</th>
             <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
             <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↕</button></div></th>
-            <th style="min-width:90px">Senha de Acesso</th><th style="min-width:120px">Natureza</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Senha</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
           </tr></thead>
           <tbody id="tb-requerimentos"></tbody>
@@ -646,7 +646,7 @@ tr.child-row td:first-child{padding-left:36px}
           <thead><tr>
             <th>Ações</th>
             <th style="min-width:150px">Processo</th>
-            <th style="min-width:65px">Contato</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Contato</th>
             <th style="min-width:60px"><div class="col-hdr"><span>Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('encerrados','dataAquisicao',this)">↕</button></div></th>
             <th style="min-width:60px"><div class="col-hdr"><span>Liquid.</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('encerrados','dataLiquidacao',this)">↕</button></div></th>
             <th style="min-width:70px"><div class="col-hdr"><span>Tempo até Liq.</span><button class="col-sbtn" data-field="_dur_enc" onclick="toggleSort('encerrados','_dur_enc',this)">↕</button></div></th>
@@ -655,7 +655,7 @@ tr.child-row td:first-child{padding-left:36px}
             <th style="min-width:140px"><div class="col-hdr"><span>Cedente</span><button class="col-fbtn" data-field="cedente" onclick="openColFilter(event,'encerrados','cedente',this)">▾</button></div></th>
             <th style="min-width:160px"><div class="col-hdr"><span>Cessionário</span><button class="col-fbtn" data-field="cessionario" onclick="openColFilter(event,'encerrados','cessionario',this)">▾</button></div></th>
             <th style="min-width:110px"><div class="col-hdr"><span>Devedor</span><button class="col-fbtn" data-field="devedor" onclick="openColFilter(event,'encerrados','devedor',this)">▾</button></div></th>
-            <th style="min-width:80px">Motivo</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Motivo</th>
           </tr></thead>
           <tbody id="tb-encerrados"></tbody>
         </table>
