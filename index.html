@@ -1266,7 +1266,7 @@ function updateDash(){
   } else {
     lb.innerHTML=liqRecs.map(r=>{
       const d=r._diff;
-      const sub=d<0?'VENCIDA':'PRÓXIMA';
+      const sub=d<0?'vencida':'próxima';
       const col=d<0?'var(--red2)':d<60?'var(--ylw2)':'var(--grn2)';
       const prioBadge=r._prio
         ?'<span style="display:inline-block;font-size:10px;font-weight:700;color:#f59e0b;border:1px solid #f59e0b;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle;margin-left:5px">PRIORITÁRIO</span>'
@@ -1302,7 +1302,7 @@ function updateDash(){
     pb.innerHTML=parRecs.map(r=>{
       const col=r._dias>60?'var(--red2)':'#fb923c';
       const meses=Math.floor(r._dias/30);
-      const mesLabel=meses>=1?`HÁ MAIS DE ${meses} ${meses===1?'MÊS':'MESES'}`:'HÁ MENOS DE 1 MÊS';
+      const mesLabel=meses>=1?`há +${meses} ${meses===1?'mês':'meses'}`:'há menos de 1 mês';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
           <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}</div>
