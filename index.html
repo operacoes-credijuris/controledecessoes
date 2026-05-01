@@ -455,6 +455,10 @@ tr.child-row td:first-child{padding-left:36px}
         <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(0,119,255,.08);border-left:3px solid rgba(0,119,255,.4)">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('movimentacoes')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
+      <!-- TERCEIRA COLUNA — Calendário de Prazos -->
+      <div style="padding:16px 8px">
+        <div id="cal-container"></div>
+      </div>
     </div>
   </div>
 
@@ -1445,6 +1449,81 @@ function updateDash(){
       </div>`;
     }).join('');
   }
+  renderCalendario();
+}
+
+/* ======================================================
+   CALENDÁRIO DE PRAZOS
+====================================================== */
+let calAno = new Date().getFullYear();
+let calMes = new Date().getMonth();
+
+function calNav(dir) {
+  calMes += dir;
+  if(calMes > 11){calMes=0;calAno++;}
+  if(calMes < 0){calMes=11;calAno--;}
+  renderCalendario();
+}
+
+function renderCalendario() {
+  const cal = document.getElementById('cal-container');
+  if(!cal) return;
+  const hoje = new Date();
+  const primeiroDia = new Date(calAno, calMes, 1).getDay();
+  const diasNoMes = new Date(calAno, calMes + 1, 0).getDate();
+  const diasMesAnterior = new Date(calAno, calMes, 0).getDate();
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const nomes = ['D','S','T','Q','Q','S','S'];
+
+  const todosPrazos = new Set();
+  const prazosNivel = {};
+  [...load('cessoes'),...load('rpv'),...load('requerimentos')].forEach(r => {
+    if(r.prazoFatal) {
+      const d = normDate(r.prazoFatal);
+      if(d) { todosPrazos.add(d); prazosNivel[d] = fatalLevel(d); }
+    }
+  });
+
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:0 4px">
+      <span style="font-size:22px;font-weight:700;color:#e2e8f0;font-family:var(--font-head)">${meses[calMes]} ${calAno}</span>
+      <div style="display:flex;gap:6px">
+        <button onclick="calNav(-1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1">‹</button>
+        <button onclick="calNav(1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1">›</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:10px">
+      ${nomes.map(n=>`<div style="text-align:center;font-size:11px;font-weight:600;color:#4b5563">${n}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);row-gap:4px">`;
+
+  for(let i = primeiroDia - 1; i >= 0; i--) {
+    html += `<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#1e2433">${diasMesAnterior - i}</div></div>`;
+  }
+
+  for(let d = 1; d <= diasNoMes; d++) {
+    const dateStr = `${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isHoje = d === hoje.getDate() && calMes === hoje.getMonth() && calAno === hoje.getFullYear();
+    const lv = prazosNivel[dateStr] || null;
+    const cor = lv==='exp'||lv==='urg'?'#f87171':lv==='warn'?'#f97316':lv==='next'?'#fbbf24':lv==='future'?'#4ade80':null;
+
+    let bg = 'transparent', txtColor = '#6b7280', fw = '400';
+    if(isHoje) { bg = '#0077ff'; txtColor = '#fff'; fw = '700'; }
+    else if(cor) { txtColor = cor; }
+
+    const dot = cor && !isHoje ? `<div style="width:4px;height:4px;border-radius:50%;background:${cor};margin-top:1px"></div>` : '';
+
+    html += `<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${bg};font-size:13px;color:${txtColor};font-weight:${fw}">${d}${dot}</div></div>`;
+  }
+
+  const totalCells = primeiroDia + diasNoMes;
+  const restantes = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for(let i = 1; i <= restantes; i++) {
+    html += `<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#1e2433">${i}</div></div>`;
+  }
+
+  html += `</div>`;
+  cal.innerHTML = html;
 }
 
 /* ======================================================
