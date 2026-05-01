@@ -1486,7 +1486,7 @@ function renderCalendario() {
 
   let html = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:0 4px">
-      <span style="font-size:22px;font-weight:700;color:#e2e8f0;font-family:var(--font-head)">${meses[calMes]} ${calAno}</span>
+      <span style="font-family:var(--font-head);color:#e2e8f0;line-height:1.1"><span style="font-size:24px;font-weight:700">${meses[calMes]}</span> <span style="font-size:14px;font-weight:400;color:#6b7280">${calAno}</span></span>
       <div style="display:flex;gap:6px">
         <button onclick="calNav(-1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1">‹</button>
         <button onclick="calNav(1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1">›</button>
