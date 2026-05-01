@@ -696,7 +696,10 @@ tr.child-row td:first-child{padding-left:36px}
 <div id="contato-ov" class="ov" onclick="ovClick(event,'contato-ov')">
   <div class="mdl" style="max-width:580px">
     <div class="mdl-hdr">
-      <div class="mdl-title" id="contato-title">Contato</div>
+      <div class="mdl-title">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Contato</div>
+        <div id="contato-title" style="font-family:var(--font-body);font-weight:400;font-size:12px;color:#6b7280;margin-top:2px"></div>
+      </div>
       <button class="mdl-x" onclick="closeModal('contato-ov')">✕</button>
     </div>
     <div class="mdl-body" id="contato-body"></div>
@@ -2489,7 +2492,7 @@ function openContatoModal(mod,id){
   if(!rec)return;
   const org=(rec.orgaoJulgador||'').trim();
   const c=CACHE.contatos.find(x=>(x.orgaoJulgador||'').trim()===org);
-  document.getElementById('contato-title').textContent='Contato — '+org;
+  document.getElementById('contato-title').textContent=org;
   if(!c){
     document.getElementById('contato-body').innerHTML='<p style="color:var(--txt3);font-size:13px">Nenhum contato cadastrado para este órgão julgador.</p>';
     openModal('contato-ov');
