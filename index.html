@@ -2577,7 +2577,7 @@ async function _summarizeBatch(items){
       headers:{'content-type':'application/json'},
       body:JSON.stringify({
         contents:[{parts:[{text:instrucao+'\n\n'+payload}]}],
-        generationConfig:{maxOutputTokens:8192,temperature:0.2}
+        generationConfig:{maxOutputTokens:65536,temperature:0.2}
       })
     });
     if(!res.ok){
@@ -2668,7 +2668,7 @@ async function syncAdvbox(){
 
   // FASE 2 — Chamar Gemini em lotes de 40 processos (respeita limite de 250K TPM)
   if(pendentes.length){
-    const LOTE=40;
+    const LOTE=20;
     const totalLotes=Math.ceil(pendentes.length/LOTE);
     const rmap={};
     for(let li=0;li<totalLotes;li++){
