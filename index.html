@@ -1543,9 +1543,9 @@ function renderCalendario() {
     const lv = prazosNivel[dateStr] || null;
     const cor = lv==='exp'||lv==='urg'?'#f87171':lv==='warn'?'#f97316':lv==='next'?'#fbbf24':lv==='future'?'#4ade80':null;
 
-    let bg = 'transparent', txtColor = '#6b7280', fw = '400';
-    if(isHoje) { bg = '#0077ff'; txtColor = '#fff'; fw = '700'; }
-    else if(cor) { txtColor = cor; }
+    const bg = isHoje ? '#0077ff' : 'transparent';
+    const txtColor = isHoje ? '#fff' : '#6b7280';
+    const fw = isHoje ? '700' : '400';
 
     const dot = cor && !isHoje ? `<div style="width:4px;height:4px;border-radius:50%;background:${cor};margin-top:1px"></div>` : '';
 
