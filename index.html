@@ -435,12 +435,7 @@ tr.child-row td:first-child{padding-left:36px}
       <div class="sc"><div class="sc-lbl">Com Prazo Fatal</div><div class="sc-val red" id="ds-fatal">0</div></div>
     </div>
     <div class="db-grid">
-      <!-- COLUNA 1 — Últimas Movimentações -->
-      <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(0,119,255,.08);border-left:3px solid rgba(0,119,255,.4)">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span></div>
-        <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
-      </div>
-      <!-- COLUNA 2 — Calendário + Urgências -->
+      <!-- COLUNA 1 — Calendário + Urgências -->
       <div style="display:flex;flex-direction:column">
         <div style="padding:8px 0">
           <div id="cal-container"></div>
@@ -479,6 +474,11 @@ tr.child-row td:first-child{padding-left:36px}
             <span style="color:#4b5563;font-size:14px">›</span>
           </div>
         </div>
+      </div>
+      <!-- COLUNA 2 — Últimas Movimentações -->
+      <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(0,119,255,.08);border-left:3px solid rgba(0,119,255,.4)">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span></div>
+        <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
       <!-- COLUNA 3 — vazia -->
       <div style="background:transparent;border:none"></div>
