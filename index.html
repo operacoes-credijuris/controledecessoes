@@ -252,21 +252,21 @@ tr:hover .btn-expand{color:#94a3b8}
 .mov-arrow{font-size:9px;color:#4b5563;flex-shrink:0;transition:color .15s}
 .mov-group-hdr:hover .mov-arrow{color:#6b7280}
 /* CALENDÁRIO */
-.cal-widget{background:transparent;border:none;box-shadow:none;border-top:1px solid #1e2433;border-bottom:1px solid #1e2433;padding:12px 8px;width:100%;flex-shrink:0}
-.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 2px}
-.cal-nav-btns{display:flex;gap:4px}
-.cal-nav-btn{width:24px;height:24px;border-radius:50%;border:1px solid #2a3348;background:transparent;cursor:pointer;color:#6b7280;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0;transition:color .15s,border-color .15s,background .15s;line-height:1}
+.cal-widget{background:transparent;border:none;box-shadow:none;border-top:1px solid #1e2433;border-bottom:1px solid #1e2433;padding:16px 8px;width:100%;flex-shrink:0}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:0 2px}
+.cal-nav-btns{display:flex;gap:6px}
+.cal-nav-btn{width:28px;height:28px;border-radius:50%;border:1px solid #2a3348;background:transparent;cursor:pointer;color:#6b7280;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;transition:color .15s,border-color .15s,background .15s;line-height:1}
 .cal-nav-btn:hover{color:#e2e8f0;border-color:#3d4a63;background:rgba(255,255,255,.06)}
-.cal-month{font-size:18px;font-weight:600;color:#e2e8f0;font-family:var(--font-head)}
+.cal-month{font-size:22px;font-weight:600;color:#e2e8f0;font-family:var(--font-head)}
 .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
-.cal-dow{font-size:11px;color:#4b5563;text-align:center;padding:3px 0;font-weight:500}
-.cal-week{display:grid;grid-template-columns:repeat(7,1fr)}
-.cal-day{width:32px;height:32px;border-radius:50%;font-size:12px;font-weight:400;display:flex;align-items:center;justify-content:center;margin:2px auto;cursor:default;position:relative;color:#94a3b8;transition:background .15s}
+.cal-dow{font-size:11px;color:#4b5563;text-align:center;padding-bottom:8px;font-weight:600}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-day{width:36px;height:36px;border-radius:50%;font-size:13px;font-weight:400;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;cursor:default;position:relative;color:#6b7280;transition:background .15s}
 .cal-day:hover{background:rgba(255,255,255,.05)}
-.cal-day.other-month{color:#2a3348!important;pointer-events:none}
-.cal-day.today-num{background:#0077ff;color:#fff!important;font-weight:700;border-radius:50%}
+.cal-day.other-month{color:#1e2433!important;pointer-events:none}
+.cal-day.today-num{background:#0077ff;color:#fff!important;font-weight:700}
 .cal-day.today-num:hover{background:#005fcc}
-.cal-day-dot{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%}
+.cal-day-dot{display:block;width:4px;height:4px;border-radius:50%;margin-top:2px}
 .cal-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0d1117;border:1px solid #2a3348;border-radius:8px;padding:8px 12px;font-size:10px;color:#e2e8f0;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200;min-width:200px;max-width:280px;white-space:normal;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.6)}
 .cal-day:hover .cal-tip{opacity:1}
 .db-card{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
@@ -1546,7 +1546,7 @@ function renderCalendario(){
       return`• ${p.proc}${partes} (${label})`;
     }).join('\n'):'';
     const tip=prazos?`<div class="cal-tip"><strong>${fmtDate(dateStr)}</strong><br>${tipLines.replace(/\n/g,'<br>')}</div>`:'';
-    const style=(!isToday&&col)?` style="color:${col}"`:(!isToday?` style="color:#94a3b8"`:'');
+    const style=(!isToday&&col)?` style="color:${col}"`:(!isToday?` style="color:#6b7280"`:'');
     return`<div class="cal-day${todayCls}"${style}>${day}${dot}${tip}</div>`;
   }
   // Agrupar em semanas (linhas de 7)
