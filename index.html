@@ -1541,14 +1541,13 @@ function renderCalendario() {
   for(let d = 1; d <= diasNoMes; d++) {
     const dateStr = `${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isHoje = d === hoje.getDate() && calMes === hoje.getMonth() && calAno === hoje.getFullYear();
-    const lv = prazosNivel[dateStr] || null;
-    const cor = lv==='exp'||lv==='urg'?'#f87171':lv==='warn'?'#f97316':lv==='next'?'#fbbf24':lv==='future'?'#4ade80':null;
+    const temPrazo = !!prazosNivel[dateStr];
 
-    const bg = isHoje ? '#06b6d4' : 'transparent';
+    const bg = isHoje ? '#0077ff' : 'transparent';
     const txtColor = isHoje ? '#fff' : '#6b7280';
     const fw = isHoje ? '700' : '400';
 
-    const dot = cor && !isHoje ? `<div style="width:4px;height:4px;border-radius:50%;background:${cor};margin-top:1px"></div>` : '';
+    const dot = temPrazo && !isHoje ? `<div style="width:4px;height:4px;border-radius:50%;background:#06b6d4;margin-top:1px"></div>` : '';
 
     html += `<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${bg};font-size:13px;color:${txtColor};font-weight:${fw}">${d}${dot}</div></div>`;
   }
