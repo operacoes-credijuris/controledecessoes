@@ -2685,6 +2685,8 @@ async function syncAdvbox(){
         save(mod,arr);
       }
       synced++;
+      // Pausa extra após chamada ao Gemini para respeitar limite de 15 req/min
+      await _sleep(2000);
     }catch(e){
       console.error('[Advbox] Erro no processo',rec.numeroProcesso,e);
       erros.push(`${rec.numeroProcesso}: ${e.message}`);
