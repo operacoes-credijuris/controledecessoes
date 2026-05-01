@@ -242,6 +242,8 @@ tr:hover .btn-expand{color:#94a3b8}
 .db-mov-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(30,36,51,.6)}
 .db-mov-item:last-child{border-bottom:none}
 .db-mov-item:hover{background:rgba(255,255,255,.02)}
+.db-expand-btn{background:none;border:none;cursor:pointer;color:#4b5563;padding:2px 4px;border-radius:4px;transition:color .15s;margin-left:auto;display:flex;align-items:center;flex-shrink:0}
+.db-expand-btn:hover{color:#94a3b8}
 .mov-group{border-bottom:1px solid #1e2433}
 .mov-group:last-child{border-bottom:none}
 .mov-group-hdr{display:flex;align-items:center;padding:10px 14px;cursor:pointer;gap:10px}
@@ -435,21 +437,21 @@ tr.child-row td:first-child{padding-left:36px}
       <!-- COLUNA ESQUERDA — Prioridades (60%) -->
       <div class="db-prio">
         <div class="db-prio-sec">
-          <div class="db-prio-hdr">Prazos Fatais<span id="ds-cnt-alerts" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span></div>
+          <div class="db-prio-hdr" style="display:flex;align-items:center">Prazos Fatais<span id="ds-cnt-alerts" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span><button class="db-expand-btn" onclick="openDashModal('prazos')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
           <div id="ds-alerts-body" class="db-prio-body"></div>
         </div>
         <div class="db-prio-sec">
-          <div class="db-prio-hdr">Liquidação Próxima ou Vencida<span id="ds-cnt-liq" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span></div>
+          <div class="db-prio-hdr" style="display:flex;align-items:center">Liquidação Próxima ou Vencida<span id="ds-cnt-liq" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span><button class="db-expand-btn" onclick="openDashModal('liquidacao')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
           <div id="ds-liq-body" class="db-prio-body"></div>
         </div>
         <div class="db-prio-sec">
-          <div class="db-prio-hdr">Paralisados<span id="ds-cnt-par" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span></div>
+          <div class="db-prio-hdr" style="display:flex;align-items:center">Paralisados<span id="ds-cnt-par" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span><button class="db-expand-btn" onclick="openDashModal('paralisados')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
           <div id="ds-par-body" class="db-prio-body"></div>
         </div>
       </div>
       <!-- COLUNA DIREITA — Últimas Movimentações (40%) -->
       <div style="background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div class="db-prio-hdr">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span></div>
+        <div class="db-prio-hdr" style="display:flex;align-items:center">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span><button class="db-expand-btn" onclick="openDashModal('movimentacoes')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
     </div>
@@ -690,6 +692,20 @@ tr.child-row td:first-child{padding-left:36px}
   </div>
 </div>
 
+
+<!-- DASHBOARD EXPAND MODAL -->
+<div id="dash-modal-ov" class="ov" onclick="ovClick(event,'dash-modal-ov')">
+  <div class="mdl" style="max-width:700px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+    <div class="mdl-hdr" style="flex-shrink:0">
+      <div>
+        <div class="mdl-title" id="dash-modal-title">—</div>
+        <div style="font-size:11px;color:#4b5563;margin-top:2px" id="dash-modal-sub"></div>
+      </div>
+      <button class="mdl-x" onclick="closeModal('dash-modal-ov')">×</button>
+    </div>
+    <div id="dash-modal-body" style="overflow-y:auto;flex:1;min-height:0"></div>
+  </div>
+</div>
 
 <!-- DELETE CONFIRM MODAL -->
 <div id="del-ov" class="ov" onclick="ovClick(event,'del-ov')">
@@ -2044,8 +2060,32 @@ function renderEnc(){
 function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+
+function openDashModal(tipo){
+  const map={
+    prazos:       {srcId:'ds-alerts-body', title:'Prazos Fatais',                  cntId:'ds-cnt-alerts'},
+    liquidacao:   {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida',   cntId:'ds-cnt-liq'},
+    paralisados:  {srcId:'ds-par-body',    title:'Paralisados',                     cntId:'ds-cnt-par'},
+    movimentacoes:{srcId:'ds-mov-body',    title:'Últimas Movimentações',           cntId:'ds-cnt-mov'},
+  };
+  const cfg=map[tipo]; if(!cfg)return;
+  const src=document.getElementById(cfg.srcId);
+  const cnt=document.getElementById(cfg.cntId).textContent;
+  document.getElementById('dash-modal-title').textContent=cfg.title;
+  document.getElementById('dash-modal-sub').textContent=cnt?`${cnt.replace(/[()]/g,'')} registros`:'';
+  const body=document.getElementById('dash-modal-body');
+  body.innerHTML='';
+  // clonar conteúdo e ajustar padding dos itens
+  const clone=src.cloneNode(true);
+  clone.style.cssText='';
+  // espaçar itens no modal
+  clone.querySelectorAll('.alert-item').forEach(el=>el.style.padding='12px 20px');
+  clone.querySelectorAll('.mov-group-hdr').forEach(el=>el.style.padding='12px 20px');
+  body.appendChild(clone);
+  openModal('dash-modal-ov');
+}
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','migr-ov','contato-ov'].forEach(closeModal);}
+  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','migr-ov','contato-ov','dash-modal-ov'].forEach(closeModal);}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
     const elId=mp[curTab];
