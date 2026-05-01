@@ -2584,8 +2584,7 @@ async function _summarizeMovimentos(movs){
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({
-        system_instruction:{parts:[{text:systemPrompt}]},
-        contents:[{parts:[{text:userPrompt}]}],
+        contents:[{parts:[{text:systemPrompt+'\n\n'+userPrompt}]}],
         generationConfig:{maxOutputTokens:2048,temperature:0.2}
       })
     });
