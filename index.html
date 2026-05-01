@@ -2959,20 +2959,31 @@ function _sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 function _limparDescricao(txt){
   if(!txt||txt==='(sem descrição)')return txt;
+  let s=txt.trim();
+  // Remover padrões verbosos típicos do Advbox
+  s=s.replace(/\(referente\s+[^)]{0,200}\)/gi,'');  // (referente À Mov. ...)
+  s=s.replace(/\(cnj:[^)]*\)/gi,'');                 // (cnj:12444 - )
+  s=s.replace(/\bem\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}/gi,''); // Em 11/03/2026 23:59:59
+  s=s.replace(/-\s*\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}/g,'');     // - 02/04/2026 15:17:47
+  s=s.replace(/\(\s*\)/g,'');                        // parênteses vazios residuais
   // Title case
-  let s=txt.trim().toLowerCase()
+  s=s.toLowerCase()
     .replace(/(^|[\s\-\(\/→])(\S)/g,(_,sep,c)=>sep+c.toUpperCase());
   // Remove palavras ou pares de palavras duplicados consecutivos
   s=s.replace(/\b(\w+(?:\s+\w+)?)\s+\1\b/gi,'$1');
-  // Limpa espaços múltiplos
-  return s.replace(/\s{2,}/g,' ').trim();
+  // Limpa espaços múltiplos e hífens finais
+  return s.replace(/\s{2,}/g,' ').replace(/[-–]\s*$/,'').trim();
 }
 
-// Chamada única ao Gemini com movimentações de TODOS os processos juntos
-// items: [{pi, mi, data, texto}] — pi=índice do processo, mi=índice da movimentação
+// Chamada ao Gemini em lote — items: [{pi, mi, data, texto}]
 async function _summarizeBatch(items){
-  if(!_secrets.gemini()||!items.length) return items.map(x=>({...x,resumo:x.texto.slice(0,300)}));
-  const instrucao=`Você é um assistente jurídico. Receberá movimentações processuais em JSON. Para cada item, resuma em 1-2 frases curtas em português, destacando o ato principal e omitindo referências a leis, datas entre parênteses, CNJ e detalhes de publicação. Retorne APENAS um JSON array no formato [{pi:0,mi:0,resumo:"..."},...] sem texto adicional.`;
+  if(!items.length) return [];
+  if(!_secrets.gemini()){
+    showToast('ℹ️ Chave Gemini não configurada — movimentações salvas sem resumo por IA', 5000);
+    return items.map(x=>({...x,resumo:x.texto}));
+  }
+  showToast(`🤖 Gemini: resumindo ${items.length} movimentação(ões)…`, 4000);
+  const instrucao=`Você é um assistente jurídico brasileiro. Receberá um JSON array com movimentações processuais. Para cada item retorne um resumo curtíssimo (máximo 12 palavras) em português, mencionando apenas o ato principal. Omita datas, horários, CNJ, referências a outras movimentações e detalhes de publicação. Retorne SOMENTE um JSON array no formato [{pi:0,mi:0,resumo:"..."},...] sem nenhum texto adicional, sem markdown, sem blocos de código.`;
   const payload=JSON.stringify(items.map(x=>({pi:x.pi,mi:x.mi,texto:x.texto})));
   try{
     const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${_secrets.gemini()}`,{
@@ -2980,7 +2991,7 @@ async function _summarizeBatch(items){
       headers:{'content-type':'application/json'},
       body:JSON.stringify({
         contents:[{parts:[{text:instrucao+'\n\n'+payload}]}],
-        generationConfig:{maxOutputTokens:65536,temperature:0.2}
+        generationConfig:{maxOutputTokens:65536,temperature:0.1,responseMimeType:'application/json'}
       })
     });
     if(!res.ok){
@@ -2988,15 +2999,32 @@ async function _summarizeBatch(items){
       throw new Error(`Gemini HTTP ${res.status}: ${errBody.slice(0,300)}`);
     }
     const d=await res.json();
-    const txt=(d.candidates?.[0]?.content?.parts?.[0]?.text)||'[]';
-    const m=txt.match(/\[[\s\S]*\]/);
-    const summaries=m?JSON.parse(m[0]):[];
+    const rawTxt=(d.candidates?.[0]?.content?.parts?.[0]?.text)||'';
+    console.log('[Gemini] resposta bruta (primeiros 500 chars):', rawTxt.slice(0,500));
+    // Extrair JSON mesmo que venha com markdown
+    const m=rawTxt.match(/\[[\s\S]*\]/);
+    if(!m){
+      showToast('⚠️ Gemini: resposta não continha JSON — usando texto limpo', 6000);
+      console.error('[Gemini] Nenhum array encontrado na resposta:', rawTxt.slice(0,300));
+      return items.map(x=>({...x,resumo:x.texto}));
+    }
+    let summaries=[];
+    try{
+      summaries=JSON.parse(m[0]);
+    }catch(parseErr){
+      showToast('⚠️ Gemini: JSON inválido na resposta — usando texto limpo', 6000);
+      console.error('[Gemini] Erro de parse:', parseErr, '| Trecho:', m[0].slice(0,300));
+      return items.map(x=>({...x,resumo:x.texto}));
+    }
     const map=Object.fromEntries(summaries.map(s=>[`${s.pi}:${s.mi}`,s.resumo||'']));
-    return items.map(x=>({...x,resumo:map[`${x.pi}:${x.mi}`]||x.texto.slice(0,300)}));
+    const resultado=items.map(x=>({...x,resumo:map[`${x.pi}:${x.mi}`]||x.texto}));
+    const resumidos=resultado.filter(x=>x.resumo!==x.texto).length;
+    showToast(`✅ Gemini: ${resumidos}/${items.length} movimentações resumidas`, 4000);
+    return resultado;
   }catch(e){
     console.error('[Gemini] Erro no batch:',e);
-    showToast('⚠️ Gemini: '+e.message,6000);
-    return items.map(x=>({...x,resumo:x.texto.slice(0,300)}));
+    showToast('⚠️ Gemini: '+e.message, 6000);
+    return items.map(x=>({...x,resumo:x.texto}));
   }
 }
 
