@@ -28,6 +28,26 @@
 input,select,textarea,button{font-family:inherit}
 body{font-family:var(--font-body);background:var(--bg0);color:var(--txt);height:100vh;overflow:hidden;font-size:14px;display:flex;flex-direction:column}
 a{color:inherit;text-decoration:none}
+/* SIDEBAR */
+.app-body{display:flex;flex:1;overflow:hidden;min-height:0}
+.app-content{display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0}
+.sidebar{width:200px;background:#151820;border-right:1px solid #1e2433;display:flex;flex-direction:column;flex-shrink:0;transition:width .2s ease;overflow:hidden}
+.sidebar.collapsed{width:48px}
+.sb-toggle{display:flex;align-items:center;justify-content:flex-end;padding:8px 8px;border-bottom:1px solid #1e2433;flex-shrink:0}
+.sidebar.collapsed .sb-toggle{justify-content:center}
+.sb-toggle-btn{background:none;border:none;cursor:pointer;color:#6b7280;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:color .15s,background .15s}
+.sb-toggle-btn:hover{color:#e2e8f0;background:rgba(255,255,255,.05)}
+.sb-section{padding:14px 12px 4px;flex-shrink:0}
+.sb-section-lbl{font-size:10px;color:#4b5563;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;transition:opacity .15s}
+.sidebar.collapsed .sb-section-lbl{opacity:0}
+.sb-item{display:flex;align-items:center;gap:9px;padding:7px 8px 7px 12px;border-radius:6px;cursor:pointer;color:#6b7280;font-size:13px;font-family:var(--font-body);transition:color .15s,background .15s;white-space:nowrap;margin:1px 4px;overflow:hidden}
+.sidebar.collapsed .sb-item{justify-content:center;padding:7px 0;margin:1px 4px}
+.sb-item:hover:not(.disabled){color:#e2e8f0;background:rgba(255,255,255,.05)}
+.sb-item.active{color:#0077ff;background:rgba(0,119,255,.08)}
+.sb-item.disabled{cursor:default}
+.sb-item-icon{flex-shrink:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center}
+.sb-item-lbl{overflow:hidden;opacity:1;transition:opacity .15s}
+.sidebar.collapsed .sb-item-lbl{opacity:0;width:0;pointer-events:none}
 
 /* HEADER */
 .hdr{background:#151820;border-bottom:1px solid #1e2433;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:200;flex-shrink:0}
@@ -343,6 +363,32 @@ tr.child-row td:first-child{padding-left:36px}
   </div>
 </header>
 
+<div class="app-body">
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sb-toggle">
+    <button class="sb-toggle-btn" id="sb-toggle-btn" onclick="toggleSidebar()" title="Recolher menu">
+      <svg id="sb-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none"><polyline points="10,4 6,8 10,12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div class="sb-section"><div class="sb-section-lbl">Operacional</div></div>
+  <div class="sb-item active" id="sb-item-exec" onclick="sbNav('exec')">
+    <span class="sb-item-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1L7.5 4H10.5L8.25 6L9.25 9L6 7.5L2.75 9L3.75 6L1.5 4H4.5L6 1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></span>
+    <span class="sb-item-lbl">Execução Processual</span>
+  </div>
+  <div class="sb-item" id="sb-item-credito" onclick="sbNav('credito')">
+    <span class="sb-item-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="7" width="2" height="4" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="5" y="4" width="2" height="7" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="1" width="2" height="10" rx=".5" stroke="currentColor" stroke-width="1.2"/></svg></span>
+    <span class="sb-item-lbl">Análises de Crédito</span>
+  </div>
+  <div class="sb-section"><div class="sb-section-lbl">Comercial</div></div>
+  <div class="sb-item disabled">
+    <span class="sb-item-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2.5" y="5.5" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
+    <span class="sb-item-lbl">Em breve</span>
+  </div>
+</div><!-- /sidebar -->
+
+<div class="app-content">
 <nav class="nav">
   <div class="tab on" data-tab="dashboard">Dashboard</div>
   <span class="nav-sep">|</span>
@@ -556,6 +602,16 @@ tr.child-row td:first-child{padding-left:36px}
   </div>
 
 </div><!-- /main -->
+
+<!-- PAINEL ANÁLISES DE CRÉDITO -->
+<div id="pane-credito" style="display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;color:#4b5563">
+  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="opacity:.3"><rect x="4" y="24" width="7" height="12" rx="1.5" stroke="#6b7280" stroke-width="1.8"/><rect x="16.5" y="14" width="7" height="22" rx="1.5" stroke="#6b7280" stroke-width="1.8"/><rect x="29" y="4" width="7" height="32" rx="1.5" stroke="#6b7280" stroke-width="1.8"/></svg>
+  <div style="font-size:16px;font-weight:600;color:#6b7280;margin-top:16px">Análises de Crédito</div>
+  <div style="font-size:13px;color:#4b5563;margin-top:6px">Em construção</div>
+</div>
+
+</div><!-- /app-content -->
+</div><!-- /app-body -->
 
 <!-- MIGRATION MODAL -->
 <div id="migr-ov" class="ov">
@@ -1014,6 +1070,70 @@ function fmtBRL(v){
    NAV
 ====================================================== */
 let curTab='dashboard';
+let lastExecTab=localStorage.getItem('cj-sidebar-lasttab')||'dashboard';
+
+// SIDEBAR
+(function _initSidebar(){
+  const collapsed=localStorage.getItem('cj-sidebar-state')==='collapsed';
+  if(collapsed)_sbSetCollapsed(true);
+  const active=localStorage.getItem('cj-sidebar-active')||'exec';
+  if(active==='credito')_sbShowCredito();
+})();
+
+function _sbSetCollapsed(v){
+  const sb=document.getElementById('sidebar');
+  const arr=document.getElementById('sb-arrow');
+  if(v){
+    sb.classList.add('collapsed');
+    arr.innerHTML='<polyline points="6,4 10,8 6,12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
+  }else{
+    sb.classList.remove('collapsed');
+    arr.innerHTML='<polyline points="10,4 6,8 10,12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+}
+
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const collapsed=!sb.classList.contains('collapsed');
+  _sbSetCollapsed(collapsed);
+  localStorage.setItem('cj-sidebar-state',collapsed?'collapsed':'expanded');
+}
+
+function _sbShowCredito(){
+  document.getElementById('pane-credito').style.display='flex';
+  document.querySelector('.nav').style.display='none';
+  document.querySelector('.main').style.display='none';
+  document.getElementById('sb-item-exec').classList.remove('active');
+  document.getElementById('sb-item-credito').classList.add('active');
+  localStorage.setItem('cj-sidebar-active','credito');
+}
+
+function _sbShowExec(){
+  document.getElementById('pane-credito').style.display='none';
+  document.querySelector('.nav').style.display='';
+  document.querySelector('.main').style.display='';
+  document.getElementById('sb-item-credito').classList.remove('active');
+  document.getElementById('sb-item-exec').classList.add('active');
+  localStorage.setItem('cj-sidebar-active','exec');
+}
+
+function sbNav(item){
+  if(item==='exec'){
+    _sbShowExec();
+    // Restaurar última aba ativa
+    const target=lastExecTab||'dashboard';
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
+    const tEl=document.querySelector(`.tab[data-tab="${target}"]`);
+    if(tEl)tEl.classList.add('on');
+    const pEl=document.getElementById('pane-'+target);
+    if(pEl)pEl.classList.add('on');
+    curTab=target;
+    if(curTab==='dashboard')updateDash();else render(curTab);
+  }else if(item==='credito'){
+    _sbShowCredito();
+  }
+}
 
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click',()=>{
@@ -1021,6 +1141,8 @@ document.querySelectorAll('.tab').forEach(t=>{
     t.classList.add('on');
     document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
     curTab=t.dataset.tab;
+    lastExecTab=curTab;
+    localStorage.setItem('cj-sidebar-lasttab',curTab);
     document.getElementById('pane-'+curTab).classList.add('on');
     _gsClose();
     if(curTab==='dashboard')updateDash();
