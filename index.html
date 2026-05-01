@@ -234,7 +234,7 @@ tr:hover .btn-expand{color:#94a3b8}
 .pgb:disabled{opacity:.35;cursor:not-allowed}
 
 /* DASHBOARD */
-.db-grid{display:grid;grid-template-columns:33fr 33fr 33fr;gap:20px;margin-top:20px;flex:1;min-height:0;align-items:stretch}
+.db-grid{display:grid;grid-template-columns:40fr 30fr 30fr;gap:20px;margin-top:20px;flex:1;min-height:0;align-items:stretch}
 @media(max-width:900px){.db-grid{grid-template-columns:1fr}}
 .db-prio{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:visible;background:transparent;border:none}
 .db-prio-sec{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid #1e2433;border-radius:10px;background:#151820}
@@ -435,30 +435,61 @@ tr.child-row td:first-child{padding-left:36px}
       <div class="sc"><div class="sc-lbl">Com Prazo Fatal</div><div class="sc-val red" id="ds-fatal">0</div></div>
     </div>
     <div class="db-grid">
-      <!-- COLUNA ESQUERDA — Prioridades (60%) -->
-      <div class="db-prio">
-        <div class="db-prio-sec">
-          <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(239,68,68,.08);border-left:3px solid rgba(239,68,68,.4)">Prazos Fatais<span id="ds-cnt-alerts" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('prazos')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-          <div id="ds-alerts-body" class="db-prio-body"></div>
-        </div>
-        <div class="db-prio-sec">
-          <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(217,119,6,.08);border-left:3px solid rgba(217,119,6,.4)">Liquidação Próxima ou Vencida<span id="ds-cnt-liq" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('liquidacao')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-          <div id="ds-liq-body" class="db-prio-body"></div>
-        </div>
-        <div class="db-prio-sec">
-          <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(251,146,60,.08);border-left:3px solid rgba(251,146,60,.4)">Paralisados<span id="ds-cnt-par" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('paralisados')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-          <div id="ds-par-body" class="db-prio-body"></div>
-        </div>
-      </div>
-      <!-- COLUNA DIREITA — Últimas Movimentações (40%) -->
+      <!-- COLUNA 1 — Últimas Movimentações -->
       <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
         <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(0,119,255,.08);border-left:3px solid rgba(0,119,255,.4)">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('movimentacoes')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
-      <!-- TERCEIRA COLUNA — Calendário de Prazos -->
-      <div style="padding:16px 8px">
-        <div id="cal-container"></div>
+      <!-- COLUNA 2 — Calendário + Urgências -->
+      <div style="display:flex;flex-direction:column">
+        <div style="padding:8px 0">
+          <div id="cal-container"></div>
+        </div>
+        <div style="background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;margin-top:14px">
+          <div style="padding:10px 16px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;background:#0d1117;border-bottom:1px solid #1e2433">Urgências</div>
+          <div onclick="openDashModal('prazos')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;border-bottom:1px solid #1e2433;transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#f87171;flex-shrink:0"></div>
+              <span style="font-size:13px;color:#e2e8f0">Prazos Fatais</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="urg-count-prazos" style="font-size:11px;color:#4b5563">0</span>
+              <span style="color:#4b5563;font-size:14px">›</span>
+            </div>
+          </div>
+          <div onclick="openDashModal('liquidacao')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;border-bottom:1px solid #1e2433;transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#fbbf24;flex-shrink:0"></div>
+              <span style="font-size:13px;color:#e2e8f0">Liquidação</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="urg-count-liq" style="font-size:11px;color:#4b5563">0</span>
+              <span style="color:#4b5563;font-size:14px">›</span>
+            </div>
+          </div>
+          <div onclick="openDashModal('paralisados')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#fb923c;flex-shrink:0"></div>
+              <span style="font-size:13px;color:#e2e8f0">Paralisados</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="urg-count-par" style="font-size:11px;color:#4b5563">0</span>
+              <span style="color:#4b5563;font-size:14px">›</span>
+            </div>
+          </div>
+        </div>
       </div>
+      <!-- COLUNA 3 — vazia -->
+      <div style="background:transparent;border:none"></div>
+    </div>
+    <!-- Elementos ocultos usados pelos modais expandidos -->
+    <div style="display:none">
+      <span id="ds-cnt-alerts"></span>
+      <span id="ds-cnt-liq"></span>
+      <span id="ds-cnt-par"></span>
+      <div id="ds-alerts-body"></div>
+      <div id="ds-liq-body"></div>
+      <div id="ds-par-body"></div>
     </div>
   </div>
 
@@ -1449,6 +1480,11 @@ function updateDash(){
       </div>`;
     }).join('');
   }
+  // Contadores do card Urgências
+  const _uPraz=document.getElementById('urg-count-prazos');if(_uPraz)_uPraz.textContent=alertRecs.length||'0';
+  const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
+  const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
+
   renderCalendario();
 }
 
