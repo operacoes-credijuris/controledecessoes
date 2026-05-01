@@ -2565,27 +2565,19 @@ function _limparDescricao(txt){
   return s.replace(/\s{2,}/g,' ').trim();
 }
 
-async function _summarizeMovimentos(movs){
-  // Monta array normalizado com data + texto limpo
-  const items=movs.map((mv,i)=>({
-    i,
-    data:(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10),
-    texto:_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1500))
-  }));
-  // Sem chave Gemini: usa texto limpo truncado
-  if(!_GEMINI_KEY){
-    console.warn('[Gemini] Chave não carregada — usando fallback');
-    return items.map(x=>({data:x.data,descricao:x.texto.slice(0,300)}));
-  }
+// Chamada única ao Gemini com movimentações de TODOS os processos juntos
+// items: [{pi, mi, data, texto}] — pi=índice do processo, mi=índice da movimentação
+async function _summarizeBatch(items){
+  if(!_GEMINI_KEY||!items.length) return items.map(x=>({...x,resumo:x.texto.slice(0,300)}));
+  const instrucao=`Você é um assistente jurídico. Receberá movimentações processuais em JSON. Para cada item, resuma em 1-2 frases curtas em português, destacando o ato principal e omitindo referências a leis, datas entre parênteses, CNJ e detalhes de publicação. Retorne APENAS um JSON array no formato [{pi:0,mi:0,resumo:"..."},...] sem texto adicional.`;
+  const payload=JSON.stringify(items.map(x=>({pi:x.pi,mi:x.mi,texto:x.texto})));
   try{
-    const systemPrompt=`Você é um assistente jurídico especializado em resumir movimentações processuais.\n\nReceba o texto da movimentação e reescreva em no máximo duas linhas curtas, destacando apenas:\n- O que aconteceu (ato processual principal)\n- Quem está envolvido, se relevante\n- Referência a decisão ou prazo, se houver\n\nElimine: referências a leis, datas entre parênteses, CNJ, horários, detalhes de publicação, e qualquer informação redundante.\nUse linguagem direta, sem abreviações truncadas. Responda apenas com o resumo, sem explicações.`;
-    const userPrompt=`Você receberá uma lista de movimentações judiciais em JSON. Para cada item resuma em no máximo 2 frases curtas em português, mantendo as informações essenciais. Retorne APENAS um JSON array no formato [{i:0,resumo:"..."}, ...] sem texto adicional.\n\n${JSON.stringify(items.map(x=>({i:x.i,texto:x.texto})))}`;
     const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${_GEMINI_KEY}`,{
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({
-        contents:[{parts:[{text:systemPrompt+'\n\n'+userPrompt}]}],
-        generationConfig:{maxOutputTokens:2048,temperature:0.2}
+        contents:[{parts:[{text:instrucao+'\n\n'+payload}]}],
+        generationConfig:{maxOutputTokens:8192,temperature:0.2}
       })
     });
     if(!res.ok){
@@ -2596,12 +2588,12 @@ async function _summarizeMovimentos(movs){
     const txt=(d.candidates?.[0]?.content?.parts?.[0]?.text)||'[]';
     const m=txt.match(/\[[\s\S]*\]/);
     const summaries=m?JSON.parse(m[0]):[];
-    const map=Object.fromEntries(summaries.map(s=>[String(s.i),s.resumo||'']));
-    return items.map(x=>({data:x.data,descricao:map[String(x.i)]||x.texto.slice(0,300)}));
+    const map=Object.fromEntries(summaries.map(s=>[`${s.pi}:${s.mi}`,s.resumo||'']));
+    return items.map(x=>({...x,resumo:map[`${x.pi}:${x.mi}`]||x.texto.slice(0,300)}));
   }catch(e){
-    console.error('[Gemini] Erro ao resumir movimentações:',e);
+    console.error('[Gemini] Erro no batch:',e);
     showToast('⚠️ Gemini: '+e.message,6000);
-    return items.map(x=>({data:x.data,descricao:x.texto.slice(0,300)}));
+    return items.map(x=>({...x,resumo:x.texto.slice(0,300)}));
   }
 }
 
@@ -2628,65 +2620,42 @@ async function syncAdvbox(){
   const _authHdr=session?.access_token?{'Authorization':'Bearer '+session.access_token}:{};
   const _PROXY=`${_SB_URL}/functions/v1/advbox-proxy`;
 
+  // FASE 1 — Buscar movimentações de todos os processos no Advbox
+  const pendentes=[]; // processos que precisam de resumo: {mod,rec,arr,idx,movs,pi}
   for(const{mod,rec}of allRecs){
     try{
-      // 1. Buscar lawsuit_id via proxy (evita CORS)
       let srRaw;
       try{
         srRaw=await fetch(`${_PROXY}?action=lawsuits&process_number=${encodeURIComponent(rec.numeroProcesso)}`,
           {headers:{..._authHdr,'apikey':_SB_KEY}});
-      }catch(netErr){
-        throw new Error('Falha de rede ao chamar proxy lawsuits: '+netErr.message);
-      }
+      }catch(netErr){throw new Error('Rede lawsuits: '+netErr.message);}
       if(srRaw.status===204||srRaw.status===404){done++;setBtn(done);await _sleep(2000);continue;}
-      if(!srRaw.ok){
-        let body='';try{body=await srRaw.text();}catch{}
-        throw new Error(`Proxy lawsuits HTTP ${srRaw.status}: ${body.slice(0,200)}`);
-      }
+      if(!srRaw.ok){let b='';try{b=await srRaw.text();}catch{}throw new Error(`Proxy lawsuits ${srRaw.status}: ${b.slice(0,200)}`);}
       const sd=await srRaw.json();
       const lawsuits=Array.isArray(sd)?sd:(sd.results||sd.data||[]);
       if(!lawsuits.length){done++;setBtn(done);await _sleep(2000);continue;}
       const lid=lawsuits[0].id;
 
-      // 2. Buscar movimentações via proxy (evita CORS)
       let mrRaw;
       try{
         mrRaw=await fetch(`${_PROXY}?action=movements&lawsuit_id=${lid}`,
           {headers:{..._authHdr,'apikey':_SB_KEY}});
-      }catch(netErr){
-        throw new Error('Falha de rede ao chamar proxy movements: '+netErr.message);
-      }
+      }catch(netErr){throw new Error('Rede movements: '+netErr.message);}
       if(mrRaw.status===204){done++;setBtn(done);await _sleep(2000);continue;}
-      if(!mrRaw.ok){
-        let body='';try{body=await mrRaw.text();}catch{}
-        throw new Error(`Proxy movements HTTP ${mrRaw.status}: ${body.slice(0,200)}`);
-      }
+      if(!mrRaw.ok){let b='';try{b=await mrRaw.text();}catch{}throw new Error(`Proxy movements ${mrRaw.status}: ${b.slice(0,200)}`);}
       const md=await mrRaw.json();
       const movs=Array.isArray(md)?md:(md.results||md.data||[]);
       if(!movs.length){done++;setBtn(done);await _sleep(2000);continue;}
 
-      // 3. Verificar se houve mudança (evita chamar Gemini sem necessidade)
       const arr=load(mod);
       const idx=arr.findIndex(r=>r.id===rec.id);
       const histAtual=idx!==-1?(arr[idx].historicoProcessual||[]):[];
-      const _advboxCount=idx!==-1?(arr[idx]._advboxMovCount||0):0;
-      if(movs.length===_advboxCount&&histAtual.length){
-        // Sem movimentações novas — pula IA e mantém histórico atual
+      const savedCount=idx!==-1?(arr[idx]._advboxMovCount||0):0;
+      if(movs.length===savedCount&&histAtual.length){
+        // Sem novidades — mantém histórico atual
         done++;setBtn(done);await _sleep(2000);continue;
       }
-
-      // 4. Resumir com IA apenas quando há novidades
-      const newHist=await _summarizeMovimentos(movs);
-      newHist.sort((a,b)=>a.data.localeCompare(b.data));
-
-      // 5. Substituir historicoProcessual e salvar no Supabase
-      if(idx!==-1){
-        arr[idx]={...arr[idx],historicoProcessual:newHist,_advboxMovCount:movs.length};
-        save(mod,arr);
-      }
-      synced++;
-      // Pausa extra após chamada ao Gemini para respeitar limite de 15 req/min
-      await _sleep(2000);
+      pendentes.push({mod,rec,arr,idx,movs,pi:pendentes.length});
     }catch(e){
       console.error('[Advbox] Erro no processo',rec.numeroProcesso,e);
       erros.push(`${rec.numeroProcesso}: ${e.message}`);
@@ -2695,6 +2664,34 @@ async function syncAdvbox(){
     done++;
     setBtn(done);
     await _sleep(2000);
+  }
+
+  // FASE 2 — Uma única chamada ao Gemini com todas as movimentações pendentes
+  if(pendentes.length){
+    btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Resumindo com IA…`;
+    const allItems=pendentes.flatMap(({movs,pi})=>
+      movs.map((mv,mi)=>({
+        pi,mi,
+        data:(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10),
+        texto:_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500))
+      }))
+    );
+    const resumidos=await _summarizeBatch(allItems);
+    // Indexar resultado por pi:mi
+    const rmap=Object.fromEntries(resumidos.map(r=>[`${r.pi}:${r.mi}`,r.resumo]));
+
+    // FASE 3 — Salvar histórico por processo
+    for(const{mod,arr,idx,movs,pi}of pendentes){
+      if(idx===-1){synced++;continue;}
+      const hist=movs.map((mv,mi)=>{
+        const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
+        const texto=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500));
+        return{data,descricao:rmap[`${pi}:${mi}`]||texto.slice(0,300)};
+      }).sort((a,b)=>a.data.localeCompare(b.data));
+      arr[idx]={...arr[idx],historicoProcessual:hist,_advboxMovCount:movs.length};
+      save(mod,arr);
+      synced++;
+    }
   }
 
   btn.disabled=false;
