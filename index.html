@@ -95,7 +95,7 @@ a{color:inherit;text-decoration:none}
 
 /* STAT CARDS */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:16px;gap:0;border-bottom:1px solid #1e2433}
-.sc{padding:14px 20px;position:relative;background:transparent;border:none;border-right:1px solid #1e2433}
+.sc{padding:14px 20px;position:relative;background:transparent;border:none;border-right:1px solid rgba(30,36,51,.5)}
 .sc:last-child{border-right:none}
 .sc-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;font-family:var(--font-body)}
 .sc-val{font-size:30px;font-weight:700;color:#fff;font-family:var(--font-head)}
@@ -238,16 +238,16 @@ tr:hover .btn-expand{color:#94a3b8}
 @media(max-width:900px){.db-grid{grid-template-columns:1fr}}
 .db-prio{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:visible;background:transparent;border:none}
 .db-prio-sec{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid #1e2433;border-radius:10px;background:#151820}
-.db-prio-hdr{padding:10px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:capitalize;letter-spacing:0;flex-shrink:0;font-family:var(--font-body);background:#0d1117;border-bottom:1px solid #1e2433}
+.db-prio-hdr{padding:10px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:capitalize;letter-spacing:0;flex-shrink:0;font-family:var(--font-body);background:#0d1117;border-bottom:1px solid rgba(30,36,51,.4)}
 .db-prio-body{flex:1;overflow-y:auto;min-height:0}
 .db-mov-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(30,36,51,.6)}
 .db-mov-item:last-child{border-bottom:none}
 .db-mov-item:hover{background:rgba(255,255,255,.02)}
 .db-expand-btn{background:none;border:none;cursor:pointer;color:#4b5563;padding:2px 4px;border-radius:4px;transition:color .15s;margin-left:auto;display:flex;align-items:center;flex-shrink:0}
 .db-expand-btn:hover{color:#94a3b8}
-.mov-group{border-bottom:1px solid #1e2433}
+.mov-group{border-bottom:1px solid rgba(30,36,51,.4)}
 .mov-group:last-child{border-bottom:none}
-.mov-group-hdr{display:flex;align-items:center;padding:10px 14px;cursor:pointer;gap:10px}
+.mov-group-hdr{display:flex;align-items:center;padding:12px 16px;cursor:pointer;gap:10px}
 .mov-group-hdr:hover{background:#1a1f2e}
 .mov-arrow{font-size:9px;color:#4b5563;flex-shrink:0;transition:color .15s}
 .mov-group-hdr:hover .mov-arrow{color:#6b7280}
@@ -261,7 +261,7 @@ tr:hover .btn-expand{color:#94a3b8}
 .db-tbl-wrap tbody tr:hover{background:#1a1f2e}
 .db-tbl-wrap tbody td{padding:6px 10px;vertical-align:middle;white-space:nowrap}
 .db-empty{padding:24px 16px;text-align:center;color:var(--txt3);font-size:12px}
-.alert-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(30,36,51,.6)}
+.alert-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(30,36,51,.4)}
 .alert-item:last-child{border:none}
 .al-text{font-size:12px;color:var(--txt)}
 .al-sub{font-size:10px;color:var(--txt3);margin-top:1px}
@@ -446,8 +446,8 @@ tr.child-row td:first-child{padding-left:36px}
           <div id="cal-container"></div>
         </div>
         <div style="background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;margin-top:14px">
-          <div style="padding:10px 16px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;background:#0d1117;border-bottom:1px solid #1e2433">Urgências</div>
-          <div onclick="openDashModal('prazos')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;border-bottom:1px solid #1e2433;transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
+          <div style="padding:10px 16px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;background:#0d1117;border-bottom:1px solid rgba(30,36,51,.4)">Urgências</div>
+          <div onclick="openDashModal('prazos')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:6px;height:6px;border-radius:50%;background:#f87171;flex-shrink:0"></div>
               <span style="font-size:13px;color:#e2e8f0">Prazos Fatais</span>
@@ -457,7 +457,7 @@ tr.child-row td:first-child{padding-left:36px}
               <span style="color:#4b5563;font-size:14px">›</span>
             </div>
           </div>
-          <div onclick="openDashModal('liquidacao')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;border-bottom:1px solid #1e2433;transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
+          <div onclick="openDashModal('liquidacao')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:6px;height:6px;border-radius:50%;background:#fbbf24;flex-shrink:0"></div>
               <span style="font-size:13px;color:#e2e8f0">Liquidação</span>
@@ -467,7 +467,7 @@ tr.child-row td:first-child{padding-left:36px}
               <span style="color:#4b5563;font-size:14px">›</span>
             </div>
           </div>
-          <div onclick="openDashModal('paralisados')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
+          <div onclick="openDashModal('paralisados')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background='transparent'">
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:6px;height:6px;border-radius:50%;background:#fb923c;flex-shrink:0"></div>
               <span style="font-size:13px;color:#e2e8f0">Paralisados</span>
@@ -1458,7 +1458,7 @@ function updateDash(){
     mb.innerHTML=gruposArr.map(({mod,r,movs})=>{
       const partes=(r.cedente||r.cessionario)
         ?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
-      const movsHtml=movs.map(m=>`<div style="padding:6px 16px 6px 24px;border-top:1px solid #1e2433;font-size:11px">
+      const movsHtml=movs.map(m=>`<div style="padding:6px 16px 6px 24px;border-top:1px solid rgba(30,36,51,.4);font-size:11px">
           <span style="color:#6b7280;margin-right:8px">${fmtDate(m.data)}</span><span style="color:var(--txt2)">${esc(m.desc)||'<span style="color:#4b5563">—</span>'}</span>
         </div>`).join('');
       const cnt=movs.length;
