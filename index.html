@@ -435,21 +435,21 @@ tr.child-row td:first-child{padding-left:36px}
       <!-- COLUNA ESQUERDA — Prioridades (60%) -->
       <div class="db-prio">
         <div class="db-prio-sec">
-          <div class="db-prio-hdr">Prazos Fatais</div>
+          <div class="db-prio-hdr">Prazos Fatais<span id="ds-cnt-alerts" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span></div>
           <div id="ds-alerts-body" class="db-prio-body"></div>
         </div>
         <div class="db-prio-sec">
-          <div class="db-prio-hdr">Liquidação Próxima ou Vencida</div>
+          <div class="db-prio-hdr">Liquidação Próxima ou Vencida<span id="ds-cnt-liq" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span></div>
           <div id="ds-liq-body" class="db-prio-body"></div>
         </div>
         <div class="db-prio-sec">
-          <div class="db-prio-hdr">Paralisados</div>
+          <div class="db-prio-hdr">Paralisados<span id="ds-cnt-par" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span></div>
           <div id="ds-par-body" class="db-prio-body"></div>
         </div>
       </div>
       <!-- COLUNA DIREITA — Últimas Movimentações (40%) -->
       <div style="background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div class="db-prio-hdr">Últimas Movimentações</div>
+        <div class="db-prio-hdr">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span></div>
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
     </div>
@@ -1274,6 +1274,7 @@ function updateDash(){
       return a._diff-b._diff;
     });
 
+  document.getElementById('ds-cnt-liq').textContent=liqRecs.length?`(${liqRecs.length})`:'';
   const lb=document.getElementById('ds-liq-body');
   if(!liqRecs.length){
     lb.innerHTML='<div class="db-empty">Nenhum processo com liquidação próxima ou vencida</div>';
@@ -1309,6 +1310,7 @@ function updateDash(){
     .filter(r=>r&&r._dias>=30)
     .sort((a,b)=>b._dias-a._dias);
 
+  document.getElementById('ds-cnt-par').textContent=parRecs.length?`(${parRecs.length})`:'';
   const pb=document.getElementById('ds-par-body');
   if(!parRecs.length){
     pb.innerHTML='<div class="db-empty">Nenhum processo paralisado há mais de 30 dias</div>';
@@ -1338,6 +1340,7 @@ function updateDash(){
   ].filter(r=>r.prazoFatal&&normDate(r.prazoFatal))
     .sort((a,b)=>normDate(a.prazoFatal).localeCompare(normDate(b.prazoFatal)));
 
+  document.getElementById('ds-cnt-alerts').textContent=alertRecs.length?`(${alertRecs.length})`:'';
   const ab=document.getElementById('ds-alerts-body');
   if(!alertRecs.length){
     ab.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt3);font-size:12px">Nenhum alerta de prazo fatal</div>';
@@ -1390,6 +1393,8 @@ function updateDash(){
   grupos.forEach(g=>g.movs.sort((a,b)=>b.data.localeCompare(a.data)));
   // Ordenar grupos pela data mais recente
   const gruposArr=[...grupos.values()].sort((a,b)=>b.movs[0].data.localeCompare(a.movs[0].data));
+  const totalMovs=movRows.length;
+  document.getElementById('ds-cnt-mov').textContent=totalMovs?`(${totalMovs})`:'';
   const mb=document.getElementById('ds-mov-body');
   if(!gruposArr.length){
     mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 30 dias</div>';
