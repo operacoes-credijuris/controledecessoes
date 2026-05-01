@@ -424,7 +424,7 @@ tr.child-row td:first-child{padding-left:36px}
 
   <!-- DASHBOARD -->
   <div id="pane-dashboard" class="pane on">
-    <div class="stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
+    <div class="stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:10px">
       <div class="sc"><div class="sc-lbl">Total de Créditos</div><div class="sc-val" id="ds-total">0</div></div>
       <div class="sc"><div class="sc-lbl">Cessões Ativas</div><div class="sc-val" id="ds-cess">0</div></div>
       <div class="sc"><div class="sc-lbl">RPV Complementar</div><div class="sc-val" id="ds-rpv">0</div></div>
@@ -1411,7 +1411,7 @@ function updateDash(){
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <span class="bdg ${modBdg[mod]}" style="font-size:10px">${modLabel[mod]}</span>
-            <span style="font-size:10px;color:#6b7280;white-space:nowrap">${cnt} mov${cnt>1?'s':''}</span>
+            <span style="font-size:10px;color:#6b7280;white-space:nowrap">${cnt}</span>
             <span class="mov-arrow">▶</span>
           </div>
         </div>
