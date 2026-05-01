@@ -242,6 +242,12 @@ tr:hover .btn-expand{color:#94a3b8}
 .db-mov-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(30,36,51,.6)}
 .db-mov-item:last-child{border-bottom:none}
 .db-mov-item:hover{background:rgba(255,255,255,.02)}
+.mov-group{border-bottom:1px solid #1e2433}
+.mov-group:last-child{border-bottom:none}
+.mov-group-hdr{display:flex;align-items:center;padding:10px 14px;cursor:pointer;gap:10px}
+.mov-group-hdr:hover{background:#1a1f2e}
+.mov-arrow{font-size:9px;color:#4b5563;flex-shrink:0;transition:color .15s}
+.mov-group-hdr:hover .mov-arrow{color:#6b7280}
 .db-card{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
 .db-card-hdr{padding:13px 16px;border-bottom:1px solid var(--brd);font-size:13px;font-weight:600;color:var(--txt2);flex-shrink:0;font-family:var(--font-head)}
 .db-tbl-wrap{overflow-y:auto;flex:1;min-height:0}
@@ -1111,6 +1117,14 @@ function _sbSetCollapsed(v){
   }
 }
 
+function toggleMovGroup(hdr){
+  const body=hdr.nextElementSibling;
+  const arrow=hdr.querySelector('.mov-arrow');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  arrow.textContent=isOpen?'▶':'▼';
+}
+
 function toggleSidebar(){
   const sb=document.getElementById('sidebar');
   const collapsed=!sb.classList.contains('collapsed');
@@ -1349,10 +1363,11 @@ function updateDash(){
     }).join('');
   }
 
-  // ÚLTIMAS MOVIMENTAÇÕES — últimas 30 dias, todos os módulos
+  // ÚLTIMAS MOVIMENTAÇÕES — últimas 30 dias, agrupadas por processo
   const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-30);
   const modLabel={cessoes:'Cessões',rpv:'RPV',requerimentos:'Diversos'};
   const modBdg={cessoes:'bdg-blue',rpv:'bdg-grn',requerimentos:'bdg-ylw'};
+  // Coletar todas as movimentações recentes
   const movRows=[];
   [['cessoes',ce],['rpv',rp],['requerimentos',re]].forEach(([mod,recs])=>{
     recs.forEach(r=>{
@@ -1364,25 +1379,44 @@ function updateDash(){
       });
     });
   });
-  movRows.sort((a,b)=>b.data.localeCompare(a.data));
-  const movTop=movRows.slice(0,100);
+  // Agrupar por processo (chave: id único do registro)
+  const grupos=new Map();
+  movRows.forEach(row=>{
+    const key=row.r.id||row.r.numeroProcesso||'';
+    if(!grupos.has(key))grupos.set(key,{mod:row.mod,r:row.r,movs:[]});
+    grupos.get(key).movs.push({data:row.data,desc:row.desc});
+  });
+  // Ordenar movs dentro de cada grupo (mais recente primeiro)
+  grupos.forEach(g=>g.movs.sort((a,b)=>b.data.localeCompare(a.data)));
+  // Ordenar grupos pela data mais recente
+  const gruposArr=[...grupos.values()].sort((a,b)=>b.movs[0].data.localeCompare(a.movs[0].data));
   const mb=document.getElementById('ds-mov-body');
-  if(!movTop.length){
+  if(!gruposArr.length){
     mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 30 dias</div>';
   } else {
-    mb.innerHTML=movTop.map(({mod,r,data,desc})=>{
+    mb.innerHTML=gruposArr.map(({mod,r,movs})=>{
       const partes=(r.cedente||r.cessionario)
-        ?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
-      return`<div class="db-mov-item">
-        <div style="font-size:11px;color:#6b7280;min-width:62px;flex-shrink:0;padding-top:1px">${fmtDate(data)}</div>
-        <div style="flex:1;min-width:0;overflow:hidden">
-          <div style="display:flex;align-items:center;gap:4px;overflow:hidden">
-            <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso||'')}</span>${cpyBtn(r.numeroProcesso||'')}${navBtn(mod,r.id)}
+        ?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
+      const movsHtml=movs.map(m=>`<div style="padding:6px 16px 6px 24px;border-top:1px solid #1e2433;font-size:11px">
+          <span style="color:#6b7280;margin-right:8px">${fmtDate(m.data)}</span><span style="color:var(--txt2)">${esc(m.desc)||'<span style="color:#4b5563">—</span>'}</span>
+        </div>`).join('');
+      const cnt=movs.length;
+      return`<div class="mov-group">
+        <div class="mov-group-hdr" onclick="toggleMovGroup(this)">
+          <div style="flex:1;min-width:0;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:4px;overflow:hidden">
+              <span style="font-size:11px;color:#6b7280;flex-shrink:0">${fmtDate(movs[0].data)}</span>
+              <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500">${esc(r.numeroProcesso||'')}</span>${cpyBtn(r.numeroProcesso||'')}${navBtn(mod,r.id)}
+            </div>
+            ${partes}
           </div>
-          ${partes}
-          <div style="font-size:11px;color:var(--txt2);overflow:hidden;white-space:normal;margin-top:2px">${esc(desc)||'<span style="color:#4b5563">—</span>'}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span class="bdg ${modBdg[mod]}" style="font-size:10px">${modLabel[mod]}</span>
+            <span style="font-size:10px;color:#6b7280;white-space:nowrap">${cnt} mov${cnt>1?'s':''}</span>
+            <span class="mov-arrow">▶</span>
+          </div>
         </div>
-        <div style="flex-shrink:0"><span class="bdg ${modBdg[mod]}" style="font-size:10px">${modLabel[mod]}</span></div>
+        <div class="mov-group-body" style="display:none">${movsHtml}</div>
       </div>`;
     }).join('');
   }
