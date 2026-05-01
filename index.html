@@ -251,7 +251,7 @@ tr:hover .btn-expand{color:#94a3b8}
 .mov-arrow{font-size:9px;color:#4b5563;flex-shrink:0;transition:color .15s}
 .mov-group-hdr:hover .mov-arrow{color:#6b7280}
 /* CALENDÁRIO */
-.cal-widget{background:#151820;border:1px solid #2a3348;border-radius:16px;padding:20px;width:100%;max-width:280px;box-shadow:0 4px 24px rgba(0,0,0,.4)}
+.cal-widget{background:transparent;border:none;box-shadow:none;border-top:1px solid #1e2433;border-bottom:1px solid #1e2433;padding:16px 8px;width:100%;max-width:280px}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .cal-nav-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:16px;padding:2px 8px;border-radius:4px;transition:color .15s,background .15s;line-height:1}
 .cal-nav-btn:hover{color:#e2e8f0;background:rgba(255,255,255,.06)}
@@ -480,7 +480,7 @@ tr.child-row td:first-child{padding-left:36px}
             <div id="cal-days" style="display:contents"></div>
           </div>
         </div>
-        <div style="margin-top:12px;font-size:10px;color:#4b5563;text-align:center">Prazos fatais<span id="ds-cnt-cal" style="margin-left:4px"></span></div>
+        <span id="ds-cnt-cal" style="display:none"></span>
       </div>
     </div>
   </div>
