@@ -2665,15 +2665,23 @@ async function syncAdvbox(){
       const movs=Array.isArray(md)?md:(md.results||md.data||[]);
       if(!movs.length){done++;setBtn(done);await _sleep(2000);continue;}
 
-      // 3. Resumir com IA (1 chamada por processo)
+      // 3. Verificar se houve mudança (evita chamar Gemini sem necessidade)
+      const arr=load(mod);
+      const idx=arr.findIndex(r=>r.id===rec.id);
+      const histAtual=idx!==-1?(arr[idx].historicoProcessual||[]):[];
+      const _advboxCount=idx!==-1?(arr[idx]._advboxMovCount||0):0;
+      if(movs.length===_advboxCount&&histAtual.length){
+        // Sem movimentações novas — pula IA e mantém histórico atual
+        done++;setBtn(done);await _sleep(2000);continue;
+      }
+
+      // 4. Resumir com IA apenas quando há novidades
       const newHist=await _summarizeMovimentos(movs);
       newHist.sort((a,b)=>a.data.localeCompare(b.data));
 
-      // 4. Substituir historicoProcessual e salvar no Supabase
-      const arr=load(mod);
-      const idx=arr.findIndex(r=>r.id===rec.id);
+      // 5. Substituir historicoProcessual e salvar no Supabase
       if(idx!==-1){
-        arr[idx]={...arr[idx],historicoProcessual:newHist};
+        arr[idx]={...arr[idx],historicoProcessual:newHist,_advboxMovCount:movs.length};
         save(mod,arr);
       }
       synced++;
