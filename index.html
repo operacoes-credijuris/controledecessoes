@@ -1526,13 +1526,11 @@ function renderCalendario(){
     const dateStr=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const prazos=prazoMap[dateStr];
     const isToday=dateStr===todayStr2;
+    const _lvCol={exp:'#f87171',urg:'#f97316',warn:'#fb923c',next:'#fbbf24',future:'#4ade80'};
     let col='';
     if(prazos){
-      const diff=prazos[0].diff;
-      if(diff<=3)col='#f87171';
-      else if(diff<=7)col='#fb923c';
-      else if(diff<=15)col='#fbbf24';
-      else col='#4ade80';
+      const lv=fatalLevel(dateStr)||'future';
+      col=_lvCol[lv]||'#4ade80';
     }
     const dot=prazos
       ?`<span style="display:block;width:4px;height:4px;border-radius:50%;background:${col};margin-top:2px"></span>`
