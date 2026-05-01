@@ -440,38 +440,40 @@ tr.child-row td:first-child{padding-left:36px}
         <div style="padding:8px 0">
           <div id="cal-container"></div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin:16px 0 10px;padding-top:14px;border-top:1px solid rgba(30,36,51,.5)">
-          <div style="width:3px;height:16px;background:#ef4444;border-radius:2px;flex-shrink:0"></div>
-          <span style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px">Urgências</span>
-        </div>
-        <div onclick="openDashModal('prazos')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:rgba(239,68,68,.04);border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='rgba(239,68,68,.04)'">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:6px;height:6px;border-radius:50%;background:#f87171;flex-shrink:0"></div>
-            <span style="font-size:13px;color:#e2e8f0">Prazos Fatais</span>
+        <div style="flex:1;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:8px;margin:16px 0 10px;padding-top:14px;border-top:1px solid rgba(30,36,51,.5)">
+            <div style="width:3px;height:16px;background:#ef4444;border-radius:2px;flex-shrink:0"></div>
+            <span style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px">Urgências</span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="urg-count-prazos" style="font-size:11px;color:#4b5563">0</span>
-            <span style="color:#4b5563;font-size:14px">›</span>
+          <div onclick="openDashModal('prazos')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:rgba(239,68,68,.04);border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='rgba(239,68,68,.04)'">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#f87171;flex-shrink:0"></div>
+              <span style="font-size:13px;color:#e2e8f0">Prazos Fatais</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="urg-count-prazos" style="font-size:11px;color:#4b5563">0</span>
+              <span style="color:#4b5563;font-size:14px">›</span>
+            </div>
           </div>
-        </div>
-        <div onclick="openDashModal('liquidacao')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:rgba(239,68,68,.04);border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='rgba(239,68,68,.04)'">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:6px;height:6px;border-radius:50%;background:#fbbf24;flex-shrink:0"></div>
-            <span style="font-size:13px;color:#e2e8f0">Liquidação</span>
+          <div onclick="openDashModal('liquidacao')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:rgba(239,68,68,.04);border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='rgba(239,68,68,.04)'">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#fbbf24;flex-shrink:0"></div>
+              <span style="font-size:13px;color:#e2e8f0">Liquidação</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="urg-count-liq" style="font-size:11px;color:#4b5563">0</span>
+              <span style="color:#4b5563;font-size:14px">›</span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="urg-count-liq" style="font-size:11px;color:#4b5563">0</span>
-            <span style="color:#4b5563;font-size:14px">›</span>
-          </div>
-        </div>
-        <div onclick="openDashModal('paralisados')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:rgba(239,68,68,.04);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='rgba(239,68,68,.04)'">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:6px;height:6px;border-radius:50%;background:#fb923c;flex-shrink:0"></div>
-            <span style="font-size:13px;color:#e2e8f0">Paralisados</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="urg-count-par" style="font-size:11px;color:#4b5563">0</span>
-            <span style="color:#4b5563;font-size:14px">›</span>
+          <div onclick="openDashModal('paralisados')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:rgba(239,68,68,.04);border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='rgba(239,68,68,.04)'">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#fb923c;flex-shrink:0"></div>
+              <span style="font-size:13px;color:#e2e8f0">Paralisados</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="urg-count-par" style="font-size:11px;color:#4b5563">0</span>
+              <span style="color:#4b5563;font-size:14px">›</span>
+            </div>
           </div>
         </div>
       </div>
