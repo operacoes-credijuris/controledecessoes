@@ -257,7 +257,7 @@ tr:hover .btn-expand{color:#94a3b8}
 .cal-nav-btns{display:flex;gap:6px}
 .cal-nav-btn{width:28px;height:28px;border-radius:50%;border:1px solid #2a3348;background:transparent;cursor:pointer;color:#6b7280;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;transition:color .15s,border-color .15s,background .15s;line-height:1}
 .cal-nav-btn:hover{color:#e2e8f0;border-color:#3d4a63;background:rgba(255,255,255,.06)}
-.cal-month{font-size:22px;font-weight:600;color:#e2e8f0;font-family:var(--font-head)}
+.cal-month{font-size:22px;font-weight:700;color:#e2e8f0;font-family:var(--font-head)}
 .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
 .cal-dow{font-size:11px;color:#4b5563;text-align:center;padding-bottom:8px;font-weight:600}
 .cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -1484,9 +1484,11 @@ function calNav(dir){
 
 function renderCalendario(){
   const cal=document.getElementById('cal-container');
+  if(!cal)return;
   const ano=_calYear, mes=_calMonth;
   const hoje=new Date(); hoje.setHours(0,0,0,0);
-  const todayStr=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+  // Usar nome diferente de todayStr() para evitar conflito com a função global
+  const hjStr=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
 
   // Mapa de prazos fatais
   const ce=load('cessoes'),rp=load('rpv'),re=load('requerimentos');
@@ -1504,68 +1506,64 @@ function renderCalendario(){
   document.getElementById('ds-cnt-cal').textContent=totalNoMes?`· ${totalNoMes} dia${totalNoMes>1?'s':''} com prazo`:'';
 
   const nomes=['D','S','T','Q','Q','S','S'];
-  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const nomeMes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const _lvCol={exp:'#f87171',urg:'#f97316',warn:'#fb923c',next:'#fbbf24',future:'#4ade80'};
 
   const primeiroDia=new Date(ano,mes,1).getDay();
   const diasNoMes=new Date(ano,mes+1,0).getDate();
   const diasMesAnterior=new Date(ano,mes,0).getDate();
 
-  // ── Header ──────────────────────────────────────────────
+  // ── Header (usa classes CSS existentes) ─────────────────
   let html=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:0 4px">
-      <span style="font-size:22px;font-weight:700;color:#e2e8f0;font-family:var(--font-head)">${meses[mes]} ${ano}</span>
-      <div style="display:flex;gap:6px">
-        <button onclick="calNav(-1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">‹</button>
-        <button onclick="calNav(1)"  style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">›</button>
+      <span class="cal-month">${nomeMes[mes]} ${ano}</span>
+      <div class="cal-nav-btns">
+        <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+        <button class="cal-nav-btn" onclick="calNav(1)">›</button>
       </div>
     </div>`;
 
   // ── Labels dias da semana ────────────────────────────────
-  html+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:8px">`;
-  nomes.forEach(n=>{html+=`<div style="text-align:center;font-size:11px;font-weight:600;color:#374151;padding-bottom:8px">${n}</div>`;});
-  html+=`</div>`;
+  html+=`<div class="cal-dow-row">${nomes.map(n=>`<div class="cal-dow">${n}</div>`).join('')}</div>`;
 
-  // ── Grade de dias ────────────────────────────────────────
-  html+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);row-gap:4px">`;
+  // ── Grade de dias (flat grid — sem .cal-week) ────────────
+  html+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">`;
 
   // dias mês anterior
   for(let i=primeiroDia-1;i>=0;i--){
-    html+=`<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#1e2433">${diasMesAnterior-i}</div></div>`;
+    html+=`<div class="cal-day other-month">${diasMesAnterior-i}</div>`;
   }
 
   // dias mês atual
   for(let d=1;d<=diasNoMes;d++){
     const dateStr=`${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isHoje=dateStr===todayStr;
+    const isHoje=dateStr===hjStr;
     const prazos=prazoMap[dateStr];
     let col='';
     if(prazos){const lv=fatalLevel(dateStr)||'future';col=_lvCol[lv]||'#4ade80';}
 
-    let bg='transparent',txtColor='#6b7280',fw='400';
-    if(isHoje){bg='#0077ff';txtColor='#fff';fw='700';}
-    else if(col){txtColor=col;}
-
-    const dot=(prazos&&!isHoje)?`<div style="width:4px;height:4px;border-radius:50%;background:${col};margin:2px auto 0;flex-shrink:0"></div>`:'';
+    const todayCls=isHoje?' today-num':'';
+    const colStyle=(!isHoje&&col)?` style="color:${col}"`:(!isHoje?' style="color:#6b7280"':'');
+    const dot=(prazos&&!isHoje)?`<span class="cal-day-dot" style="background:${col}"></span>`:'';
 
     let tip='';
     if(prazos){
       const tipLines=prazos.map(p=>{
         const label=p.diff<0?'vencido':p.diff===0?'hoje':p.diff===1?'1 dia restante':`${p.diff} dias restantes`;
-        const partes=(p.cedente||p.cessionario)?` — ${p.cedente||''}${p.cedente&&p.cessionario?' v. ':''}${p.cessionario||''}`:'';
-        return`• ${p.proc}${partes} (${label})`;
+        const partes=(p.cedente||p.cessionario)?` — ${esc(p.cedente||'')}${p.cedente&&p.cessionario?' v. ':''}${esc(p.cessionario||'')}` :'';
+        return`• ${esc(p.proc)}${partes} (${label})`;
       }).join('<br>');
       tip=`<div class="cal-tip"><strong>${fmtDate(dateStr)}</strong><br>${tipLines}</div>`;
     }
 
-    html+=`<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${bg};font-size:13px;color:${txtColor};font-weight:${fw};cursor:default;position:relative;transition:background .15s" onmouseenter="this.style.background='${isHoje?'#005fcc':bg==='transparent'?'rgba(255,255,255,.05)':bg}'" onmouseleave="this.style.background='${bg}'">${d}${dot}${tip}</div></div>`;
+    html+=`<div class="cal-day${todayCls}"${colStyle}>${d}${dot}${tip}</div>`;
   }
 
   // dias mês seguinte
   const totalCells=primeiroDia+diasNoMes;
   const restantes=totalCells%7===0?0:7-(totalCells%7);
   for(let i=1;i<=restantes;i++){
-    html+=`<div style="text-align:center"><div style="width:36px;height:36px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#1e2433">${i}</div></div>`;
+    html+=`<div class="cal-day other-month">${i}</div>`;
   }
 
   html+=`</div>`;
