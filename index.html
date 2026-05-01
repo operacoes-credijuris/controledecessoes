@@ -251,17 +251,17 @@ tr:hover .btn-expand{color:#94a3b8}
 .mov-arrow{font-size:9px;color:#4b5563;flex-shrink:0;transition:color .15s}
 .mov-group-hdr:hover .mov-arrow{color:#6b7280}
 /* CALENDÁRIO */
-.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #1e2433;flex-shrink:0}
-.cal-nav-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:14px;padding:2px 8px;border-radius:4px;transition:color .15s,background .15s;line-height:1}
+.cal-widget{background:#151820;border:1px solid #2a3348;border-radius:16px;padding:20px;width:100%;max-width:280px;box-shadow:0 4px 24px rgba(0,0,0,.4)}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.cal-nav-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:16px;padding:2px 8px;border-radius:4px;transition:color .15s,background .15s;line-height:1}
 .cal-nav-btn:hover{color:#e2e8f0;background:rgba(255,255,255,.06)}
-.cal-month{font-size:12px;font-weight:600;color:#94a3b8;font-family:var(--font-head)}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:8px}
-.cal-dow{font-size:10px;color:#4b5563;text-align:center;padding:2px 0;font-weight:500}
-.cal-day{width:100%;aspect-ratio:1;border-radius:6px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:default;position:relative;color:#4b5563;transition:background .15s}
-.cal-day.other-month{opacity:.25}
-.cal-day.today-num{outline:1px solid #4b5563}
-.cal-day[title]:hover{z-index:10}
-.cal-tip{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#0d1117;border:1px solid #2a3348;border-radius:6px;padding:6px 10px;font-size:10px;color:#e2e8f0;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;min-width:180px;max-width:260px;white-space:normal;line-height:1.5}
+.cal-month{font-size:13px;font-weight:600;color:#94a3b8;font-family:var(--font-head)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-dow{font-size:10px;color:#4b5563;text-align:center;padding-bottom:4px;font-weight:500}
+.cal-day{width:32px;height:32px;border-radius:8px;font-size:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:default;position:relative;color:#4b5563;transition:background .15s;justify-self:center}
+.cal-day.other-month{opacity:.2}
+.cal-day.today-num{outline:1px solid #4b5563;outline-offset:-1px}
+.cal-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0d1117;border:1px solid #2a3348;border-radius:8px;padding:8px 12px;font-size:10px;color:#e2e8f0;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200;min-width:200px;max-width:280px;white-space:normal;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.6)}
 .cal-day:hover .cal-tip{opacity:1}
 .db-card{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
 .db-card-hdr{padding:13px 16px;border-bottom:1px solid var(--brd);font-size:13px;font-weight:600;color:var(--txt2);flex-shrink:0;font-family:var(--font-head)}
@@ -468,17 +468,19 @@ tr.child-row td:first-child{padding-left:36px}
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
       <!-- TERCEIRA COLUNA — Calendário de Prazos -->
-      <div style="background:#0f1117;border:1px solid #1e2433;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div class="db-prio-hdr" style="display:flex;align-items:center;background:#0d1117">Calendário de Prazos<span id="ds-cnt-cal" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span></div>
-        <div class="cal-nav">
-          <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
-          <span class="cal-month" id="cal-month-lbl"></span>
-          <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px 0;background:transparent;border:none">
+        <div class="cal-widget">
+          <div class="cal-nav">
+            <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+            <span class="cal-month" id="cal-month-lbl"></span>
+            <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+          </div>
+          <div class="cal-grid">
+            <div class="cal-dow">D</div><div class="cal-dow">S</div><div class="cal-dow">T</div><div class="cal-dow">Q</div><div class="cal-dow">Q</div><div class="cal-dow">S</div><div class="cal-dow">S</div>
+            <div id="cal-days" style="display:contents"></div>
+          </div>
         </div>
-        <div class="cal-grid" id="cal-dow-row">
-          <div class="cal-dow">D</div><div class="cal-dow">S</div><div class="cal-dow">T</div><div class="cal-dow">Q</div><div class="cal-dow">Q</div><div class="cal-dow">S</div><div class="cal-dow">S</div>
-        </div>
-        <div class="cal-grid" id="cal-days" style="padding-top:0;overflow-y:auto;flex:1;min-height:0;align-content:start"></div>
+        <div style="margin-top:12px;font-size:10px;color:#4b5563;text-align:center">Prazos fatais<span id="ds-cnt-cal" style="margin-left:4px"></span></div>
       </div>
     </div>
   </div>
@@ -1500,7 +1502,7 @@ function renderCalendario(){
 
   // Contador total de dias com prazo no mês exibido
   const totalNoMes=Object.keys(prazoMap).filter(d=>d.startsWith(`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`)).length;
-  document.getElementById('ds-cnt-cal').textContent=totalNoMes?`· ${totalNoMes}`:'';
+  document.getElementById('ds-cnt-cal').textContent=totalNoMes?`· ${totalNoMes} dia${totalNoMes>1?'s':''} com prazo`:'';
 
   // Label do mês
   const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -1533,8 +1535,8 @@ function renderCalendario(){
       col=_lvCol[lv]||'#4ade80';
     }
     const dot=prazos
-      ?`<span style="display:block;width:4px;height:4px;border-radius:50%;background:${col};margin-top:2px"></span>`
-      :`<span style="display:block;width:4px;height:4px;margin-top:2px"></span>`;
+      ?`<span style="display:block;width:5px;height:5px;border-radius:50%;background:${col};margin-top:2px"></span>`
+      :`<span style="display:block;width:5px;height:5px;margin-top:2px"></span>`;
     const todayCls=isToday?' today-num':'';
     const tipLines=prazos?prazos.map(p=>{
       const label=p.diff<0?'vencido':p.diff===0?'hoje':p.diff===1?'1 dia restante':`${p.diff} dias restantes`;
