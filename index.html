@@ -1364,7 +1364,7 @@ function updateDash(){
   }
 
   // ÚLTIMAS MOVIMENTAÇÕES — últimas 30 dias, agrupadas por processo
-  const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-30);
+  const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-20);
   const modLabel={cessoes:'Cessões',rpv:'RPV',requerimentos:'Diversos'};
   const modBdg={cessoes:'bdg-blue',rpv:'bdg-grn',requerimentos:'bdg-ylw'};
   // Coletar todas as movimentações recentes
