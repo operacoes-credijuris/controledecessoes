@@ -593,7 +593,7 @@ tr.child-row td:first-child{padding-left:36px}
 
 <!-- HISTORY MODAL -->
 <div id="hist-ov" class="ov" onclick="ovClick(event,'hist-ov')">
-  <div class="mdl" style="max-width:580px">
+  <div class="mdl" style="max-width:580px;display:flex;flex-direction:column;overflow:hidden">
     <div class="mdl-hdr">
       <div class="mdl-title">
         <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Histórico</div>
@@ -601,7 +601,8 @@ tr.child-row td:first-child{padding-left:36px}
       </div>
       <button class="mdl-x" onclick="closeModal('hist-ov')">✕</button>
     </div>
-    <div class="mdl-body" id="hist-body"></div>
+    <div class="mdl-body" id="hist-body" style="overflow-y:auto;flex:1"></div>
+    <div id="hist-add" style="padding:14px 22px;border-top:1px solid var(--brd);background:#151820;flex-shrink:0"></div>
     <div class="mdl-footer">
       <button class="btn btn-blue" onclick="closeModal('hist-ov')">Fechar</button>
     </div>
@@ -2335,7 +2336,6 @@ function renderHistBody(rec){
 
   const today=new Date().toISOString().split('T')[0];
   const addHtml=`
-    <div class="divider"></div>
     <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Nova Entrada</div>
     <div class="tl-add">
       <input type="date" id="h-date" value="${today}" style="width:150px">
@@ -2343,7 +2343,8 @@ function renderHistBody(rec){
       <button class="btn btn-gold btn-sm" onclick="addHistEntry()">Adicionar</button>
     </div>`;
 
-  document.getElementById('hist-body').innerHTML=tlHtml+addHtml;
+  document.getElementById('hist-body').innerHTML=tlHtml;
+  document.getElementById('hist-add').innerHTML=addHtml;
 }
 
 function addHistEntry(){
