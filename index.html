@@ -256,11 +256,14 @@ tr:hover .btn-expand{color:#94a3b8}
 .cal-nav-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:16px;padding:2px 8px;border-radius:4px;transition:color .15s,background .15s;line-height:1}
 .cal-nav-btn:hover{color:#e2e8f0;background:rgba(255,255,255,.06)}
 .cal-month{font-size:14px;font-weight:600;color:#94a3b8;font-family:var(--font-head)}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
 .cal-dow{font-size:10px;color:#4b5563;text-align:center;padding-bottom:4px;font-weight:500}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;border-bottom:1px solid rgba(30,36,51,.6);padding-bottom:4px;margin-bottom:4px}
+.cal-week:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .cal-day{width:100%;height:40px;border-radius:8px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:default;position:relative;color:#4b5563;transition:background .15s}
+.cal-day:hover{background:rgba(255,255,255,.03)}
 .cal-day.other-month{opacity:.2}
-.cal-day.today-num{outline:1px solid #4b5563;outline-offset:-1px}
+.cal-day.today-num{border:1px solid #2a3348;border-radius:8px}
 .cal-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0d1117;border:1px solid #2a3348;border-radius:8px;padding:8px 12px;font-size:10px;color:#e2e8f0;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200;min-width:200px;max-width:280px;white-space:normal;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.6)}
 .cal-day:hover .cal-tip{opacity:1}
 .db-card{background:var(--bg2);border:1px solid var(--brd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
@@ -475,11 +478,19 @@ tr.child-row td:first-child{padding-left:36px}
             <span class="cal-month" id="cal-month-lbl"></span>
             <button class="cal-nav-btn" onclick="calNav(1)">›</button>
           </div>
-          <div class="cal-grid">
+          <div class="cal-dow-row">
             <div class="cal-dow">D</div><div class="cal-dow">S</div><div class="cal-dow">T</div><div class="cal-dow">Q</div><div class="cal-dow">Q</div><div class="cal-dow">S</div><div class="cal-dow">S</div>
-            <div id="cal-days" style="display:contents"></div>
+          </div>
+          <div id="cal-days"></div>
+          <!-- legenda -->
+          <div style="display:flex;align-items:center;gap:12px;padding-top:12px;border-top:1px solid #1e2433;margin-top:8px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:4px"><div style="width:5px;height:5px;border-radius:50%;background:#f87171"></div><span style="font-size:10px;color:#4b5563">urgente</span></div>
+            <div style="display:flex;align-items:center;gap:4px"><div style="width:5px;height:5px;border-radius:50%;background:#fb923c"></div><span style="font-size:10px;color:#4b5563">próximo</span></div>
+            <div style="display:flex;align-items:center;gap:4px"><div style="width:5px;height:5px;border-radius:50%;background:#4ade80"></div><span style="font-size:10px;color:#4b5563">futuro</span></div>
           </div>
         </div>
+        <!-- termômetro da carteira -->
+        <div id="cal-termometro" style="margin-top:16px;border-top:1px solid #1e2433;padding-top:16px;width:100%"></div>
         <span id="ds-cnt-cal" style="display:none"></span>
       </div>
     </div>
@@ -1522,18 +1533,14 @@ function renderCalendario(){
   const rem=(7-cells.length%7)%7;
   for(let d=1;d<=rem;d++)cells.push({day:d,cur:false});
 
-  const grid=document.getElementById('cal-days');
-  grid.innerHTML=cells.map(({day,cur})=>{
+  const _lvCol={exp:'#f87171',urg:'#f97316',warn:'#fb923c',next:'#fbbf24',future:'#4ade80'};
+  function _renderCell({day,cur}){
     if(!cur)return`<div class="cal-day other-month">${day}</div>`;
     const dateStr=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const prazos=prazoMap[dateStr];
     const isToday=dateStr===todayStr2;
-    const _lvCol={exp:'#f87171',urg:'#f97316',warn:'#fb923c',next:'#fbbf24',future:'#4ade80'};
     let col='';
-    if(prazos){
-      const lv=fatalLevel(dateStr)||'future';
-      col=_lvCol[lv]||'#4ade80';
-    }
+    if(prazos){const lv=fatalLevel(dateStr)||'future';col=_lvCol[lv]||'#4ade80';}
     const dot=prazos
       ?`<span style="display:block;width:6px;height:6px;border-radius:50%;background:${col};margin-top:2px"></span>`
       :`<span style="display:block;width:6px;height:6px;margin-top:2px"></span>`;
@@ -1545,7 +1552,33 @@ function renderCalendario(){
     }).join('\n'):'';
     const tip=prazos?`<div class="cal-tip"><strong>${fmtDate(dateStr)}</strong><br>${tipLines.replace(/\n/g,'<br>')}</div>`:'';
     return`<div class="cal-day${todayCls}" style="color:${col||'#4b5563'}">${day}${dot}${tip}</div>`;
-  }).join('');
+  }
+  // Agrupar em semanas (linhas de 7)
+  const weeks=[];
+  for(let i=0;i<cells.length;i+=7)weeks.push(cells.slice(i,i+7));
+  document.getElementById('cal-days').innerHTML=weeks.map(w=>`<div class="cal-week">${w.map(_renderCell).join('')}</div>`).join('');
+  renderTermometro();
+}
+
+function renderTermometro(){
+  const ce=load('cessoes');
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const comLiq=ce.filter(r=>!r.vinculoPai&&r.expectativaLiquidacao);
+  if(!comLiq.length){document.getElementById('cal-termometro').innerHTML='';return;}
+  const noPrazo=comLiq.filter(r=>new Date(normDate(r.expectativaLiquidacao)+'T00:00:00')>hoje).length;
+  const vencidos=comLiq.length-noPrazo;
+  const pct=Math.round(noPrazo/comLiq.length*100);
+  const cor=pct>=70?'#4ade80':pct>=40?'#fbbf24':'#f87171';
+  document.getElementById('cal-termometro').innerHTML=`
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Saúde da Carteira</div>
+    <div style="font-size:36px;font-weight:700;color:${cor};font-family:var(--font-head);line-height:1;text-align:center">${pct}%</div>
+    <div style="background:#1e2433;border-radius:4px;height:4px;overflow:hidden;margin-top:10px">
+      <div style="height:100%;border-radius:4px;background:${cor};width:${pct}%;transition:width .3s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px">
+      <span style="font-size:11px;color:#4ade80">${noPrazo} no prazo</span>
+      <span style="font-size:11px;color:#f87171">${vencidos} vencido${vencidos!==1?'s':''}</span>
+    </div>`;
 }
 
 /* ======================================================
