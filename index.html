@@ -232,9 +232,9 @@ tr:hover .btn-expand{color:#94a3b8}
 .pgb:disabled{opacity:.35;cursor:not-allowed}
 
 /* DASHBOARD */
-.db-grid{display:grid;grid-template-columns:60fr 40fr;gap:20px;margin-top:20px;flex:1;min-height:0}
+.db-grid{display:grid;grid-template-columns:60fr 40fr;gap:20px;margin-top:20px;flex:1;min-height:0;align-items:stretch}
 @media(max-width:900px){.db-grid{grid-template-columns:1fr}}
-.db-prio{display:flex;flex-direction:column;gap:12px;height:100%}
+.db-prio{display:flex;flex-direction:column;gap:12px;min-height:0;overflow:hidden}
 .db-prio-sec{flex:1;min-height:0;display:flex;flex-direction:column;background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden}
 .db-prio-hdr{border-left:3px solid #0077ff;padding:10px 14px;font-size:13px;font-weight:600;color:var(--txt2);background:#0d1117;flex-shrink:0;font-family:var(--font-head);border-bottom:1px solid #1e2433}
 .db-prio-body{flex:1;overflow-y:auto;min-height:0}
@@ -441,7 +441,7 @@ tr.child-row td:first-child{padding-left:36px}
         </div>
       </div>
       <!-- COLUNA DIREITA — Últimas Movimentações (40%) -->
-      <div style="background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;height:100%">
+      <div style="background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
         <div class="db-prio-hdr">Últimas Movimentações</div>
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
