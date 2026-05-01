@@ -468,8 +468,8 @@ tr.child-row td:first-child{padding-left:36px}
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
       <!-- TERCEIRA COLUNA — Calendário de Prazos -->
-      <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(139,92,246,.08);border-left:3px solid rgba(139,92,246,.4)">Calendário de Prazos<span id="ds-cnt-cal" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" style="margin-left:auto" disabled style="opacity:0;pointer-events:none"></button></div>
+      <div style="background:#0f1117;border:1px solid #1e2433;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <div class="db-prio-hdr" style="display:flex;align-items:center;background:#0d1117">Calendário de Prazos<span id="ds-cnt-cal" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span></div>
         <div class="cal-nav">
           <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
           <span class="cal-month" id="cal-month-lbl"></span>
@@ -1526,24 +1526,25 @@ function renderCalendario(){
     const dateStr=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const prazos=prazoMap[dateStr];
     const isToday=dateStr===todayStr2;
-    let bg='',col='',fw='';
+    let col='';
     if(prazos){
       const diff=prazos[0].diff;
-      if(diff<0){bg='rgba(239,68,68,.15)';col='#f87171';}
-      else if(diff===0){bg='rgba(239,68,68,.3)';col='#f87171';fw='font-weight:700';}
-      else if(diff<=3){bg='rgba(249,115,22,.15)';col='#fb923c';}
-      else if(diff<=7){bg='rgba(217,119,6,.15)';col='#fbbf24';}
-      else{bg='rgba(22,163,74,.1)';col='#4ade80';}
+      if(diff<=3)col='#f87171';
+      else if(diff<=7)col='#fb923c';
+      else if(diff<=15)col='#fbbf24';
+      else col='#4ade80';
     }
-    const dot=prazos?`<span style="position:absolute;top:2px;right:3px;width:4px;height:4px;border-radius:50%;background:${col}"></span>`:'';
+    const dot=prazos
+      ?`<span style="display:block;width:4px;height:4px;border-radius:50%;background:${col};margin-top:2px"></span>`
+      :`<span style="display:block;width:4px;height:4px;margin-top:2px"></span>`;
     const todayCls=isToday?' today-num':'';
     const tipLines=prazos?prazos.map(p=>{
       const label=p.diff<0?'vencido':p.diff===0?'hoje':p.diff===1?'1 dia restante':`${p.diff} dias restantes`;
       const partes=(p.cedente||p.cessionario)?` — ${p.cedente||''}${p.cedente&&p.cessionario?' v. ':''}${p.cessionario||''}`:'';
       return`• ${p.proc}${partes} (${label})`;
     }).join('\n'):'';
-    const tip=prazos?`<div class="cal-tip">${fmtDate(dateStr)}\n${tipLines}`.replace(/\n/g,'<br>')+'</div>':'';
-    return`<div class="cal-day${todayCls}" style="background:${bg};color:${col||'#4b5563'};${fw}">${dot}${day}${tip}</div>`;
+    const tip=prazos?`<div class="cal-tip"><strong>${fmtDate(dateStr)}</strong><br>${tipLines.replace(/\n/g,'<br>')}</div>`:'';
+    return`<div class="cal-day${todayCls}" style="color:${col||'#4b5563'}">${day}${dot}${tip}</div>`;
   }).join('');
 }
 
