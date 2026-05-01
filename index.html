@@ -234,7 +234,7 @@ tr:hover .btn-expand{color:#94a3b8}
 .pgb:disabled{opacity:.35;cursor:not-allowed}
 
 /* DASHBOARD */
-.db-grid{display:grid;grid-template-columns:25fr 35fr 40fr;gap:20px;margin-top:20px;flex:1;min-height:0;align-items:stretch}
+.db-grid{display:grid;grid-template-columns:35fr 25fr 40fr;gap:20px;margin-top:20px;flex:1;min-height:0;align-items:stretch}
 @media(max-width:900px){.db-grid{grid-template-columns:1fr}}
 .db-prio{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:visible;background:transparent;border:none}
 .db-prio-sec{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid #1e2433;border-radius:10px;background:#151820}
@@ -435,7 +435,12 @@ tr.child-row td:first-child{padding-left:36px}
       <div class="sc"><div class="sc-lbl">Com Prazo Fatal</div><div class="sc-val red" id="ds-fatal">0</div></div>
     </div>
     <div class="db-grid">
-      <!-- COLUNA 1 — Calendário + Urgências -->
+      <!-- COLUNA 1 — Últimas Movimentações -->
+      <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(0,119,255,.08);border-left:3px solid rgba(0,119,255,.4)">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span></div>
+        <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
+      </div>
+      <!-- COLUNA 2 — Calendário + Urgências -->
       <div style="display:flex;flex-direction:column;height:100%">
         <div style="padding:8px 0">
           <div id="cal-container"></div>
@@ -476,11 +481,6 @@ tr.child-row td:first-child{padding-left:36px}
             </div>
           </div>
         </div>
-      </div>
-      <!-- COLUNA 2 — Últimas Movimentações -->
-      <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div class="db-prio-hdr" style="display:flex;align-items:center;background:rgba(0,119,255,.08);border-left:3px solid rgba(0,119,255,.4)">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span></div>
-        <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
       <!-- COLUNA 3 — vazia -->
       <div style="background:transparent;border:none"></div>
