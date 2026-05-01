@@ -94,8 +94,9 @@ a{color:inherit;text-decoration:none}
 #pane-dashboard.on{display:flex;flex-direction:column;padding:20px 24px}
 
 /* STAT CARDS */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:16px;gap:12px}
-.sc{padding:14px 20px;position:relative;background:#151820;border:1px solid #1e2433;border-radius:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:16px;gap:0;border-bottom:1px solid #1e2433}
+.sc{padding:14px 20px;position:relative;background:transparent;border:none;border-right:1px solid #1e2433}
+.sc:last-child{border-right:none}
 .sc-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;font-family:var(--font-body)}
 .sc-val{font-size:30px;font-weight:700;color:#fff;font-family:var(--font-head)}
 .sc-val.red{color:var(--red2)}
@@ -234,10 +235,9 @@ tr:hover .btn-expand{color:#94a3b8}
 /* DASHBOARD */
 .db-grid{display:grid;grid-template-columns:33fr 66fr;gap:20px;margin-top:20px;flex:1;min-height:0;align-items:stretch}
 @media(max-width:900px){.db-grid{grid-template-columns:1fr}}
-.db-prio{display:flex;flex-direction:column;gap:0;min-height:0;overflow:hidden;background:#151820;border:1px solid #1e2433;border-radius:12px}
-.db-prio-sec{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;border-top:1px solid #1e2433}
-.db-prio-sec:first-child{border-top:none}
-.db-prio-hdr{padding:10px 16px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;flex-shrink:0;font-family:var(--font-body);background:#0d1117;border-bottom:1px solid #1e2433}
+.db-prio{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:visible;background:transparent;border:none}
+.db-prio-sec{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid #1e2433;border-radius:10px;background:#151820}
+.db-prio-hdr{padding:10px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:capitalize;letter-spacing:0;flex-shrink:0;font-family:var(--font-body);background:#0d1117;border-bottom:1px solid #1e2433}
 .db-prio-body{flex:1;overflow-y:auto;min-height:0}
 .db-mov-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(30,36,51,.6)}
 .db-mov-item:last-child{border-bottom:none}
@@ -437,21 +437,21 @@ tr.child-row td:first-child{padding-left:36px}
       <!-- COLUNA ESQUERDA — Prioridades (60%) -->
       <div class="db-prio">
         <div class="db-prio-sec">
-          <div class="db-prio-hdr" style="display:flex;align-items:center">Prazos Fatais<span id="ds-cnt-alerts" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span><button class="db-expand-btn" onclick="openDashModal('prazos')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          <div class="db-prio-hdr" style="display:flex;align-items:center">Prazos Fatais<span id="ds-cnt-alerts" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('prazos')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
           <div id="ds-alerts-body" class="db-prio-body"></div>
         </div>
         <div class="db-prio-sec">
-          <div class="db-prio-hdr" style="display:flex;align-items:center">Liquidação Próxima ou Vencida<span id="ds-cnt-liq" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span><button class="db-expand-btn" onclick="openDashModal('liquidacao')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          <div class="db-prio-hdr" style="display:flex;align-items:center">Liquidação Próxima ou Vencida<span id="ds-cnt-liq" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('liquidacao')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
           <div id="ds-liq-body" class="db-prio-body"></div>
         </div>
         <div class="db-prio-sec">
-          <div class="db-prio-hdr" style="display:flex;align-items:center">Paralisados<span id="ds-cnt-par" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span><button class="db-expand-btn" onclick="openDashModal('paralisados')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          <div class="db-prio-hdr" style="display:flex;align-items:center">Paralisados<span id="ds-cnt-par" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('paralisados')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
           <div id="ds-par-body" class="db-prio-body"></div>
         </div>
       </div>
       <!-- COLUNA DIREITA — Últimas Movimentações (40%) -->
-      <div style="background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div class="db-prio-hdr" style="display:flex;align-items:center">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:10px;color:#4b5563;font-weight:400;margin-left:6px"></span><button class="db-expand-btn" onclick="openDashModal('movimentacoes')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+      <div style="background:#151820;border:1px solid #1e2433;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <div class="db-prio-hdr" style="display:flex;align-items:center">Últimas Movimentações<span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400;margin-left:5px"></span><button class="db-expand-btn" onclick="openDashModal('movimentacoes')" title="Expandir"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 1.5H10.5V4.5M10.5 1.5L6.5 5.5M4.5 10.5H1.5V7.5M1.5 10.5L5.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
         <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
     </div>
@@ -1290,7 +1290,7 @@ function updateDash(){
       return a._diff-b._diff;
     });
 
-  document.getElementById('ds-cnt-liq').textContent=liqRecs.length?`(${liqRecs.length})`:'';
+  document.getElementById('ds-cnt-liq').textContent=liqRecs.length?`· ${liqRecs.length}`:'';
   const lb=document.getElementById('ds-liq-body');
   if(!liqRecs.length){
     lb.innerHTML='<div class="db-empty">Nenhum processo com liquidação próxima ou vencida</div>';
@@ -1326,7 +1326,7 @@ function updateDash(){
     .filter(r=>r&&r._dias>=30)
     .sort((a,b)=>b._dias-a._dias);
 
-  document.getElementById('ds-cnt-par').textContent=parRecs.length?`(${parRecs.length})`:'';
+  document.getElementById('ds-cnt-par').textContent=parRecs.length?`· ${parRecs.length}`:'';
   const pb=document.getElementById('ds-par-body');
   if(!parRecs.length){
     pb.innerHTML='<div class="db-empty">Nenhum processo paralisado há mais de 30 dias</div>';
@@ -1356,7 +1356,7 @@ function updateDash(){
   ].filter(r=>r.prazoFatal&&normDate(r.prazoFatal))
     .sort((a,b)=>normDate(a.prazoFatal).localeCompare(normDate(b.prazoFatal)));
 
-  document.getElementById('ds-cnt-alerts').textContent=alertRecs.length?`(${alertRecs.length})`:'';
+  document.getElementById('ds-cnt-alerts').textContent=alertRecs.length?`· ${alertRecs.length}`:'';
   const ab=document.getElementById('ds-alerts-body');
   if(!alertRecs.length){
     ab.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt3);font-size:12px">Nenhum alerta de prazo fatal</div>';
@@ -1410,7 +1410,7 @@ function updateDash(){
   // Ordenar grupos pela data mais recente
   const gruposArr=[...grupos.values()].sort((a,b)=>b.movs[0].data.localeCompare(a.movs[0].data));
   const totalMovs=movRows.length;
-  document.getElementById('ds-cnt-mov').textContent=totalMovs?`(${totalMovs})`:'';
+  document.getElementById('ds-cnt-mov').textContent=totalMovs?`· ${totalMovs}`:'';
   const mb=document.getElementById('ds-mov-body');
   if(!gruposArr.length){
     mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 30 dias</div>';
@@ -2072,7 +2072,7 @@ function openDashModal(tipo){
   const src=document.getElementById(cfg.srcId);
   const cnt=document.getElementById(cfg.cntId).textContent;
   document.getElementById('dash-modal-title').textContent=cfg.title;
-  document.getElementById('dash-modal-sub').textContent=cnt?`${cnt.replace(/[()]/g,'')} registros`:'';
+  document.getElementById('dash-modal-sub').textContent=cnt?`${cnt.replace('· ','')} registros`:'';
   const body=document.getElementById('dash-modal-body');
   body.innerHTML='';
   // clonar conteúdo e ajustar padding dos itens
