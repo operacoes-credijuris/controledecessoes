@@ -720,7 +720,7 @@ const _SB_KEY='sb_publishable_mU_fyDVVG1xrt60gOwdrsA_TLgrz1H_';
 // Tokens carregados dinamicamente do Supabase (tabela configuracoes) — não hardcodar aqui
 let _ADVBOX_TOKEN='';
 const _ADVBOX_BASE='https://app.advbox.com.br/api/v1';
-let _ANTHROPIC_KEY=''; // Preencher com a chave da API da Anthropic para resumo com IA
+let _GEMINI_KEY=''; // Carregada do Supabase (configuracoes, chave: gemini_key)
 let sb=null;
 (function(){
   try{
@@ -830,12 +830,12 @@ async function _loadAdvboxToken(){
   }catch(e){console.warn('[Credijuris] _loadAdvboxToken:',e);}
 }
 
-async function _loadAnthropicKey(){
+async function _loadGeminiKey(){
   if(!sb)return;
   try{
-    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave','anthropic_key').single();
-    if(!error&&data?.valor)_ANTHROPIC_KEY=data.valor;
-  }catch(e){console.warn('[Credijuris] _loadAnthropicKey:',e);}
+    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave','gemini_key').single();
+    if(!error&&data?.valor)_GEMINI_KEY=data.valor;
+  }catch(e){console.warn('[Credijuris] _loadGeminiKey:',e);}
 }
 
 async function _onAuthenticated(session){
@@ -843,7 +843,7 @@ async function _onAuthenticated(session){
   document.getElementById('login-screen').style.display='none';
   const ls=document.getElementById('loading-screen');
   ls.style.display='flex';
-  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken(),_loadAnthropicKey()]);
+  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken(),_loadGeminiKey()]);
   ls.style.display='none';
   document.getElementById('logout-btn').style.display='';
   migrateCartorios();
@@ -2572,37 +2572,31 @@ async function _summarizeMovimentos(movs){
     data:(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10),
     texto:_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1500))
   }));
-  // Sem chave Anthropic: usa texto limpo truncado
-  if(!_ANTHROPIC_KEY){
+  // Sem chave Gemini: usa texto limpo truncado
+  if(!_GEMINI_KEY){
     return items.map(x=>({data:x.data,descricao:x.texto.slice(0,300)}));
   }
   try{
     const systemPrompt=`Você é um assistente jurídico especializado em resumir movimentações processuais.\n\nReceba o texto da movimentação e reescreva em no máximo duas linhas curtas, destacando apenas:\n- O que aconteceu (ato processual principal)\n- Quem está envolvido, se relevante\n- Referência a decisão ou prazo, se houver\n\nElimine: referências a leis, datas entre parênteses, CNJ, horários, detalhes de publicação, e qualquer informação redundante.\nUse linguagem direta, sem abreviações truncadas. Responda apenas com o resumo, sem explicações.`;
     const userPrompt=`Você receberá uma lista de movimentações judiciais em JSON. Para cada item resuma em no máximo 2 frases curtas em português, mantendo as informações essenciais. Retorne APENAS um JSON array no formato [{i:0,resumo:"..."}, ...] sem texto adicional.\n\n${JSON.stringify(items.map(x=>({i:x.i,texto:x.texto})))}`;
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${_GEMINI_KEY}`,{
       method:'POST',
-      headers:{
-        'x-api-key':_ANTHROPIC_KEY,
-        'anthropic-version':'2023-06-01',
-        'content-type':'application/json',
-        'anthropic-dangerous-allow-browser':'true'
-      },
+      headers:{'content-type':'application/json'},
       body:JSON.stringify({
-        model:'claude-3-5-haiku-20241022',
-        max_tokens:2048,
-        system:systemPrompt,
-        messages:[{role:'user',content:userPrompt}]
+        system_instruction:{parts:[{text:systemPrompt}]},
+        contents:[{parts:[{text:userPrompt}]}],
+        generationConfig:{maxOutputTokens:2048,temperature:0.2}
       })
     });
-    if(!res.ok)throw new Error('Anthropic HTTP '+res.status);
+    if(!res.ok)throw new Error('Gemini HTTP '+res.status);
     const d=await res.json();
-    const txt=(d.content?.[0]?.text)||'[]';
+    const txt=(d.candidates?.[0]?.content?.parts?.[0]?.text)||'[]';
     const m=txt.match(/\[[\s\S]*\]/);
     const summaries=m?JSON.parse(m[0]):[];
     const map=Object.fromEntries(summaries.map(s=>[String(s.i),s.resumo||'']));
     return items.map(x=>({data:x.data,descricao:map[String(x.i)]||x.texto.slice(0,300)}));
   }catch(e){
-    console.warn('[Advbox] Anthropic summarize error:',e);
+    console.warn('[Advbox] Gemini summarize error:',e);
     return items.map(x=>({data:x.data,descricao:x.texto.slice(0,300)}));
   }
 }
