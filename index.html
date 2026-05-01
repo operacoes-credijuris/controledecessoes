@@ -1074,7 +1074,7 @@ let lastExecTab=localStorage.getItem('cj-sidebar-lasttab')||'dashboard';
 
 // SIDEBAR
 (function _initSidebar(){
-  const collapsed=localStorage.getItem('cj-sidebar-state')==='collapsed';
+  const collapsed=localStorage.getItem('cj-sidebar-state')!=='expanded';
   if(collapsed)_sbSetCollapsed(true);
   const active=localStorage.getItem('cj-sidebar-active')||'exec';
   if(active==='credito')_sbShowCredito();
