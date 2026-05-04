@@ -1202,11 +1202,11 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 .cfg-section-title{font-size:14px;font-weight:700;color:#f2f6fb}
 .cfg-row{
-  display:flex;align-items:flex-start;justify-content:space-between;
+  display:flex;align-items:center;justify-content:space-between;
   gap:16px;padding:16px 20px;
   border-bottom:1px solid rgba(255,255,255,.04);
 }
-.cfg-row-ctrl{padding-top:2px}
+.cfg-row-ctrl{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .cfg-row:last-child{border-bottom:none}
 .cfg-row-lbl{font-size:13px;color:#c8d3de;font-weight:500}
 .cfg-row-sub{font-size:11px;color:#4b5563;margin-top:2px}
@@ -1215,7 +1215,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   background:#0d1117;border:1px solid rgba(255,255,255,.1);
   border-radius:7px;padding:7px 12px;color:#e2e8f0;
   font-size:12px;font-family:var(--font-body);outline:none;
-  width:260px;transition:border-color .2s;
+  width:220px;transition:border-color .2s;
 }
 .cfg-token-input:focus{border-color:#0077ff}
 .cfg-save-btn{
@@ -1860,12 +1860,12 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       <div class="cfg-section-title">Advbox</div>
     </div>
     <div class="cfg-row">
-      <div style="flex:1;min-width:0">
+      <div>
         <div class="cfg-row-lbl">Token de API</div>
         <div class="cfg-row-sub">Utilizado para sincronizar movimentações processuais</div>
-        <input id="cfg-advbox-token" class="cfg-token-input" type="password" placeholder="Cole o token aqui…" autocomplete="off" style="margin-top:10px;width:100%;max-width:340px">
       </div>
       <div class="cfg-row-ctrl">
+        <input id="cfg-advbox-token" class="cfg-token-input" type="password" placeholder="Cole o token aqui…" autocomplete="off">
         <button class="cfg-save-btn" onclick="cfgSaveAdvboxToken()">Salvar</button>
         <span id="cfg-advbox-status" class="cfg-status"></span>
       </div>
