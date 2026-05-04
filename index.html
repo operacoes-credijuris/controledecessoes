@@ -3871,7 +3871,7 @@ function _syncProgressUpdate(el,{label,pct,sub}){
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b>${label}</b><span style="color:#94a3b8">${pct}%</span></div>${sub?`<div style="color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">↳ ${sub}</div>`:''}<div style="background:#1e293b;border-radius:4px;height:4px;overflow:hidden"><div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .4s ease"></div></div>`;
 }
 function _syncProgressHide(el){el?.remove();}
-const _LOCAL_SUMMARY_VERSION='local-2026-05-04-v2';
+const _LOCAL_SUMMARY_VERSION='local-2026-05-04-v3';
 
 function _limitarResumoLocal(txt,max=12){
   const words=String(txt||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
@@ -3883,7 +3883,19 @@ function _resumirMovimentacaoLocal(txt){
   const n=normKw(clean);
   let resumo='';
 
-  if(_temAlgumTermo(n,['certidao','certifico','certificad'])){
+  if(_temAlgumTermo(n,['juntada','juntad'])&&_temAlgumTermo(n,['cumprimento integral','cumprimento decisao','pedido cumprimento'])){
+    resumo='Pedido de cumprimento juntado';
+  }else if(_temAlgumTermo(n,['diligencia concluida','diligencia finalizada'])){
+    resumo='Diligência concluída';
+  }else if(_temAlgumTermo(n,['processo em diligencia','em diligencia'])){
+    resumo='Processo em diligência';
+  }else if(_temAlgumTermo(n,['ccarpv','ccar pv'])){
+    if(_temAlgumTermo(n,['devolucao','devolvido']))resumo='Petição devolvida para análise';
+    else if(_temAlgumTermo(n,['analise']))resumo='Petição encaminhada para análise';
+    else resumo='Movimentação CCARPV';
+  }else if(_temAlgumTermo(n,['oficio comunicatorio','oficio comunicado'])){
+    resumo='Ofício comunicatório juntado';
+  }else if(_temAlgumTermo(n,['certidao','certifico','certificad'])){
     if(_temAlgumTermo(n,['decurso','dec prazo','de prazo','prazo']))resumo='Certidão de prazo expedida';
     else if(_temAlgumTermo(n,['penhora','sisbajud']))resumo='Certidão de penhora expedida';
     else resumo='Certidão expedida';
@@ -3914,7 +3926,9 @@ function _resumirMovimentacaoLocal(txt){
   }else if(_temAlgumTermo(n,['citacao','citad','cite se','cite-se'])){
     resumo='Citação expedida';
   }else if(_temAlgumTermo(n,['juntada','juntad','peticao','manifestacao'])){
-    if(_temAlgumTermo(n,['comprovante']))resumo='Juntada de comprovante';
+    if(_temAlgumTermo(n,['cumprimento integral','cumprimento decisao','pedido cumprimento']))resumo='Pedido de cumprimento juntado';
+    else if(_temAlgumTermo(n,['oficio comunicatorio','oficio']))resumo='Ofício comunicatório juntado';
+    else if(_temAlgumTermo(n,['comprovante']))resumo='Juntada de comprovante';
     else if(_temAlgumTermo(n,['calculo','planilha']))resumo='Juntada de cálculos';
     else if(_temAlgumTermo(n,['peticao','manifestacao']))resumo='Petição juntada';
     else resumo='Documento juntado';
