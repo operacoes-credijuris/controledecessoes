@@ -2491,7 +2491,7 @@ function updateDash(){
         if(!h.data)return;
         const d=new Date(h.data+'T00:00:00');
         if(d<cutoff)return;
-        movRows.push({mod,r,data:h.data,desc:_resumirMovimentacaoLocal(h.descricao||'')});
+        movRows.push({mod,r,data:h.data,desc:h.descricao||''});
       });
     });
   });
@@ -3822,7 +3822,7 @@ function renderHistBody(rec){
     :`<div class="tl">${sorted.map((h,si)=>{return`
       <div class="tl-item" id="tl-item-${si}">
         <div class="tl-date">${fmtDate(h.data)}</div>
-        <div class="tl-desc">${esc(_resumirMovimentacaoLocal(h.descricao))}</div>
+        <div class="tl-desc">${esc(h.descricao||'')}</div>
         <div style="display:flex;gap:5px;margin-top:6px">
           <button class="btn btn-xs" style="background:rgba(0,119,255,.15);color:#60a5fa;border:1px solid rgba(0,119,255,.4)" onclick="editHistEntry(${si})">Editar</button>
           <button class="btn btn-red btn-xs" onclick="delHistEntry(${si})">Remover</button>
@@ -4086,107 +4086,6 @@ function _syncProgressUpdate(el,{label,pct,sub}){
   <div style="background:#242a35;border-radius:999px;height:5px;overflow:hidden"><div style="background:#0077ff;height:100%;width:${pct}%;transition:width .35s ease;border-radius:999px"></div></div>`;
 }
 function _syncProgressHide(el){el?.remove();}
-const _LOCAL_SUMMARY_VERSION='local-2026-05-04-v4';
-
-function _limitarResumoLocal(txt,max=12){
-  const words=String(txt||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
-  return words.length<=max?words.join(' '):words.slice(0,max).join(' ');
-}
-function _temAlgumTermo(txt,termos){return termos.some(t=>txt.includes(t));}
-function _resumirMovimentacaoLocal(txt){
-  const clean=_limparDescricao(txt||'');
-  const n=normKw(clean);
-  let resumo='';
-
-  if(_temAlgumTermo(n,['juntada','juntad'])&&_temAlgumTermo(n,['cumprimento integral','cumprimento decisao','pedido cumprimento'])){
-    resumo='Pedido de cumprimento juntado';
-  }else if(_temAlgumTermo(n,['juntada','juntad'])&&_temAlgumTermo(n,['levantamento de valores','levantamento valores'])){
-    resumo='Pedido de levantamento juntado';
-  }else if(_temAlgumTermo(n,['sisbajud','sisba jud'])&&_temAlgumTermo(n,['bloqueio','bloqueado'])){
-    resumo='Bloqueio Sisbajud juntado';
-  }else if(_temAlgumTermo(n,['autos conclusos','conclusos','concluso'])&&_temAlgumTermo(n,['despacho'])){
-    resumo='Concluso para despacho';
-  }else if(_temAlgumTermo(n,['diligencia concluida','diligencia finalizada'])){
-    resumo='Diligência concluída';
-  }else if(_temAlgumTermo(n,['processo em diligencia','em diligencia'])){
-    resumo='Processo em diligência';
-  }else if(_temAlgumTermo(n,['ccarpv','ccar pv'])){
-    if(_temAlgumTermo(n,['devolucao','devolvido']))resumo='Petição devolvida para análise';
-    else if(_temAlgumTermo(n,['analise']))resumo='Petição encaminhada para análise';
-    else resumo='Movimentação CCARPV';
-  }else if(_temAlgumTermo(n,['oficio comunicatorio','oficio comunicado'])){
-    resumo='Ofício comunicatório juntado';
-  }else if(_temAlgumTermo(n,['certidao','certifico','certificad'])){
-    if(_temAlgumTermo(n,['decurso','dec prazo','de prazo','prazo']))resumo='Certidão de prazo expedida';
-    else if(_temAlgumTermo(n,['penhora','sisbajud']))resumo='Certidão de penhora expedida';
-    else resumo='Certidão expedida';
-  }else if(_temAlgumTermo(n,['penhora','sisbajud','bacenjud'])){
-    if(_temAlgumTermo(n,['devolucao','devolvido']))resumo='Penhora devolvida pelo Sisbajud';
-    else if(_temAlgumTermo(n,['realizada','efetivada','integral','transferencia']))resumo='Penhora via Sisbajud realizada';
-    else if(_temAlgumTermo(n,['online','on line','central']))resumo='Penhora online movimentada';
-    else resumo='Penhora movimentada';
-  }else if(_temAlgumTermo(n,['acordao','acordam','turma recursal'])){
-    resumo=_temAlgumTermo(n,['publicad','disponibilizad'])?'Acórdão publicado':'Acórdão proferido';
-  }else if(_temAlgumTermo(n,['sentenca','sentenc'])){
-    resumo=_temAlgumTermo(n,['conclus'])?'Concluso para sentença':'Sentença proferida';
-  }else if(_temAlgumTermo(n,['decisao','decido','defiro','indefiro'])){
-    if(_temAlgumTermo(n,['homolog']))resumo='Decisão sobre homologação';
-    else if(_temAlgumTermo(n,['alvara']))resumo='Decisão sobre alvará';
-    else if(_temAlgumTermo(n,['bloqueio','sisbajud','penhora']))resumo='Decisão sobre bloqueio ou penhora';
-    else resumo='Decisão proferida';
-  }else if(_temAlgumTermo(n,['despacho','despache'])) {
-    if(_temAlgumTermo(n,['manifest']))resumo='Despacho para manifestação';
-    else if(_temAlgumTermo(n,['emenda','emende']))resumo='Despacho para emenda';
-    else resumo='Despacho proferido';
-  }else if(_temAlgumTermo(n,['intimacao','intimad','intime se','intime-se'])){
-    if(_temAlgumTermo(n,['disponibilizada','publicada','publicacao','dia util','lei 11 419']))resumo='Intimação publicada';
-    else if(_temAlgumTermo(n,['lida','leitura automatica','automaticamente']))resumo='Intimação lida automaticamente';
-    else if(_temAlgumTermo(n,['aguardando processamento','djen','diario de justica']))resumo='Intimação aguardando envio ao DJEN';
-    else if(_temAlgumTermo(n,['manifest']))resumo='Intimação para manifestação';
-    else if(_temAlgumTermo(n,['pagamento']))resumo='Intimação sobre pagamento';
-    else resumo='Intimação expedida';
-  }else if(_temAlgumTermo(n,['citacao','citad','cite se','cite-se'])){
-    resumo='Citação expedida';
-  }else if(_temAlgumTermo(n,['juntada','juntad','peticao','manifestacao'])){
-    if(_temAlgumTermo(n,['cumprimento integral','cumprimento decisao','pedido cumprimento']))resumo='Pedido de cumprimento juntado';
-    else if(_temAlgumTermo(n,['oficio comunicatorio','oficio']))resumo='Ofício comunicatório juntado';
-    else if(_temAlgumTermo(n,['comprovante']))resumo='Juntada de comprovante';
-    else if(_temAlgumTermo(n,['calculo','planilha']))resumo='Juntada de cálculos';
-    else if(_temAlgumTermo(n,['peticao','manifestacao']))resumo='Petição juntada';
-    else resumo='Documento juntado';
-  }else if(_temAlgumTermo(n,['expedicao','expedido','expedida','expedir'])){
-    if(_temAlgumTermo(n,['alvara']))resumo='Expedição de alvará';
-    else if(_temAlgumTermo(n,['r pv','rpv','requisitorio','precatorio']))resumo='RPV expedido';
-    else resumo='Documento expedido';
-  }else if(_temAlgumTermo(n,['conclusao','conclusos','concluso'])){
-    if(_temAlgumTermo(n,['sentenca']))resumo='Concluso para sentença';
-    else if(_temAlgumTermo(n,['decisao']))resumo='Concluso para decisão';
-    else if(_temAlgumTermo(n,['despacho']))resumo='Concluso para despacho';
-    else resumo='Processo concluso';
-  }else if(_temAlgumTermo(n,['remessa','remetido','remetida','redistribuicao','redistribuido'])){
-    resumo=_temAlgumTermo(n,['redistribu'])?'Processo redistribuído':'Processo remetido';
-  }else if(_temAlgumTermo(n,['audiencia','pericia','pericial'])){
-    if(_temAlgumTermo(n,['designad','marcad']))resumo=_temAlgumTermo(n,['peric'])?'Perícia designada':'Audiência designada';
-    else resumo=_temAlgumTermo(n,['peric'])?'Movimentação de perícia':'Movimentação de audiência';
-  }else if(_temAlgumTermo(n,['pagamento','deposito','levantamento','precatorio','rpv','requisitorio'])){
-    if(_temAlgumTermo(n,['rpv','requisitorio']))resumo='RPV expedido';
-    else if(_temAlgumTermo(n,['precatorio']))resumo='Precatório movimentado';
-    else resumo='Pagamento informado';
-  }else if(_temAlgumTermo(n,['publicacao','publicado','disponibilizado','dje'])){
-    resumo='Publicação realizada';
-  }
-
-  return _limitarResumoLocal(resumo||clean);
-}
-
-// Resumo local em lote — items: [{pi, mi, data, texto}]
-async function _summarizeBatch(items){
-  if(!items.length) return [];
-  const resultado=items.map(x=>({...x,resumo:_resumirMovimentacaoLocal(x.texto)}));
-  const resumidos=resultado.filter(x=>x.resumo&&x.resumo!==x.texto).length;
-  showToast(`Resumo local: ${resumidos}/${items.length} movimentação(ões) tratadas`, 3500);
-  return resultado;
-}
 
 async function syncAdvbox(){
   const btn=document.getElementById('sync-btn');
@@ -4268,8 +4167,7 @@ async function syncAdvbox(){
     const idx=arr.findIndex(r=>r.id===rec.id);
     const histAtual=idx!==-1?(arr[idx].historicoProcessual||[]):[];
     const savedCount=idx!==-1?(arr[idx]._advboxMovCount||0):0;
-    const summaryVersion=idx!==-1?(arr[idx]._summaryVersion||''):'';
-    if(movs.length===savedCount&&histAtual.length&&summaryVersion===_LOCAL_SUMMARY_VERSION){
+    if(movs.length===savedCount&&histAtual.length){
       if(tentativa===1)st.done++;
       await _sleep(2000);
       return;
@@ -4294,29 +4192,17 @@ async function syncAdvbox(){
     for(const{mod,rec,tentativa}of lote) await _buscarProcesso({mod,rec},tentativa);
   }
 
-  // FASE 2 — resumo local
+  // FASE 2 — Salvar movimentações com descrição original do Advbox
   if(pendentes.length){
-    _syncProgressUpdate(prog,{label:`Resumindo movimentações (${pendentes.length} processo(s))`,pct:0});
-    const allItems=pendentes.flatMap(({movs,pi})=>
-      movs.map((mv,mi)=>({
-        pi,mi,
-        data:(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10),
-        texto:_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500))
-      }))
-    );
-    const resumidos=await _summarizeBatch(allItems);
-    const rmap=Object.fromEntries(resumidos.map(r=>[`${r.pi}:${r.mi}`,r.resumo]));
-
-    // FASE 3 — Salvar
-    for(const[i,{mod,arr,idx,movs,pi}]of pendentes.entries()){
+    for(const[i,{mod,arr,idx,movs}]of pendentes.entries()){
       _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
       if(idx===-1){st.synced++;continue;}
-      const hist=movs.map((mv,mi)=>{
+      const hist=movs.map(mv=>{
         const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
-        const texto=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500));
-        return{data,descricao:rmap[`${pi}:${mi}`]||texto};
+        const descricao=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1000));
+        return{data,descricao};
       }).sort((a,b)=>a.data.localeCompare(b.data));
-      arr[idx]={...arr[idx],historicoProcessual:hist,_advboxMovCount:movs.length,_summaryVersion:_LOCAL_SUMMARY_VERSION};
+      arr[idx]={...arr[idx],historicoProcessual:hist,_advboxMovCount:movs.length};
       save(mod,arr);
       st.synced++;
     }
