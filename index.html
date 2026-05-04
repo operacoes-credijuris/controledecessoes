@@ -3100,11 +3100,12 @@ async function syncAdvbox(){
 
     const sr=await _advboxGet(`${_PROXY}?action=lawsuits&process_number=${encodeURIComponent(rec.numeroProcesso)}`,'lawsuits');
     if(sr.skip){if(tentativa===1)st.done++;await _sleep(2000);return;}
+    const _upd=(sub)=>_syncProgressUpdate(prog,{label:`${labelFase} (${st.done}/${total})`,pct:Math.round(st.done/total*100),sub});
     if(sr.err){
       if(sr.retryable&&tentativa<3){paraRetry.push({mod,rec,tentativa:tentativa+1});}
       else{erros.push(`${rec.numeroProcesso}: ${sr.err}`);st.failed++;}
       if(tentativa===1)st.done++;
-      _syncProgressUpdate(prog,{label:labelFase,pct:Math.round(st.done/total*100),sub:rec.numeroProcesso});
+      _upd(rec.numeroProcesso);
       await _sleep(2000);return;
     }
     const lawsuits=Array.isArray(sr.data)?sr.data:(sr.data.results||sr.data.data||[]);
@@ -3116,7 +3117,7 @@ async function syncAdvbox(){
       if(mr.retryable&&tentativa<3){paraRetry.push({mod,rec,tentativa:tentativa+1});}
       else{erros.push(`${rec.numeroProcesso}: ${mr.err}`);st.failed++;}
       if(tentativa===1)st.done++;
-      _syncProgressUpdate(prog,{label:labelFase,pct:Math.round(st.done/total*100)});
+      _upd(rec.numeroProcesso);
       await _sleep(2000);return;
     }
     const movs=Array.isArray(mr.data)?mr.data:(mr.data.results||mr.data.data||[]);
@@ -3130,7 +3131,7 @@ async function syncAdvbox(){
 
     pendentes.push({mod,rec,arr,idx,movs,pi:pendentes.length});
     if(tentativa===1)st.done++;
-    _syncProgressUpdate(prog,{label:labelFase,pct:Math.round(st.done/total*100),sub:rec.numeroProcesso});
+    _upd(rec.numeroProcesso);
     await _sleep(2000);
   }
 
