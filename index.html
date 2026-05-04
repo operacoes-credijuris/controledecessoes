@@ -400,6 +400,10 @@ body{
 
 .sidebar.collapsed{width:58px}
 .sidebar-inner{padding:0 8px 12px}
+.sidebar.collapsed .sidebar-inner{
+  padding:0 6px 12px;
+  align-items:center;
+}
 .sb-toggle-btn{
   top:18px;
   right:-13px;
@@ -409,6 +413,11 @@ body{
   box-shadow:0 8px 22px rgba(0,0,0,.28);
 }
 .sb-section{padding:12px 12px 6px;height:auto}
+.sidebar.collapsed .sb-section{
+  width:100%;
+  height:20px;
+  padding:0;
+}
 .sb-section-lbl{color:#69717d;font-size:9px;letter-spacing:.8px}
 .sb-item{
   height:38px;
@@ -416,6 +425,20 @@ body{
   border-radius:8px;
   padding:0 12px;
   color:#8d96a4;
+}
+.sidebar.collapsed .sb-item{
+  width:40px;
+  height:38px;
+  margin:3px 0;
+  padding:0;
+  justify-content:center;
+}
+.sidebar.collapsed .sb-item-icon{
+  width:18px;
+  height:18px;
+}
+.sidebar.collapsed .sb-toggle-btn{
+  right:-12px;
 }
 .sb-item:hover:not(.disabled){background:#1c2027;color:#eef4fb}
 .sb-item.active{
