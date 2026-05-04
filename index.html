@@ -3086,8 +3086,10 @@ async function syncAdvbox(){
         :`Erro ${s}: ${body.slice(0,120)}`);
       return{err:msg,retryable:s===429||s>=500};
     }
+    if(!body.trim()) return{err:`${label}: resposta vazia`,retryable:true};
+    if(body.trimStart().startsWith('<')) return{err:'Token Advbox expirado ou inválido — atualize nas configurações',retryable:false};
     try{return{data:JSON.parse(body)};}
-    catch{return{err:`${label}: resposta não é JSON válido`,retryable:false};}
+    catch{return{err:`${label}: resposta inválida (${body.slice(0,80)})`,retryable:false};}
   }
 
   const total=allRecs.length;
