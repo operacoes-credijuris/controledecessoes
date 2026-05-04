@@ -3257,7 +3257,7 @@ function openDashPanel(tipo,refresh=false){
   const body=document.getElementById('dash-urgency-body');
   const cnt=(document.getElementById(cfg.cntId).textContent||'').replace('· ','');
   document.getElementById('dash-urgency-title').textContent=cfg.title;
-  document.getElementById('dash-urgency-count').textContent=cnt?`${cnt} registros`:'';
+  document.getElementById('dash-urgency-count').textContent=cnt||'';
   body.innerHTML='';
   const clone=src.cloneNode(true);
   clone.removeAttribute('id');
