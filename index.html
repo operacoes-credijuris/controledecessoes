@@ -1202,7 +1202,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 .cfg-section-title{font-size:14px;font-weight:700;color:#f2f6fb}
 .cfg-row{
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex;align-items:flex-end;justify-content:space-between;
   gap:16px;padding:16px 20px;
   border-bottom:1px solid rgba(255,255,255,.04);
 }
@@ -1860,12 +1860,12 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       <div class="cfg-section-title">Advbox</div>
     </div>
     <div class="cfg-row">
-      <div>
+      <div style="flex:1;min-width:0">
         <div class="cfg-row-lbl">Token de API</div>
-        <div class="cfg-row-sub">Utilizado para sincronizar movimentações processuais</div>
+        <div class="cfg-row-sub" style="margin-bottom:8px">Utilizado para sincronizar movimentações processuais</div>
+        <input id="cfg-advbox-token" class="cfg-token-input" type="password" placeholder="Cole o token aqui…" autocomplete="off" style="max-width:320px;width:100%">
       </div>
       <div class="cfg-row-ctrl">
-        <input id="cfg-advbox-token" class="cfg-token-input" type="password" placeholder="Cole o token aqui…" autocomplete="off">
         <button class="cfg-save-btn" onclick="cfgSaveAdvboxToken()">Salvar</button>
         <span id="cfg-advbox-status" class="cfg-status"></span>
       </div>
