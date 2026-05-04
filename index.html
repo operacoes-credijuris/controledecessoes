@@ -821,7 +821,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   align-items:stretch;
 }
 #pane-dashboard .db-grid.urgency-open{
-  grid-template-columns:minmax(320px,430px) minmax(300px,380px) minmax(0,1fr);
+  grid-template-columns:minmax(320px,430px) minmax(460px,1fr) minmax(0,1fr);
 }
 .dash-panel{
   min-height:0;
@@ -1035,6 +1035,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   flex:1;
   min-height:0;
   overflow-y:auto;
+  overflow-x:hidden;
   padding:10px;
   background:#101216;
 }
@@ -1502,7 +1503,6 @@ input[type="date"][style*="background:#1a1f2e"]{
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span id="dash-urgency-count" class="dash-count"></span>
-            <button class="dash-panel-close" onclick="closeDashPanel()" title="Fechar">×</button>
           </div>
         </div>
         <div id="dash-urgency-body" class="dash-urgency-body"></div>
@@ -3216,6 +3216,7 @@ function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);
 
 let dashUrgencyType='';
 function openDashPanel(tipo,refresh=false){
+  if(!refresh && dashUrgencyType===tipo){closeDashPanel();return;}
   const map={
     prazos:      {srcId:'ds-alerts-body', title:'Prazos Fatais',                cntId:'ds-cnt-alerts'},
     liquidacao:  {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida', cntId:'ds-cnt-liq'},
