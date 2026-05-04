@@ -3782,6 +3782,7 @@ function _syncProgressUpdate(el,{label,pct,sub}){
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b>${label}</b><span style="color:#94a3b8">${pct}%</span></div>${sub?`<div style="color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">↳ ${sub}</div>`:''}<div style="background:#1e293b;border-radius:4px;height:4px;overflow:hidden"><div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .4s ease"></div></div>`;
 }
 function _syncProgressHide(el){el?.remove();}
+const _LOCAL_SUMMARY_VERSION='local-2026-05-04-v2';
 
 function _limitarResumoLocal(txt,max=12){
   const words=String(txt||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
@@ -3793,7 +3794,16 @@ function _resumirMovimentacaoLocal(txt){
   const n=normKw(clean);
   let resumo='';
 
-  if(_temAlgumTermo(n,['acordao','acordam','turma recursal'])){
+  if(_temAlgumTermo(n,['certidao','certifico','certificad'])){
+    if(_temAlgumTermo(n,['decurso','dec prazo','de prazo','prazo']))resumo='Certidão de prazo expedida';
+    else if(_temAlgumTermo(n,['penhora','sisbajud']))resumo='Certidão de penhora expedida';
+    else resumo='Certidão expedida';
+  }else if(_temAlgumTermo(n,['penhora','sisbajud','bacenjud'])){
+    if(_temAlgumTermo(n,['devolucao','devolvido']))resumo='Penhora devolvida pelo Sisbajud';
+    else if(_temAlgumTermo(n,['realizada','efetivada','integral','transferencia']))resumo='Penhora via Sisbajud realizada';
+    else if(_temAlgumTermo(n,['online','on line','central']))resumo='Penhora online movimentada';
+    else resumo='Penhora movimentada';
+  }else if(_temAlgumTermo(n,['acordao','acordam','turma recursal'])){
     resumo=_temAlgumTermo(n,['publicad','disponibilizad'])?'Acórdão publicado':'Acórdão proferido';
   }else if(_temAlgumTermo(n,['sentenca','sentenc'])){
     resumo=_temAlgumTermo(n,['conclus'])?'Concluso para sentença':'Sentença proferida';
@@ -3807,7 +3817,9 @@ function _resumirMovimentacaoLocal(txt){
     else if(_temAlgumTermo(n,['emenda','emende']))resumo='Despacho para emenda';
     else resumo='Despacho proferido';
   }else if(_temAlgumTermo(n,['intimacao','intimad','intime se','intime-se'])){
-    if(_temAlgumTermo(n,['manifest']))resumo='Intimação para manifestação';
+    if(_temAlgumTermo(n,['lida','leitura automatica','automaticamente']))resumo='Intimação lida automaticamente';
+    else if(_temAlgumTermo(n,['aguardando processamento','djen','diario de justica']))resumo='Intimação aguardando envio ao DJEN';
+    else if(_temAlgumTermo(n,['manifest']))resumo='Intimação para manifestação';
     else if(_temAlgumTermo(n,['pagamento']))resumo='Intimação sobre pagamento';
     else resumo='Intimação expedida';
   }else if(_temAlgumTermo(n,['citacao','citad','cite se','cite-se'])){
@@ -3821,8 +3833,6 @@ function _resumirMovimentacaoLocal(txt){
     if(_temAlgumTermo(n,['alvara']))resumo='Expedição de alvará';
     else if(_temAlgumTermo(n,['r pv','rpv','requisitorio','precatorio']))resumo='RPV expedido';
     else resumo='Documento expedido';
-  }else if(_temAlgumTermo(n,['certidao','certifico','certificad'])){
-    resumo='Certidão juntada';
   }else if(_temAlgumTermo(n,['conclusao','conclusos','concluso'])){
     if(_temAlgumTermo(n,['sentenca']))resumo='Concluso para sentença';
     else if(_temAlgumTermo(n,['decisao']))resumo='Concluso para decisão';
@@ -3933,7 +3943,12 @@ async function syncAdvbox(){
     const idx=arr.findIndex(r=>r.id===rec.id);
     const histAtual=idx!==-1?(arr[idx].historicoProcessual||[]):[];
     const savedCount=idx!==-1?(arr[idx]._advboxMovCount||0):0;
-    if(movs.length===savedCount&&histAtual.length){if(tentativa===1)st.done++;await _sleep(2000);return;}
+    const summaryVersion=idx!==-1?(arr[idx]._summaryVersion||''):'';
+    if(movs.length===savedCount&&histAtual.length&&summaryVersion===_LOCAL_SUMMARY_VERSION){
+      if(tentativa===1)st.done++;
+      await _sleep(2000);
+      return;
+    }
 
     pendentes.push({mod,rec,arr,idx,movs,pi:pendentes.length});
     if(tentativa===1)st.done++;
@@ -3976,7 +3991,7 @@ async function syncAdvbox(){
         const texto=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500));
         return{data,descricao:rmap[`${pi}:${mi}`]||texto};
       }).sort((a,b)=>a.data.localeCompare(b.data));
-      arr[idx]={...arr[idx],historicoProcessual:hist,_advboxMovCount:movs.length};
+      arr[idx]={...arr[idx],historicoProcessual:hist,_advboxMovCount:movs.length,_summaryVersion:_LOCAL_SUMMARY_VERSION};
       save(mod,arr);
       st.synced++;
     }
