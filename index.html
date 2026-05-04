@@ -400,10 +400,7 @@ body{
 
 .sidebar.collapsed{width:58px}
 .sidebar-inner{padding:0 8px 12px}
-.sidebar.collapsed .sidebar-inner{
-  padding:0 6px 12px;
-  align-items:center;
-}
+.sidebar.collapsed .sidebar-inner{padding:0 8px 12px}
 .sb-toggle-btn{
   top:18px;
   right:-13px;
@@ -412,11 +409,17 @@ body{
   color:#9aa5b4;
   box-shadow:0 8px 22px rgba(0,0,0,.28);
 }
-.sb-section{padding:12px 12px 6px;height:auto}
+.sb-section{
+  height:34px;
+  padding:0 12px 6px;
+  display:flex;
+  align-items:flex-end;
+  flex-shrink:0;
+}
 .sidebar.collapsed .sb-section{
   width:100%;
-  height:20px;
-  padding:0;
+  height:34px;
+  padding:0 0 6px;
 }
 .sb-section-lbl{color:#69717d;font-size:9px;letter-spacing:.8px}
 .sb-item{
@@ -429,7 +432,7 @@ body{
 .sidebar.collapsed .sb-item{
   width:40px;
   height:38px;
-  margin:3px 0;
+  margin:3px auto;
   padding:0;
   justify-content:center;
 }
