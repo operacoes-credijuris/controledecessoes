@@ -1092,6 +1092,24 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   margin-left:8px!important;
   background:rgba(245,158,11,.16)!important;
 }
+.prio-badge{
+  display:inline-block;
+  font-size:10.5px!important;
+  font-weight:800;
+  color:#ffe8ae;
+  background:rgba(217,119,6,.32);
+  border:1px solid #f6b73c;
+  border-radius:999px;
+  padding:2px 8px;
+  line-height:1.15;
+  vertical-align:middle;
+  margin-left:8px;
+}
+#dash-modal-body .prio-badge{
+  color:#ffe8ae!important;
+  background:rgba(217,119,6,.32)!important;
+  border-color:#f6b73c!important;
+}
 #dash-modal-sub,
 #hist-proc,
 #senha-proc,
@@ -2222,7 +2240,7 @@ function updateDash(){
       const sub=d<0?'vencida':'próxima';
       const col=d<0?'var(--red2)':d<60?'var(--ylw2)':'var(--grn2)';
       const prioBadge=r._prio
-        ?'<span style="display:inline-block;font-size:10px;font-weight:700;color:#f59e0b;border:1px solid #f59e0b;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle;margin-left:5px">PRIORITÁRIO</span>'
+        ?'<span class="prio-badge">PRIORITÁRIO</span>'
         :'';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
