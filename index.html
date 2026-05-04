@@ -669,13 +669,16 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 
 .bdg,
 .obj-bdg{
+  display:inline-flex;align-items:center;
   border-radius:999px;
   font-size:10.5px!important;
   font-weight:750;
-  line-height:1.15;
-  padding:2px 8px;
-  border-style:solid;
+  line-height:1;
+  padding:3px 9px;
+  border:1px solid transparent;
   box-shadow:none;
+  white-space:nowrap;
+  vertical-align:middle;
 }
 .bdg-blue,.gs-badge-cess,.gs-badge-div{
   background:rgba(0,119,255,.32);
@@ -696,6 +699,11 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   background:rgba(248,113,113,.28);
   color:#ffd0d0;
   border-color:#fb8585;
+}
+.bdg-gray{
+  background:rgba(100,116,139,.18);
+  color:#94a3b8;
+  border-color:rgba(100,116,139,.4);
 }
 .obj-bdg-blue{
   background:rgba(0,119,255,.32);
@@ -3248,7 +3256,7 @@ function renderCartorioBody(cessaoId,editId){
       <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start">
         <div style="flex:1;min-width:0">
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-            ${d.objeto?`<span class="bdg" style="background:rgba(100,116,139,.18);color:var(--txt2)">${esc(d.objeto)}</span>`:''}
+            ${d.objeto?`<span class="bdg bdg-gray">${esc(d.objeto)}</span>`:''}
             ${instrBadge(d.instrumento)}
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;font-size:12px">
