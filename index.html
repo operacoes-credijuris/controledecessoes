@@ -2387,7 +2387,7 @@ function updateDash(){
   if(!liqRecs.length){
     lb.innerHTML='<div class="db-empty">Nenhum processo com liquidação próxima ou vencida</div>';
   } else {
-    lb.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;color:#4b5563;border-bottom:1px solid rgba(255,255,255,.04);margin-bottom:4px"><span class="prio-badge" style="font-size:9px;padding:1px 6px;margin-left:0;margin-right:5px">Prioritário</span>cessionário c/ múltiplos processos sem recebimento</div>`+liqRecs.map(r=>{
+    lb.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;color:#4b5563;border-bottom:1px solid rgba(255,255,255,.04);margin-bottom:4px"><span class="prio-badge" style="font-size:9px;padding:1px 6px;margin-left:0;margin-right:5px">Prioritário</span>cessionário c/ 2+ processos sem recebimento</div>`+liqRecs.map(r=>{
       const d=r._diff;
       const sub=d<0?'vencida':'próxima';
       const col=d<0?'var(--red2)':d<60?'var(--ylw2)':'var(--grn2)';
