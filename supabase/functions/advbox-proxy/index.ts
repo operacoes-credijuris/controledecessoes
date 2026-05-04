@@ -38,8 +38,23 @@ serve(async (req) => {
     if (res.status === 204) return new Response(null, { status: 204, headers: CORS });
 
     const body = await res.text();
+
+    if (!res.ok) {
+      const s = res.status;
+      const isHtml = body.trimStart().startsWith('<');
+      const errorMsg = s === 401 || s === 403 ? 'Token Advbox inválido ou expirado'
+        : s === 429 ? 'Limite de requisições Advbox atingido'
+        : s === 404 ? 'Recurso não encontrado na Advbox'
+        : isHtml ? `Erro ${s} (resposta HTML inesperada da Advbox)`
+        : body.slice(0, 300);
+      return new Response(JSON.stringify({ error: errorMsg, status: s }), {
+        status: s,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(body, {
-      status: res.status,
+      status: 200,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   } catch (e) {

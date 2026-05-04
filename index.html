@@ -2975,6 +2975,21 @@ function _limparDescricao(txt){
   return s.replace(/\s{2,}/g,' ').replace(/[-–]\s*$/,'').trim();
 }
 
+function _syncProgressShow(){
+  let el=document.getElementById('_syncProg');
+  if(!el){
+    el=document.createElement('div');
+    el.id='_syncProg';
+    el.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#0f172a;color:#e2e8f0;padding:10px 16px;z-index:9998;font-size:12px;border-top:2px solid #3b82f6;display:grid;gap:5px;box-shadow:0 -4px 12px rgba(0,0,0,.4)';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function _syncProgressUpdate(el,{label,pct,sub}){
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b>${label}</b><span style="color:#94a3b8">${pct}%</span></div>${sub?`<div style="color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">↳ ${sub}</div>`:''}<div style="background:#1e293b;border-radius:4px;height:4px;overflow:hidden"><div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .4s ease"></div></div>`;
+}
+function _syncProgressHide(el){el?.remove();}
+
 // Chamada ao Gemini em lote — items: [{pi, mi, data, texto}]
 async function _summarizeBatch(items){
   if(!items.length) return [];
@@ -3035,71 +3050,100 @@ async function syncAdvbox(){
 
   const mods=['cessoes','rpv','requerimentos'];
   const allRecs=[];
-  for(const mod of mods){
-    load(mod).forEach(r=>{if(r.numeroProcesso)allRecs.push({mod,rec:r});});
-  }
+  for(const mod of mods) load(mod).forEach(r=>{if(r.numeroProcesso)allRecs.push({mod,rec:r});});
   if(!allRecs.length){showToast('Nenhum processo encontrado.');return;}
 
   btn.disabled=true;
-  const total=allRecs.length;
-  let done=0,synced=0,failed=0;
-  const erros=[];
-  const setBtn=n=>{btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Sincronizando… ${n}/${total}`;};
-  setBtn(0);
+  btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Sincronizando…`;
 
+  const prog=_syncProgressShow();
   const{data:{session}}=await sb.auth.getSession();
-  const _authHdr=session?.access_token?{'Authorization':'Bearer '+session.access_token}:{};
+  const hdrs={...(session?.access_token?{'Authorization':'Bearer '+session.access_token}:{}),'apikey':_SB_KEY};
   const _PROXY=`${_SB_URL}/functions/v1/advbox-proxy`;
 
-  // FASE 1 — Buscar movimentações de todos os processos no Advbox
-  const pendentes=[]; // processos que precisam de resumo: {mod,rec,arr,idx,movs,pi}
-  for(const{mod,rec}of allRecs){
-    try{
-      let srRaw;
-      try{
-        srRaw=await fetch(`${_PROXY}?action=lawsuits&process_number=${encodeURIComponent(rec.numeroProcesso)}`,
-          {headers:{..._authHdr,'apikey':_SB_KEY}});
-      }catch(netErr){throw new Error('Rede lawsuits: '+netErr.message);}
-      if(srRaw.status===204||srRaw.status===404){done++;setBtn(done);await _sleep(2000);continue;}
-      if(!srRaw.ok){let b='';try{b=await srRaw.text();}catch{}throw new Error(`Proxy lawsuits ${srRaw.status}: ${b.slice(0,200)}`);}
-      const sd=await srRaw.json();
-      const lawsuits=Array.isArray(sd)?sd:(sd.results||sd.data||[]);
-      if(!lawsuits.length){done++;setBtn(done);await _sleep(2000);continue;}
-      const lid=lawsuits[0].id;
-
-      let mrRaw;
-      try{
-        mrRaw=await fetch(`${_PROXY}?action=movements&lawsuit_id=${lid}`,
-          {headers:{..._authHdr,'apikey':_SB_KEY}});
-      }catch(netErr){throw new Error('Rede movements: '+netErr.message);}
-      if(mrRaw.status===204){done++;setBtn(done);await _sleep(2000);continue;}
-      if(!mrRaw.ok){let b='';try{b=await mrRaw.text();}catch{}throw new Error(`Proxy movements ${mrRaw.status}: ${b.slice(0,200)}`);}
-      const md=await mrRaw.json();
-      const movs=Array.isArray(md)?md:(md.results||md.data||[]);
-      if(!movs.length){done++;setBtn(done);await _sleep(2000);continue;}
-
-      const arr=load(mod);
-      const idx=arr.findIndex(r=>r.id===rec.id);
-      const histAtual=idx!==-1?(arr[idx].historicoProcessual||[]):[];
-      const savedCount=idx!==-1?(arr[idx]._advboxMovCount||0):0;
-      if(movs.length===savedCount&&histAtual.length){
-        // Sem novidades — mantém histórico atual
-        done++;setBtn(done);await _sleep(2000);continue;
-      }
-      pendentes.push({mod,rec,arr,idx,movs,pi:pendentes.length});
-    }catch(e){
-      console.error('[Advbox] Erro no processo',rec.numeroProcesso,e);
-      erros.push(`${rec.numeroProcesso}: ${e.message}`);
-      failed++;
+  // Fetch helper com classificação de erros
+  async function _advboxGet(url,label){
+    let raw;
+    try{raw=await fetch(url,{headers:hdrs});}
+    catch(e){return{err:`Rede ${label}: ${e.message}`,retryable:true};}
+    if(raw.status===204||raw.status===404) return{skip:true};
+    let body='';
+    try{body=await raw.text();}catch{}
+    if(!raw.ok){
+      let parsed={};
+      try{parsed=JSON.parse(body);}catch{}
+      const s=raw.status;
+      const msg=parsed.error||
+        (s===401||s===403?`Token Advbox expirado (${s})`
+        :s===429?'Limite de requisições atingido'
+        :body.trimStart().startsWith('<')?`Erro ${s} (resposta HTML da Advbox)`
+        :`Erro ${s}: ${body.slice(0,120)}`);
+      return{err:msg,retryable:s===429||s>=500};
     }
-    done++;
-    setBtn(done);
+    try{return{data:JSON.parse(body)};}
+    catch{return{err:`${label}: resposta não é JSON válido`,retryable:false};}
+  }
+
+  const total=allRecs.length;
+  const st={done:0,synced:0,failed:0};
+  const erros=[],pendentes=[],paraRetry=[];
+
+  async function _buscarProcesso({mod,rec},tentativa=1){
+    const labelFase=tentativa>1?`🔄 Tentativa ${tentativa}: Buscando movimentações`:'🔍 Fase 1: Buscando movimentações';
+    _syncProgressUpdate(prog,{label:`${labelFase} (${st.done}/${total})`,pct:Math.round(st.done/total*100),sub:rec.numeroProcesso});
+
+    const sr=await _advboxGet(`${_PROXY}?action=lawsuits&process_number=${encodeURIComponent(rec.numeroProcesso)}`,'lawsuits');
+    if(sr.skip){if(tentativa===1)st.done++;await _sleep(2000);return;}
+    if(sr.err){
+      if(sr.retryable&&tentativa<3){paraRetry.push({mod,rec,tentativa:tentativa+1});}
+      else{erros.push(`${rec.numeroProcesso}: ${sr.err}`);st.failed++;}
+      if(tentativa===1)st.done++;
+      _syncProgressUpdate(prog,{label:labelFase,pct:Math.round(st.done/total*100),sub:rec.numeroProcesso});
+      await _sleep(2000);return;
+    }
+    const lawsuits=Array.isArray(sr.data)?sr.data:(sr.data.results||sr.data.data||[]);
+    if(!lawsuits.length){if(tentativa===1)st.done++;await _sleep(2000);return;}
+
+    const mr=await _advboxGet(`${_PROXY}?action=movements&lawsuit_id=${lawsuits[0].id}`,'movements');
+    if(mr.skip){if(tentativa===1)st.done++;await _sleep(2000);return;}
+    if(mr.err){
+      if(mr.retryable&&tentativa<3){paraRetry.push({mod,rec,tentativa:tentativa+1});}
+      else{erros.push(`${rec.numeroProcesso}: ${mr.err}`);st.failed++;}
+      if(tentativa===1)st.done++;
+      _syncProgressUpdate(prog,{label:labelFase,pct:Math.round(st.done/total*100)});
+      await _sleep(2000);return;
+    }
+    const movs=Array.isArray(mr.data)?mr.data:(mr.data.results||mr.data.data||[]);
+    if(!movs.length){if(tentativa===1)st.done++;await _sleep(2000);return;}
+
+    const arr=load(mod);
+    const idx=arr.findIndex(r=>r.id===rec.id);
+    const histAtual=idx!==-1?(arr[idx].historicoProcessual||[]):[];
+    const savedCount=idx!==-1?(arr[idx]._advboxMovCount||0):0;
+    if(movs.length===savedCount&&histAtual.length){if(tentativa===1)st.done++;await _sleep(2000);return;}
+
+    pendentes.push({mod,rec,arr,idx,movs,pi:pendentes.length});
+    if(tentativa===1)st.done++;
+    _syncProgressUpdate(prog,{label:labelFase,pct:Math.round(st.done/total*100),sub:rec.numeroProcesso});
     await _sleep(2000);
   }
 
-  // FASE 2 — Uma única chamada ao Gemini com todas as movimentações
+  // FASE 1 — primeira passagem
+  for(const item of allRecs) await _buscarProcesso(item);
+
+  // Retry automático para falhas transitórias (até 2 tentativas extras)
+  while(paraRetry.length){
+    const lote=[...paraRetry];
+    paraRetry.length=0;
+    const backoff=lote[0].tentativa===2?5000:10000;
+    _syncProgressUpdate(prog,{label:`🔄 Repetindo ${lote.length} processo(s) com falha transitória…`,pct:100});
+    await _sleep(backoff);
+    for(const{mod,rec,tentativa}of lote) await _buscarProcesso({mod,rec},tentativa);
+  }
+
+  // FASE 2 — Gemini
   if(pendentes.length){
-    btn.innerHTML=`<span style="display:inline-block;animation:spin .7s linear infinite">⟳</span> Resumindo com IA…`;
+    _syncProgressUpdate(prog,{label:`🤖 Fase 2: Resumindo com IA (${pendentes.length} processo(s))`,pct:0});
     const allItems=pendentes.flatMap(({movs,pi})=>
       movs.map((mv,mi)=>({
         pi,mi,
@@ -3110,9 +3154,10 @@ async function syncAdvbox(){
     const resumidos=await _summarizeBatch(allItems);
     const rmap=Object.fromEntries(resumidos.map(r=>[`${r.pi}:${r.mi}`,r.resumo]));
 
-    // FASE 3 — Salvar histórico por processo
-    for(const{mod,arr,idx,movs,pi}of pendentes){
-      if(idx===-1){synced++;continue;}
+    // FASE 3 — Salvar
+    for(const[i,{mod,arr,idx,movs,pi}]of pendentes.entries()){
+      _syncProgressUpdate(prog,{label:`💾 Fase 3: Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
+      if(idx===-1){st.synced++;continue;}
       const hist=movs.map((mv,mi)=>{
         const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
         const texto=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,500));
@@ -3120,22 +3165,22 @@ async function syncAdvbox(){
       }).sort((a,b)=>a.data.localeCompare(b.data));
       arr[idx]={...arr[idx],historicoProcessual:hist,_advboxMovCount:movs.length};
       save(mod,arr);
-      synced++;
+      st.synced++;
     }
   }
 
+  _syncProgressHide(prog);
   btn.disabled=false;
   btn.innerHTML='↺ Sincronizar';
-  let msg=`Sincronização concluída: ${synced} processo(s) atualizado(s)`;
-  if(failed){
-    msg+=`, ${failed} com erro`;
-    if(erros.length){
-      const primerroDetalhe=erros[0];
-      console.warn('[Advbox] Primeiro erro detalhado:',primerroDetalhe);
-      msg+=`\nPrimeiro erro: ${primerroDetalhe}`;
-    }
+
+  const todosAuthErr=st.failed>0&&erros.every(e=>e.includes('Token Advbox expirado'));
+  let msg=`Sincronização concluída: ${st.synced} processo(s) atualizado(s)`;
+  if(st.failed){
+    msg+=`, ${st.failed} com erro`;
+    if(todosAuthErr) msg+='\n⚠️ Token Advbox expirado — atualize nas configurações';
+    else if(erros.length) msg+=`\nPrimeiro erro: ${erros[0]}`;
   }
-  showToast(msg,failed?8000:3500);
+  showToast(msg,st.failed?8000:3500);
   if(erros.length){
     console.group('[Advbox] Erros de sincronização ('+erros.length+')');
     erros.forEach(e=>console.warn(e));
