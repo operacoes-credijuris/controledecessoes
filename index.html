@@ -94,17 +94,17 @@ a{color:inherit;text-decoration:none}
 #pane-dashboard.on{display:flex;flex-direction:column;padding:20px 24px}
 
 /* STAT CARDS */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:16px;gap:0;border-bottom:1px solid #1e2433}
-.sc{padding:14px 20px;position:relative;background:transparent;border:none;border-right:1px solid rgba(30,36,51,.5)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:16px;gap:0;border-bottom:1px solid rgba(255,255,255,.06);border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.075);box-shadow:0 22px 52px rgba(0,0,0,.22)}
+.sc{padding:16px 20px;position:relative;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.008)),#111317;border:none;border-right:1px solid rgba(255,255,255,.06)}
 .sc:last-child{border-right:none}
-.sc-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;font-family:var(--font-body)}
-.sc-val{font-size:30px;font-weight:700;color:#fff;font-family:var(--font-head)}
+.sc-lbl{font-size:10px;color:#738196;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;font-family:var(--font-body)}
+.sc-val{font-size:34px;font-weight:700;color:#fff;font-family:var(--font-head);letter-spacing:0}
 .sc-val.red{color:var(--red2)}
 
 /* SECTION HEADER */
 .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;flex-shrink:0;min-height:34px}
-.sh-title{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px;font-family:var(--font-head)}
-.sh-title::before{content:'';display:block;width:4px;height:18px;background:var(--gold);border-radius:2px}
+.sh-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px;font-family:var(--font-head);color:#f2f6fb}
+.sh-title::before{content:'';display:block;width:3px;height:20px;background:linear-gradient(180deg,#58b7ff,#0077ff);border-radius:999px}
 
 /* BUTTONS */
 .btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .18s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-family:var(--font-body)}
@@ -142,7 +142,7 @@ a{color:inherit;text-decoration:none}
 .cf-item input[type=checkbox]{cursor:pointer;accent-color:var(--gold);flex-shrink:0}
 
 /* TABLE */
-.tbl-wrap{background:#151820;border:1px solid #1e2433;border-radius:12px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column}
+.tbl-wrap{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),#111317;border:1px solid rgba(255,255,255,.075);border-radius:10px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column}
 .tbl-scroll{overflow-x:auto;overflow-y:auto;flex:1;min-height:0}
 .tbl-scroll::-webkit-scrollbar{height:4px;width:4px}.tbl-scroll::-webkit-scrollbar-thumb{background:#2a3348;border-radius:4px}
 .tbl-scroll::-webkit-scrollbar-track{background:#1e2433}
@@ -562,29 +562,29 @@ body{
 #pane-dashboard.on{padding:22px 24px}
 
 .stats{
-  border:1px solid rgba(255,255,255,.06);
-  border-radius:8px;
-  background:#111317;
+  border-color:rgba(255,255,255,.075);
+  border-radius:10px;
   overflow:hidden;
   gap:0;
   margin-bottom:18px;
+  box-shadow:0 22px 52px rgba(0,0,0,.22);
 }
 .sc{
-  padding:18px 20px;
+  padding:16px 20px;
   border-right:1px solid rgba(255,255,255,.06);
 }
-.sc-lbl{color:#7d8795;font-size:10px;letter-spacing:.7px}
-.sc-val{font-size:32px;color:#fff;letter-spacing:0}
+.sc-lbl{color:#738196;font-size:10px;letter-spacing:.7px}
+.sc-val{font-size:34px;color:#fff;letter-spacing:0}
 
 .db-grid{gap:14px;margin-top:14px}
 .db-card,
 .db-prio-sec,
 .tbl-wrap,
 .fb{
-  border-radius:8px;
-  border-color:rgba(255,255,255,.07);
-  background:#111317;
-  box-shadow:0 16px 36px rgba(0,0,0,.18);
+  border-radius:10px;
+  border-color:rgba(255,255,255,.075);
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),#111317;
+  box-shadow:0 22px 52px rgba(0,0,0,.22);
 }
 .db-prio-sec{background:#121419}
 .db-prio-hdr,
