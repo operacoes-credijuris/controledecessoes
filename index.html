@@ -3930,13 +3930,21 @@ function _syncProgressShow(){
   if(!el){
     el=document.createElement('div');
     el.id='_syncProg';
-    el.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#0f172a;color:#e2e8f0;padding:10px 16px;z-index:9998;font-size:12px;border-top:2px solid #3b82f6;display:grid;gap:5px;box-shadow:0 -4px 12px rgba(0,0,0,.4)';
+    el.style.cssText='position:fixed;right:24px;bottom:24px;width:min(420px,calc(100vw - 48px));background:#15181e;color:#f4f7fb;padding:14px 16px;border:1px solid rgba(88,183,255,.26);border-radius:10px;z-index:9998;font-size:12px;display:grid;gap:9px;box-shadow:0 22px 60px rgba(0,0,0,.38),0 0 0 1px rgba(0,119,255,.08);overflow:hidden';
     document.body.appendChild(el);
   }
   return el;
 }
 function _syncProgressUpdate(el,{label,pct,sub}){
-  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b>${label}</b><span style="color:#94a3b8">${pct}%</span></div>${sub?`<div style="color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">↳ ${sub}</div>`:''}<div style="background:#1e293b;border-radius:4px;height:4px;overflow:hidden"><div style="background:#3b82f6;height:100%;width:${pct}%;transition:width .4s ease"></div></div>`;
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:14px">
+    <div style="display:flex;align-items:center;gap:9px;min-width:0">
+      <span style="width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(0,119,255,.18);color:#8fd0ff;font-size:11px;flex-shrink:0">↻</span>
+      <b style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</b>
+    </div>
+    <span style="color:#8fd0ff;font-size:12px;font-weight:800;flex-shrink:0">${pct}%</span>
+  </div>
+  ${sub?`<div style="color:#8793a3;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:27px">${sub}</div>`:''}
+  <div style="background:#242a35;border-radius:999px;height:5px;overflow:hidden"><div style="background:#0077ff;height:100%;width:${pct}%;transition:width .35s ease;border-radius:999px"></div></div>`;
 }
 function _syncProgressHide(el){el?.remove();}
 const _LOCAL_SUMMARY_VERSION='local-2026-05-04-v3';
