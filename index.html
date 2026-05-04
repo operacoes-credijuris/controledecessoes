@@ -833,11 +833,28 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   box-shadow:0 22px 52px rgba(0,0,0,.22);
   overflow:hidden;
 }
-.dash-agenda,
-.dash-movements,
-.dash-urgency-detail{
+.dash-col-stack{
   display:flex;
   flex-direction:column;
+  gap:16px;
+  min-height:0;
+}
+.dash-col-stack .dash-agenda{
+  flex:1;
+  min-height:0;
+}
+.dash-agenda,
+.dash-movements,
+.dash-urgency-detail,
+.dash-urgencies-panel{
+  display:flex;
+  flex-direction:column;
+}
+.dash-urgencies-panel{
+  flex-shrink:0;
+}
+.dash-urgencies-panel .dash-urgencies{
+  padding:8px 0 10px;
 }
 .dash-urgency-detail[hidden]{display:none!important}
 .dash-panel-hdr{
@@ -852,7 +869,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 .dash-panel-kicker.blue{color:#58b7ff}
 .dash-panel-kicker.danger{color:#ff8080}
-.dash-urgencies .dash-panel-kicker.danger{padding:0 18px 8px}
+.dash-urgencies-panel .dash-panel-hdr{padding:12px 18px 10px}
 .dash-panel-title{
   color:#f2f6fb;
   font-size:15px;
@@ -1450,47 +1467,57 @@ input[type="date"][style*="background:#1a1f2e"]{
       <div class="sc sc-danger"><div class="sc-lbl">Com Prazo Fatal</div><div class="sc-val red" id="ds-fatal">0</div></div>
     </div>
     <div class="db-grid">
-      <!-- COLUNA 1 — Calendário + Urgências -->
-      <div class="dash-panel dash-agenda">
-        <div class="dash-panel-hdr">
-          <div>
-            <div class="dash-panel-kicker">Agenda</div>
-            <div class="dash-panel-title">Prazos do mês</div>
+      <!-- COLUNA 1 — Wrapper vertical: Calendário + Urgências -->
+      <div class="dash-col-stack">
+        <!-- Card: Agenda -->
+        <div class="dash-panel dash-agenda">
+          <div class="dash-panel-hdr">
+            <div>
+              <div class="dash-panel-kicker">Agenda</div>
+              <div class="dash-panel-title">Prazos do mês</div>
+            </div>
+          </div>
+          <div class="dash-calendar">
+            <div id="cal-container"></div>
           </div>
         </div>
-        <div class="dash-calendar">
-          <div id="cal-container"></div>
-        </div>
-        <div class="dash-urgencies">
-          <div class="dash-panel-kicker danger">Urgências</div>
-          <div class="urg-card urg-red" data-urgency="prazos" onclick="openDashPanel('prazos')">
-            <div class="urg-main">
-              <span class="urg-dot"></span>
-              <span>Prazos Fatais</span>
-            </div>
-            <div class="urg-meta">
-              <span id="urg-count-prazos">0</span>
-              <span>›</span>
+        <!-- Card: Urgências -->
+        <div class="dash-panel dash-urgencies-panel">
+          <div class="dash-panel-hdr">
+            <div>
+              <div class="dash-panel-kicker danger">Urgências</div>
             </div>
           </div>
-          <div class="urg-card urg-yellow" data-urgency="liquidacao" onclick="openDashPanel('liquidacao')">
-            <div class="urg-main">
-              <span class="urg-dot"></span>
-              <span>Liquidação Próx. ou Venc.</span>
+          <div class="dash-urgencies">
+            <div class="urg-card urg-red" data-urgency="prazos" onclick="openDashPanel('prazos')">
+              <div class="urg-main">
+                <span class="urg-dot"></span>
+                <span>Prazos Fatais</span>
+              </div>
+              <div class="urg-meta">
+                <span id="urg-count-prazos">0</span>
+                <span>›</span>
+              </div>
             </div>
-            <div class="urg-meta">
-              <span id="urg-count-liq">0</span>
-              <span>›</span>
+            <div class="urg-card urg-yellow" data-urgency="liquidacao" onclick="openDashPanel('liquidacao')">
+              <div class="urg-main">
+                <span class="urg-dot"></span>
+                <span>Liquidação Próx. ou Venc.</span>
+              </div>
+              <div class="urg-meta">
+                <span id="urg-count-liq">0</span>
+                <span>›</span>
+              </div>
             </div>
-          </div>
-          <div class="urg-card urg-orange" data-urgency="paralisados" onclick="openDashPanel('paralisados')">
-            <div class="urg-main">
-              <span class="urg-dot"></span>
-              <span>Paralisados</span>
-            </div>
-            <div class="urg-meta">
-              <span id="urg-count-par">0</span>
-              <span>›</span>
+            <div class="urg-card urg-orange" data-urgency="paralisados" onclick="openDashPanel('paralisados')">
+              <div class="urg-main">
+                <span class="urg-dot"></span>
+                <span>Paralisados</span>
+              </div>
+              <div class="urg-meta">
+                <span id="urg-count-par">0</span>
+                <span>›</span>
+              </div>
             </div>
           </div>
         </div>
