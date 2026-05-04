@@ -30,7 +30,7 @@ body{font-family:var(--font-body);background:var(--bg0);color:var(--txt);height:
 /* MODO CLARO */
 body.light{filter:invert(1) hue-rotate(180deg);background:#fff;-webkit-font-smoothing:antialiased;font-weight:300}
 body.light img{filter:invert(1) hue-rotate(180deg)}
-body.light .sh-title{font-weight:400}
+body.light .sh-title{font-weight:300}
 body.light .dash-panel-title{font-weight:500}
 body.light .mdl-title{font-weight:500}
 body.light .sc-val{font-weight:500}
@@ -45,6 +45,22 @@ body.light .tab{font-weight:400}
 body.light .tl-date{font-weight:500}
 body.light .gs-badge,.gs-group-hdr{font-weight:600}
 body.light .sb-item{font-weight:300}
+/* badges e objetos */
+body.light .bdg,body.light .obj-bdg{font-weight:500}
+/* itens de urgência */
+body.light .urg-main{font-weight:400}
+/* cabeçalhos internos de painéis */
+body.light .db-card-hdr,body.light .db-prio-hdr{font-weight:400}
+/* paginação ativa */
+body.light .pgb.on,body.light .pgb-ps.on{font-weight:500}
+/* células de tabela — inline font-weight:600 no número de processo e spans coloridos */
+body.light .tbl-wrap td>div,
+body.light .tbl-wrap td>span{font-weight:300!important}
+body.light .tbl-wrap td .obj-bdg,
+body.light .tbl-wrap td .bdg{font-weight:500!important}
+/* números de processo no painel de atividade do dashboard */
+body.light #pane-dashboard .mov-group-hdr span{font-weight:400!important}
+body.light #pane-dashboard .al-text{font-weight:300!important}
 a{color:inherit;text-decoration:none}
 /* SIDEBAR */
 .app-body{display:flex;flex:1;overflow:hidden;min-height:0}
