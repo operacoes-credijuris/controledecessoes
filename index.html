@@ -820,6 +820,9 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   margin:0;
   align-items:stretch;
 }
+#pane-dashboard .db-grid.urgency-open{
+  grid-template-columns:minmax(320px,430px) minmax(300px,380px) minmax(0,1fr);
+}
 .dash-panel{
   min-height:0;
   border:1px solid rgba(255,255,255,.075);
@@ -831,10 +834,12 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   overflow:hidden;
 }
 .dash-agenda,
-.dash-movements{
+.dash-movements,
+.dash-urgency-detail{
   display:flex;
   flex-direction:column;
 }
+.dash-urgency-detail[hidden]{display:none!important}
 .dash-panel-hdr{
   display:flex;
   align-items:center;
@@ -984,6 +989,11 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   border-color:rgba(255,255,255,.10);
   transform:translateY(-1px);
 }
+.urg-card.on{
+  background:#202733;
+  border-color:rgba(88,183,255,.28);
+  box-shadow:inset 3px 0 0 var(--gold);
+}
 .urg-main{
   display:flex;
   align-items:center;
@@ -1021,6 +1031,56 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   min-height:0;
   overflow-y:auto;
 }
+.dash-urgency-body{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:10px;
+  background:#101216;
+}
+.dash-side-list{
+  display:grid;
+  gap:8px;
+}
+.dash-urgency-body .alert-item{
+  min-height:62px;
+  padding:12px 14px!important;
+  border:1px solid rgba(255,255,255,.07)!important;
+  border-radius:8px;
+  background:#15181e;
+}
+.dash-urgency-body .alert-item:hover{
+  background:#1b2028;
+  border-color:rgba(255,255,255,.10)!important;
+}
+.dash-urgency-body .al-text{
+  color:#f4f7fb;
+  font-size:12.5px!important;
+  font-weight:760!important;
+}
+.dash-urgency-body .alert-item [style*="font-size:10px"]{
+  color:#8793a3!important;
+  font-size:11px!important;
+}
+.dash-urgency-body .alert-item [style*="font-size:11px"]{
+  font-size:12px!important;
+  font-weight:800!important;
+}
+.dash-panel-close{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.08);
+  background:#20242b;
+  color:#b4bfcd;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  line-height:1;
+}
+.dash-panel-close:hover{border-color:rgba(88,183,255,.35);color:#fff;background:#252b35}
 #pane-dashboard .mov-group{border-bottom-color:rgba(255,255,255,.055)}
 #pane-dashboard .mov-group-hdr{
   padding:14px 18px!important;
@@ -1044,7 +1104,8 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 
 @media(max-width:1100px){
-  #pane-dashboard .db-grid{grid-template-columns:1fr}
+  #pane-dashboard .db-grid,
+  #pane-dashboard .db-grid.urgency-open{grid-template-columns:1fr}
   .dash-caption{text-align:left}
 }
 @media(max-width:860px){
@@ -1400,7 +1461,7 @@ input[type="date"][style*="background:#1a1f2e"]{
         </div>
         <div class="dash-urgencies">
           <div class="dash-panel-kicker danger">Urgências</div>
-          <div class="urg-card urg-red" onclick="openDashModal('prazos')">
+          <div class="urg-card urg-red" data-urgency="prazos" onclick="openDashPanel('prazos')">
             <div class="urg-main">
               <span class="urg-dot"></span>
               <span>Prazos Fatais</span>
@@ -1410,7 +1471,7 @@ input[type="date"][style*="background:#1a1f2e"]{
               <span>›</span>
             </div>
           </div>
-          <div class="urg-card urg-yellow" onclick="openDashModal('liquidacao')">
+          <div class="urg-card urg-yellow" data-urgency="liquidacao" onclick="openDashPanel('liquidacao')">
             <div class="urg-main">
               <span class="urg-dot"></span>
               <span>Liquidação Próx. ou Venc.</span>
@@ -1420,7 +1481,7 @@ input[type="date"][style*="background:#1a1f2e"]{
               <span>›</span>
             </div>
           </div>
-          <div class="urg-card urg-orange" onclick="openDashModal('paralisados')">
+          <div class="urg-card urg-orange" data-urgency="paralisados" onclick="openDashPanel('paralisados')">
             <div class="urg-main">
               <span class="urg-dot"></span>
               <span>Paralisados</span>
@@ -1431,6 +1492,20 @@ input[type="date"][style*="background:#1a1f2e"]{
             </div>
           </div>
         </div>
+      </div>
+      <!-- COLUNA 2 — Detalhe da Urgência -->
+      <div class="dash-panel dash-urgency-detail" id="dash-urgency-detail" hidden>
+        <div class="dash-panel-hdr">
+          <div>
+            <div class="dash-panel-kicker danger">Urgência</div>
+            <div class="dash-panel-title" id="dash-urgency-title">—</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="dash-urgency-count" class="dash-count"></span>
+            <button class="dash-panel-close" onclick="closeDashPanel()" title="Fechar">×</button>
+          </div>
+        </div>
+        <div id="dash-urgency-body" class="dash-urgency-body"></div>
       </div>
       <!-- COLUNA 2 — Últimas Movimentações -->
       <div class="dash-panel dash-movements">
@@ -2438,6 +2513,7 @@ function updateDash(){
   const _uPraz=document.getElementById('urg-count-prazos');if(_uPraz)_uPraz.textContent=alertRecs.length||'0';
   const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
   const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
+  if(dashUrgencyType)openDashPanel(dashUrgencyType,true);
 
   renderCalendario();
 }
@@ -3137,6 +3213,40 @@ function renderEnc(){
 function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+
+let dashUrgencyType='';
+function openDashPanel(tipo,refresh=false){
+  const map={
+    prazos:      {srcId:'ds-alerts-body', title:'Prazos Fatais',                cntId:'ds-cnt-alerts'},
+    liquidacao:  {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida', cntId:'ds-cnt-liq'},
+    paralisados: {srcId:'ds-par-body',    title:'Paralisados',                  cntId:'ds-cnt-par'},
+  };
+  const cfg=map[tipo]; if(!cfg)return;
+  dashUrgencyType=tipo;
+  const grid=document.querySelector('#pane-dashboard .db-grid');
+  const panel=document.getElementById('dash-urgency-detail');
+  const src=document.getElementById(cfg.srcId);
+  const body=document.getElementById('dash-urgency-body');
+  const cnt=(document.getElementById(cfg.cntId).textContent||'').replace('· ','');
+  document.getElementById('dash-urgency-title').textContent=cfg.title;
+  document.getElementById('dash-urgency-count').textContent=cnt?`${cnt} registros`:'';
+  body.innerHTML='';
+  const clone=src.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.classList.add('dash-side-list');
+  clone.style.cssText='';
+  body.appendChild(clone);
+  panel.hidden=false;
+  grid.classList.add('urgency-open');
+  document.querySelectorAll('.urg-card').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
+  if(!refresh)panel.scrollIntoView({block:'nearest',inline:'nearest'});
+}
+function closeDashPanel(){
+  dashUrgencyType='';
+  document.getElementById('dash-urgency-detail').hidden=true;
+  document.querySelector('#pane-dashboard .db-grid')?.classList.remove('urgency-open');
+  document.querySelectorAll('.urg-card').forEach(el=>el.classList.remove('on'));
+}
 
 function openDashModal(tipo){
   const map={
