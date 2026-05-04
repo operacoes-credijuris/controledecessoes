@@ -53,11 +53,6 @@ body.light .urg-main{font-weight:400}
 body.light .db-card-hdr,body.light .db-prio-hdr{font-weight:400}
 /* paginação ativa */
 body.light .pgb.on,body.light .pgb-ps.on{font-weight:500}
-/* células de tabela em modo claro — fonte light em todos os elementos */
-body.light .tbl-wrap td,
-body.light .tbl-wrap td *{font-weight:300!important}
-body.light .tbl-wrap td .obj-bdg,
-body.light .tbl-wrap td .bdg{font-weight:500!important}
 /* números de processo no painel de atividade do dashboard */
 body.light #pane-dashboard .mov-group-hdr span{font-weight:400!important}
 body.light #pane-dashboard .al-text{font-weight:300!important}
@@ -1480,6 +1475,11 @@ input[type="date"][style*="background:#1a1f2e"]{
   .pane.on,#pane-dashboard.on{padding:14px}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+/* ── MODO CLARO: fonte light nas células das tabelas (regras ao final p/ precedência) ── */
+body.light .tbl-wrap td{font-weight:300!important}
+body.light .tbl-wrap td *{font-weight:300!important}
+body.light .tbl-wrap td .obj-bdg,
+body.light .tbl-wrap td .bdg{font-weight:500!important}
 </style>
 </head>
 <body>
