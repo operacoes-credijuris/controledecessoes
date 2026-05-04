@@ -1032,8 +1032,65 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   border-top-color:rgba(255,255,255,.06)!important;
 }
 #dash-modal-hdr{
+  background:#15181e!important;
   border-bottom:1px solid rgba(255,255,255,.06)!important;
-  border-left-color:rgba(0,119,255,.55)!important;
+  border-left:0!important;
+  padding:22px 24px!important;
+}
+#dash-modal-ov .mdl{
+  max-width:760px;
+  background:#111317;
+  border-color:rgba(255,255,255,.08);
+  border-radius:10px;
+  overflow:hidden;
+}
+#dash-modal-title{
+  color:#f4f7fb!important;
+  font-size:19px;
+}
+#dash-modal-body{
+  background:#101216;
+  padding:12px;
+}
+#dash-modal-body.dash-modal-prazos{box-shadow:inset 3px 0 0 rgba(248,113,113,.72)}
+#dash-modal-body.dash-modal-liquidacao{box-shadow:inset 3px 0 0 rgba(251,191,36,.72)}
+#dash-modal-body.dash-modal-paralisados{box-shadow:inset 3px 0 0 rgba(251,146,60,.72)}
+#dash-modal-body .dash-modal-list{
+  display:grid;
+  gap:8px;
+}
+#dash-modal-body .alert-item{
+  min-height:64px;
+  padding:14px 16px!important;
+  border:1px solid rgba(255,255,255,.07)!important;
+  border-radius:8px;
+  background:#15181e;
+  box-shadow:0 10px 24px rgba(0,0,0,.16);
+}
+#dash-modal-body .alert-item:hover{
+  background:#1b2028;
+  border-color:rgba(255,255,255,.10)!important;
+}
+#dash-modal-body .al-text{
+  color:#f4f7fb;
+  font-size:13px!important;
+  font-weight:760!important;
+  letter-spacing:0;
+}
+#dash-modal-body .alert-item [style*="font-size:10px"]{
+  color:#8793a3!important;
+  font-size:11px!important;
+}
+#dash-modal-body .alert-item [style*="font-size:11px"]{
+  font-size:12px!important;
+  font-weight:800!important;
+}
+#dash-modal-body .alert-item [style*="border:1px solid #f59e0b"]{
+  border-radius:999px!important;
+  padding:2px 8px!important;
+  line-height:1.15!important;
+  margin-left:8px!important;
+  background:rgba(245,158,11,.16)!important;
 }
 #dash-modal-sub,
 #hist-proc,
@@ -3015,10 +3072,10 @@ function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);
 
 function openDashModal(tipo){
   const map={
-    prazos:       {srcId:'ds-alerts-body', title:'Prazos Fatais',                  cntId:'ds-cnt-alerts', bg:'rgba(239,68,68,.08)',   bl:'rgba(239,68,68,.4)'},
-    liquidacao:   {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida',   cntId:'ds-cnt-liq',    bg:'rgba(217,119,6,.08)',   bl:'rgba(217,119,6,.4)'},
-    paralisados:  {srcId:'ds-par-body',    title:'Paralisados',                     cntId:'ds-cnt-par',    bg:'rgba(251,146,60,.08)',  bl:'rgba(251,146,60,.4)'},
-    movimentacoes:{srcId:'ds-mov-body',    title:'Últimas Movimentações',           cntId:'ds-cnt-mov',    bg:'rgba(0,119,255,.08)',  bl:'rgba(0,119,255,.4)'},
+    prazos:       {srcId:'ds-alerts-body', title:'Prazos Fatais',                  cntId:'ds-cnt-alerts'},
+    liquidacao:   {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida',   cntId:'ds-cnt-liq'},
+    paralisados:  {srcId:'ds-par-body',    title:'Paralisados',                     cntId:'ds-cnt-par'},
+    movimentacoes:{srcId:'ds-mov-body',    title:'Últimas Movimentações',           cntId:'ds-cnt-mov'},
   };
   const cfg=map[tipo]; if(!cfg)return;
   const src=document.getElementById(cfg.srcId);
@@ -3026,16 +3083,16 @@ function openDashModal(tipo){
   document.getElementById('dash-modal-title').textContent=cfg.title;
   document.getElementById('dash-modal-sub').textContent=cnt?`${cnt.replace('· ','')} registros`:'';
   const hdr=document.getElementById('dash-modal-hdr');
-  hdr.style.background=cfg.bg;
-  hdr.style.borderLeft=`3px solid ${cfg.bl}`;
+  hdr.style.background='';
+  hdr.style.borderLeft='';
   const body=document.getElementById('dash-modal-body');
+  body.className=`dash-modal-${tipo}`;
   body.innerHTML='';
   // clonar conteúdo e ajustar padding dos itens
   const clone=src.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.classList.add('dash-modal-list');
   clone.style.cssText='';
-  // espaçar itens no modal
-  clone.querySelectorAll('.alert-item').forEach(el=>el.style.padding='12px 20px');
-  clone.querySelectorAll('.mov-group-hdr').forEach(el=>el.style.padding='12px 20px');
   body.appendChild(clone);
   openModal('dash-modal-ov');
 }
