@@ -28,8 +28,16 @@
 input,select,textarea,button{font-family:inherit}
 body{font-family:var(--font-body);background:var(--bg0);color:var(--txt);height:100vh;overflow:hidden;font-size:14px;display:flex;flex-direction:column}
 /* MODO CLARO */
-body.light{filter:invert(1) hue-rotate(180deg);background:#fff}
+body.light{filter:invert(1) hue-rotate(180deg);background:#fff;-webkit-font-smoothing:antialiased}
 body.light img{filter:invert(1) hue-rotate(180deg)}
+body.light .sh-title{font-weight:600}
+body.light .dash-panel-title{font-weight:600}
+body.light .mdl-title{font-weight:600}
+body.light .sc-val{font-weight:600}
+body.light .sc-lbl{font-weight:500;letter-spacing:.4px}
+body.light thead th{font-weight:600;letter-spacing:.3px}
+body.light .urg-main span:last-child{font-weight:500}
+body.light .al-text,body.light .cfg-section-title{font-weight:600}
 a{color:inherit;text-decoration:none}
 /* SIDEBAR */
 .app-body{display:flex;flex:1;overflow:hidden;min-height:0}
@@ -1502,7 +1510,7 @@ input[type="date"][style*="background:#1a1f2e"]{
   <div class="sb-spacer"></div>
   <div style="border-top:1px solid rgba(255,255,255,.06);margin:0 8px 6px"></div>
   <div class="sb-item" id="sb-item-theme" onclick="toggleTheme()" title="Alternar tema">
-    <span class="sb-item-icon" id="sb-theme-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2.2" stroke="currentColor" stroke-width="1.2"/><path d="M6 1v1M6 10v1M1 6h1M10 6h1M2.5 2.5l.7.7M8.8 8.8l.7.7M9.5 2.5l-.7.7M3.2 8.8l-.7.7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
+    <span class="sb-item-icon" id="sb-theme-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2.3" stroke="currentColor" stroke-width="1.2"/><path d="M6 0.5V2M6 10V11.5M0.5 6H2M10 6H11.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
     <span class="sb-item-lbl" id="sb-theme-lbl">Modo claro</span>
   </div>
   <div class="sb-item" id="sb-item-config" onclick="sbNav('config')">
@@ -2350,7 +2358,7 @@ function _applyTheme(light){
   if(lbl)lbl.textContent=light?'Modo escuro':'Modo claro';
   if(icon)icon.innerHTML=light
     ?'<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M10 6.5A4.5 4.5 0 0 1 5.5 11 4.5 4.5 0 0 1 1 6.5 4.5 4.5 0 0 1 5.5 2c-.5 1-.8 2.2-.8 3.5S4.5 8.7 5 9.7A4.5 4.5 0 0 0 10 6.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>'
-    :'<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2.2" stroke="currentColor" stroke-width="1.2"/><path d="M6 1v1M6 10v1M1 6h1M10 6h1M2.5 2.5l.7.7M8.8 8.8l.7.7M9.5 2.5l-.7.7M3.2 8.8l-.7.7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
+    :'<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2.3" stroke="currentColor" stroke-width="1.2"/><path d="M6 0.5V2M6 10V11.5M0.5 6H2M10 6H11.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
 }
 function toggleTheme(){
   const light=!document.body.classList.contains('light');
