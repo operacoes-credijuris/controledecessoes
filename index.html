@@ -740,6 +740,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   font-family:var(--font-head);
   letter-spacing:-.1px;
 }
+.mdl-sub{font-size:11px;font-weight:400;color:#5b6576;margin-top:3px;font-family:var(--font-body);letter-spacing:normal;line-height:1.4}
 
 #login-screen{
   background:
@@ -1370,12 +1371,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 .tl-date{color:#75c6ff}
 .tl-desc{color:#dce5f1}
-.tl-add{
-  background:#101216;
-  border:1px solid rgba(255,255,255,.06);
-  border-radius:8px;
-  padding:10px;
-}
+.tl-add{padding-top:4px}
 .tl-add input{min-height:34px}
 
 .senha-display{
@@ -1883,7 +1879,7 @@ input[type="date"][style*="background:#1a1f2e"]{
 <div id="migr-ov" class="ov" onclick="ovClick(event,'migr-ov')">
   <div class="mdl" style="max-width:480px">
     <div class="mdl-hdr">
-      <div class="mdl-title">📦 Migrar dados locais para a nuvem</div>
+      <div class="mdl-title">Migrar dados locais para a nuvem</div>
     </div>
     <div class="mdl-body">
       <p style="color:var(--txt2);font-size:13px;line-height:1.7;margin-bottom:16px">
@@ -1917,14 +1913,14 @@ input[type="date"][style*="background:#1a1f2e"]{
 <div id="hist-ov" class="ov" onclick="ovClick(event,'hist-ov')">
   <div class="mdl" style="max-width:580px;display:flex;flex-direction:column;overflow:hidden">
     <div class="mdl-hdr">
-      <div class="mdl-title">
-        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Histórico</div>
-        <div id="hist-proc" style="font-family:var(--font-body);font-weight:400;font-size:12px;color:#6b7280;margin-top:2px"></div>
+      <div>
+        <div class="mdl-title">Histórico</div>
+        <div class="mdl-sub" id="hist-proc"></div>
       </div>
       <button class="mdl-x" onclick="closeModal('hist-ov')">✕</button>
     </div>
     <div class="mdl-body" id="hist-body" style="overflow-y:auto;flex:1"></div>
-    <div id="hist-add" style="padding:14px 22px;border-top:1px solid var(--brd);background:#151820;flex-shrink:0"></div>
+    <div id="hist-add" style="padding:14px 22px;flex-shrink:0"></div>
     <div class="mdl-footer">
       <button class="btn btn-blue" onclick="closeModal('hist-ov')">Fechar</button>
     </div>
@@ -1964,13 +1960,13 @@ input[type="date"][style*="background:#1a1f2e"]{
 </div>
 
 <!-- ACTIONS DROPDOWN -->
-<div id="actions-dd" style="display:none;position:fixed;z-index:9999;background:#151820;border:1px solid #2a3348;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.55);min-width:168px;padding:4px 0"></div>
+<div id="actions-dd" style="display:none;position:fixed;z-index:9999;min-width:168px;padding:4px 0"></div>
 
 <!-- MOTIVO MODAL -->
 <div id="motivo-ov" class="ov" onclick="ovClick(event,'motivo-ov')">
   <div class="mdl" style="max-width:520px">
     <div class="mdl-hdr">
-      <div class="mdl-title">📄 Motivo do Encerramento</div>
+      <div class="mdl-title">Motivo do Encerramento</div>
       <button class="mdl-x" onclick="closeModal('motivo-ov')">✕</button>
     </div>
     <div class="mdl-body" id="motivo-body"></div>
@@ -1984,9 +1980,9 @@ input[type="date"][style*="background:#1a1f2e"]{
 <div id="senha-ov" class="ov" onclick="ovClick(event,'senha-ov')">
   <div class="mdl" style="max-width:420px">
     <div class="mdl-hdr">
-      <div class="mdl-title">
-        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Senha de Acesso</div>
-        <div id="senha-proc" style="font-family:var(--font-body);font-weight:400;font-size:12px;color:#6b7280;margin-top:2px"></div>
+      <div>
+        <div class="mdl-title">Senha de Acesso</div>
+        <div class="mdl-sub" id="senha-proc"></div>
       </div>
       <button class="mdl-x" onclick="closeModal('senha-ov')">✕</button>
     </div>
@@ -2001,7 +1997,7 @@ input[type="date"][style*="background:#1a1f2e"]{
 <div id="vinculo-ov" class="ov" onclick="ovClick(event,'vinculo-ov')">
   <div class="mdl" style="max-width:620px">
     <div class="mdl-hdr">
-      <div class="mdl-title">🔗 Vincular Processo</div>
+      <div class="mdl-title">Vincular Processo</div>
       <button class="mdl-x" onclick="closeModal('vinculo-ov')">✕</button>
     </div>
     <div class="mdl-body" id="vinculo-body"></div>
@@ -2015,9 +2011,9 @@ input[type="date"][style*="background:#1a1f2e"]{
 <div id="cart-ov" class="ov" onclick="ovClick(event,'cart-ov')">
   <div class="mdl" style="max-width:700px">
     <div class="mdl-hdr">
-      <div class="mdl-title">
-        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Cartório</div>
-        <div id="cart-proc" style="font-family:var(--font-body);font-weight:400;font-size:12px;color:#6b7280;margin-top:2px"></div>
+      <div>
+        <div class="mdl-title">Cartório</div>
+        <div class="mdl-sub" id="cart-proc"></div>
       </div>
       <button class="mdl-x" onclick="closeModal('cart-ov')">✕</button>
     </div>
@@ -2032,9 +2028,9 @@ input[type="date"][style*="background:#1a1f2e"]{
 <div id="contato-ov" class="ov" onclick="ovClick(event,'contato-ov')">
   <div class="mdl" style="max-width:580px">
     <div class="mdl-hdr">
-      <div class="mdl-title">
-        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:#e2e8f0;line-height:1.2">Contato</div>
-        <div id="contato-title" style="font-family:var(--font-body);font-weight:400;font-size:12px;color:#6b7280;margin-top:2px"></div>
+      <div>
+        <div class="mdl-title">Contato</div>
+        <div class="mdl-sub" id="contato-title"></div>
       </div>
       <button class="mdl-x" onclick="closeModal('contato-ov')">✕</button>
     </div>
@@ -4036,7 +4032,7 @@ function renderHistBody(rec){
 
   const today=new Date().toISOString().split('T')[0];
   const addHtml=`
-    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Nova Entrada</div>
+    <div style="font-size:10px;font-weight:800;color:#6e9fce;margin-bottom:10px;text-transform:uppercase;letter-spacing:.9px;font-family:var(--font-head)">Nova Entrada</div>
     <div class="tl-add">
       <input type="date" id="h-date" value="${today}" style="width:150px">
       <input type="text" id="h-desc" placeholder="Descrição da movimentação…" style="flex:1">
