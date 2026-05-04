@@ -3089,7 +3089,7 @@ async function syncAdvbox(){
   const erros=[],pendentes=[],paraRetry=[];
 
   async function _buscarProcesso({mod,rec},tentativa=1){
-    const labelFase=tentativa>1?`🔄 Tentativa ${tentativa}: Buscando movimentações`:'🔍 Fase 1: Buscando movimentações';
+    const labelFase=tentativa>1?`Tentativa ${tentativa}: Buscando movimentações`:'Buscando movimentações';
     _syncProgressUpdate(prog,{label:`${labelFase} (${st.done}/${total})`,pct:Math.round(st.done/total*100),sub:rec.numeroProcesso});
 
     const sr=await _advboxGet(`${_PROXY}?action=lawsuits&process_number=${encodeURIComponent(rec.numeroProcesso)}`,'lawsuits');
@@ -3143,7 +3143,7 @@ async function syncAdvbox(){
 
   // FASE 2 — Gemini
   if(pendentes.length){
-    _syncProgressUpdate(prog,{label:`🤖 Fase 2: Resumindo com IA (${pendentes.length} processo(s))`,pct:0});
+    _syncProgressUpdate(prog,{label:`Resumindo com IA (${pendentes.length} processo(s))`,pct:0});
     const allItems=pendentes.flatMap(({movs,pi})=>
       movs.map((mv,mi)=>({
         pi,mi,
@@ -3156,7 +3156,7 @@ async function syncAdvbox(){
 
     // FASE 3 — Salvar
     for(const[i,{mod,arr,idx,movs,pi}]of pendentes.entries()){
-      _syncProgressUpdate(prog,{label:`💾 Fase 3: Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
+      _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
       if(idx===-1){st.synced++;continue;}
       const hist=movs.map((mv,mi)=>{
         const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
