@@ -639,6 +639,315 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .lc-logo img{max-width:220px!important}
 .lc-err{border-radius:8px}
 
+/* DASHBOARD REFINEMENT */
+#pane-dashboard.on{
+  gap:16px;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(0,119,255,.10),transparent 34%),
+    #171a1f;
+}
+.dash-topline{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+  flex-shrink:0;
+}
+.dash-eyebrow,
+.dash-panel-kicker{
+  color:#6e9fce;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.9px;
+  text-transform:uppercase;
+}
+.dash-title{
+  color:#f7fbff;
+  font-family:var(--font-head);
+  font-size:25px;
+  font-weight:700;
+  line-height:1.15;
+  margin-top:3px;
+}
+.dash-caption{
+  color:#7f8a99;
+  font-size:12px;
+  max-width:430px;
+  text-align:right;
+}
+.dash-stats{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  margin:0!important;
+  border:none;
+  background:transparent;
+  box-shadow:none;
+  gap:12px;
+  overflow:visible;
+}
+.dash-stats .sc{
+  min-height:108px;
+  border:1px solid rgba(255,255,255,.07);
+  border-right:1px solid rgba(255,255,255,.07);
+  border-radius:8px;
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.01)),
+    #111317;
+  box-shadow:0 18px 38px rgba(0,0,0,.18);
+  overflow:hidden;
+}
+.dash-stats .sc::after{
+  content:'';
+  position:absolute;
+  inset:auto 16px 14px 16px;
+  height:2px;
+  border-radius:999px;
+  background:linear-gradient(90deg,rgba(0,119,255,.88),rgba(88,183,255,.10));
+  opacity:.55;
+}
+.dash-stats .sc-total{
+  background:
+    radial-gradient(circle at 90% 12%,rgba(0,119,255,.16),transparent 42%),
+    linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.01)),
+    #111317;
+}
+.dash-stats .sc-danger::after{background:linear-gradient(90deg,rgba(248,113,113,.9),rgba(248,113,113,.08))}
+.dash-stats .sc-lbl{color:#738196}
+.dash-stats .sc-val{font-size:34px;margin-top:6px}
+.dash-stats .sc-val.red{color:#ff7373}
+
+#pane-dashboard .db-grid{
+  grid-template-columns:minmax(320px,430px) minmax(0,1fr);
+  gap:16px;
+  margin:0;
+  align-items:stretch;
+}
+.dash-panel{
+  min-height:0;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:10px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),
+    #111317;
+  box-shadow:0 22px 52px rgba(0,0,0,.22);
+  overflow:hidden;
+}
+.dash-agenda,
+.dash-movements{
+  display:flex;
+  flex-direction:column;
+}
+.dash-panel-hdr{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px 18px 12px;
+  border-bottom:1px solid rgba(255,255,255,.055);
+  background:#15181e;
+  flex-shrink:0;
+}
+.dash-panel-kicker.blue{color:#58b7ff}
+.dash-panel-kicker.danger{color:#ff8080;padding:0 18px 8px}
+.dash-panel-title{
+  color:#f2f6fb;
+  font-size:15px;
+  font-weight:750;
+  margin-top:2px;
+}
+.dash-count{
+  color:#7f8a99;
+  font-size:12px;
+  background:#20242b;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:999px;
+  padding:4px 9px;
+}
+.dash-calendar{
+  padding:18px;
+  border-bottom:1px solid rgba(255,255,255,.055);
+}
+.cal-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:18px;
+}
+.cal-title{
+  color:#f7fbff;
+  font-family:var(--font-head);
+  font-size:24px;
+  font-weight:700;
+}
+.cal-title span{
+  color:#788599;
+  font-family:var(--font-body);
+  font-size:13px;
+  font-weight:600;
+}
+.cal-nav{display:flex;gap:7px}
+.cal-nav button{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.08);
+  background:#20242b;
+  color:#b4bfcd;
+  cursor:pointer;
+  font-size:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.cal-nav button:hover{border-color:rgba(0,119,255,.55);color:#fff;background:#252b35}
+.cal-week,
+.cal-days{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+}
+.cal-week{
+  margin-bottom:8px;
+  color:#68758a;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+}
+.cal-week div{text-align:center}
+.cal-days{gap:6px 0}
+.cal-cell{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.cal-day{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  color:#8795aa;
+  font-size:13px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+.cal-muted{color:#293342}
+.cal-today{
+  color:#fff;
+  background:linear-gradient(180deg,#168fff,#0077ff);
+  font-weight:800;
+  box-shadow:0 10px 24px rgba(0,119,255,.32);
+}
+.cal-has-deadline:not(.cal-today){
+  color:#dfe8f5;
+  background:#202733;
+  border:1px solid rgba(0,119,255,.28);
+}
+.cal-dot{
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  background:#17d7ff;
+  margin-top:2px;
+}
+.cal-qtd{
+  color:#17d7ff;
+  font-size:8px;
+  line-height:1;
+  margin-top:1px;
+  font-weight:900;
+}
+.dash-urgencies{
+  padding:14px 0 16px;
+}
+.urg-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:0 14px 8px;
+  padding:13px 14px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:8px;
+  background:#15181e;
+  cursor:pointer;
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.urg-card:hover{
+  background:#1d222b;
+  border-color:rgba(255,255,255,.10);
+  transform:translateY(-1px);
+}
+.urg-main{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#f1f6ff;
+  font-size:13px;
+  font-weight:650;
+}
+.urg-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+.urg-red .urg-dot{background:#ff7373}
+.urg-yellow .urg-dot{background:#fbbf24}
+.urg-orange .urg-dot{background:#fb923c}
+.urg-meta{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#7f8a99;
+  font-size:12px;
+}
+.urg-meta span:first-child{
+  min-width:24px;
+  text-align:center;
+  padding:2px 7px;
+  border-radius:999px;
+  background:#20242b;
+  color:#c8d2df;
+}
+.dash-mov-body{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+}
+#pane-dashboard .mov-group{border-bottom-color:rgba(255,255,255,.055)}
+#pane-dashboard .mov-group-hdr{
+  padding:14px 18px!important;
+  min-height:58px;
+}
+#pane-dashboard .mov-group-hdr:hover{background:#1d222b}
+#pane-dashboard .mov-group-body>div{
+  padding:8px 18px 8px 28px!important;
+  background:#0f1116;
+}
+#pane-dashboard .al-text,
+#pane-dashboard .mov-group-hdr span[style*="font-size:12px"]{
+  font-size:13px!important;
+  font-weight:750!important;
+}
+#pane-dashboard .db-empty{
+  min-height:220px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+@media(max-width:1100px){
+  #pane-dashboard .db-grid{grid-template-columns:1fr}
+  .dash-caption{text-align:left}
+}
+@media(max-width:860px){
+  .dash-topline{align-items:flex-start;flex-direction:column}
+  .dash-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .dash-stats .sc{min-height:96px}
+}
+
 @media(max-width:768px){
   body{padding:0}
   .hdr,.app-body{border-radius:0;border-left:none;border-right:none}
@@ -735,67 +1044,77 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 
   <!-- DASHBOARD -->
   <div id="pane-dashboard" class="pane on">
-    <div class="stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:10px">
-      <div class="sc"><div class="sc-lbl">Total de Créditos</div><div class="sc-val" id="ds-total">0</div></div>
+    <div class="dash-topline">
+      <div>
+        <div class="dash-eyebrow">Controle de cessões</div>
+        <div class="dash-title">Dashboard operacional</div>
+      </div>
+      <div class="dash-caption">Visão consolidada dos processos ativos, prazos e movimentações recentes.</div>
+    </div>
+    <div class="stats dash-stats">
+      <div class="sc sc-total"><div class="sc-lbl">Total de Créditos</div><div class="sc-val" id="ds-total">0</div></div>
       <div class="sc"><div class="sc-lbl">Cessões Ativas</div><div class="sc-val" id="ds-cess">0</div></div>
       <div class="sc"><div class="sc-lbl">RPV Complementar</div><div class="sc-val" id="ds-rpv">0</div></div>
       <div class="sc"><div class="sc-lbl">Encerrados</div><div class="sc-val" id="ds-enc">0</div></div>
-      <div class="sc"><div class="sc-lbl">Com Prazo Fatal</div><div class="sc-val red" id="ds-fatal">0</div></div>
+      <div class="sc sc-danger"><div class="sc-lbl">Com Prazo Fatal</div><div class="sc-val red" id="ds-fatal">0</div></div>
     </div>
     <div class="db-grid">
       <!-- COLUNA 1 — Calendário + Urgências -->
-      <div style="display:flex;flex-direction:column;height:100%">
-        <div style="padding:8px 0">
+      <div class="dash-panel dash-agenda">
+        <div class="dash-panel-hdr">
+          <div>
+            <div class="dash-panel-kicker">Agenda</div>
+            <div class="dash-panel-title">Prazos do mês</div>
+          </div>
+        </div>
+        <div class="dash-calendar">
           <div id="cal-container"></div>
         </div>
-        <div style="flex:1;display:flex;flex-direction:column">
-          <div style="display:flex;align-items:center;gap:8px;margin:16px 0 10px;padding-top:14px;border-top:1px solid rgba(30,36,51,.5)">
-            <div style="width:3px;height:16px;background:#ef4444;border-radius:2px;flex-shrink:0"></div>
-            <span style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px">Urgências</span>
-          </div>
-          <div onclick="openDashModal('prazos')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:#0a0c10;border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='#0a0c10'">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:6px;height:6px;border-radius:50%;background:#f87171;flex-shrink:0"></div>
-              <span style="font-size:13px;color:#e2e8f0">Prazos Fatais</span>
+        <div class="dash-urgencies">
+          <div class="dash-panel-kicker danger">Urgências</div>
+          <div class="urg-card urg-red" onclick="openDashModal('prazos')">
+            <div class="urg-main">
+              <span class="urg-dot"></span>
+              <span>Prazos Fatais</span>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span id="urg-count-prazos" style="font-size:11px;color:#4b5563">0</span>
-              <span style="color:#4b5563;font-size:14px">›</span>
+            <div class="urg-meta">
+              <span id="urg-count-prazos">0</span>
+              <span>›</span>
             </div>
           </div>
-          <div onclick="openDashModal('liquidacao')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:#0a0c10;border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='#0a0c10'">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:6px;height:6px;border-radius:50%;background:#fbbf24;flex-shrink:0"></div>
-              <span style="font-size:13px;color:#e2e8f0">Liquidação Próx. ou Venc.</span>
+          <div class="urg-card urg-yellow" onclick="openDashModal('liquidacao')">
+            <div class="urg-main">
+              <span class="urg-dot"></span>
+              <span>Liquidação Próx. ou Venc.</span>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span id="urg-count-liq" style="font-size:11px;color:#4b5563">0</span>
-              <span style="color:#4b5563;font-size:14px">›</span>
+            <div class="urg-meta">
+              <span id="urg-count-liq">0</span>
+              <span>›</span>
             </div>
           </div>
-          <div onclick="openDashModal('paralisados')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:#0a0c10;border-bottom:1px solid rgba(30,36,51,.4);transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.09)'" onmouseout="this.style.background='#0a0c10'">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:6px;height:6px;border-radius:50%;background:#fb923c;flex-shrink:0"></div>
-              <span style="font-size:13px;color:#e2e8f0">Paralisados</span>
+          <div class="urg-card urg-orange" onclick="openDashModal('paralisados')">
+            <div class="urg-main">
+              <span class="urg-dot"></span>
+              <span>Paralisados</span>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span id="urg-count-par" style="font-size:11px;color:#4b5563">0</span>
-              <span style="color:#4b5563;font-size:14px">›</span>
+            <div class="urg-meta">
+              <span id="urg-count-par">0</span>
+              <span>›</span>
             </div>
           </div>
         </div>
       </div>
       <!-- COLUNA 2 — Últimas Movimentações -->
-      <div style="display:flex;flex-direction:column;min-height:0">
-        <div style="display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:8px 0">
-          <div style="width:3px;height:16px;background:#0077ff;border-radius:2px;flex-shrink:0"></div>
-          <span style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px">Últimas Movimentações</span>
-          <span id="ds-cnt-mov" style="font-size:11px;color:#4b5563;font-weight:400"></span>
+      <div class="dash-panel dash-movements">
+        <div class="dash-panel-hdr">
+          <div>
+            <div class="dash-panel-kicker blue">Atividade</div>
+            <div class="dash-panel-title">Últimas movimentações</div>
+          </div>
+          <span id="ds-cnt-mov" class="dash-count"></span>
         </div>
-        <div id="ds-mov-body" style="flex:1;overflow-y:auto;min-height:0"></div>
+        <div id="ds-mov-body" class="dash-mov-body"></div>
       </div>
-      <!-- COLUNA 3 — vazia -->
-      <div style="background:transparent;border:none"></div>
     </div>
     <!-- Elementos ocultos usados pelos modais expandidos -->
     <div style="display:none">
@@ -1841,20 +2160,20 @@ function renderCalendario() {
   });
 
   let html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <span style="font-family:var(--font-head);color:#e2e8f0;line-height:1.1"><span style="font-size:24px;font-weight:700">${meses[calMes]}</span> <span style="font-size:14px;font-weight:400;color:#6b7280">${calAno}</span></span>
-      <div style="display:flex;gap:6px">
-        <button onclick="calNav(-1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1">‹</button>
-        <button onclick="calNav(1)" style="width:30px;height:30px;border-radius:50%;border:1px solid #2a3348;background:transparent;color:#6b7280;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1">›</button>
+    <div class="cal-head">
+      <div class="cal-title">${meses[calMes]} <span>${calAno}</span></div>
+      <div class="cal-nav">
+        <button onclick="calNav(-1)">‹</button>
+        <button onclick="calNav(1)">›</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:10px">
-      ${nomes.map(n=>`<div style="text-align:center;font-size:11px;font-weight:600;color:#4b5563">${n}</div>`).join('')}
+    <div class="cal-week">
+      ${nomes.map(n=>`<div>${n}</div>`).join('')}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);row-gap:8px">`;
+    <div class="cal-days">`;
 
   for(let i = primeiroDia - 1; i >= 0; i--) {
-    html += `<div style="text-align:center"><div style="width:42px;height:42px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#1e2433">${diasMesAnterior - i}</div></div>`;
+    html += `<div class="cal-cell"><div class="cal-day cal-muted">${diasMesAnterior - i}</div></div>`;
   }
 
   for(let d = 1; d <= diasNoMes; d++) {
@@ -1862,20 +2181,17 @@ function renderCalendario() {
     const isHoje = d === hoje.getDate() && calMes === hoje.getMonth() && calAno === hoje.getFullYear();
     const temPrazo = !!prazosNivel[dateStr];
     const qtdPrazo = prazosQtd[dateStr] || 0;
-
-    const bg = isHoje ? '#0077ff' : 'transparent';
-    const txtColor = isHoje ? '#fff' : '#6b7280';
-    const fw = isHoje ? '700' : '400';
-
-    const dot = temPrazo && !isHoje ? `<div style="width:4px;height:4px;border-radius:50%;background:#06b6d4;margin-top:1px"></div><div style="font-size:8px;line-height:1;margin-top:1px;color:#06b6d4;font-weight:700">${qtdPrazo}</div>` : '';
-
-    html += `<div style="text-align:center"><div style="width:42px;height:42px;border-radius:50%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${bg};font-size:13px;color:${txtColor};font-weight:${fw}">${d}${dot}</div></div>`;
+    const cls=['cal-day'];
+    if(isHoje)cls.push('cal-today');
+    if(temPrazo)cls.push('cal-has-deadline');
+    const dot = temPrazo && !isHoje ? `<div class="cal-dot"></div><div class="cal-qtd">${qtdPrazo}</div>` : '';
+    html += `<div class="cal-cell"><div class="${cls.join(' ')}">${d}${dot}</div></div>`;
   }
 
   const totalCells = primeiroDia + diasNoMes;
   const restantes = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
   for(let i = 1; i <= restantes; i++) {
-    html += `<div style="text-align:center"><div style="width:42px;height:42px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;color:#1e2433">${i}</div></div>`;
+    html += `<div class="cal-cell"><div class="cal-day cal-muted">${i}</div></div>`;
   }
 
   html += `</div>`;
