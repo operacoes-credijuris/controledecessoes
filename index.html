@@ -2506,7 +2506,7 @@ function updateDash(){
   // Ordenar grupos pela data mais recente
   const gruposArr=[...grupos.values()].sort((a,b)=>b.movs[0].data.localeCompare(a.movs[0].data));
   const totalMovs=movRows.length;
-  document.getElementById('ds-cnt-mov').textContent=totalMovs?`· ${totalMovs}`:'';
+  document.getElementById('ds-cnt-mov').textContent=totalMovs?`${totalMovs}`:'';
   const mb=document.getElementById('ds-mov-body');
   if(!gruposArr.length){
     mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 30 dias</div>';
