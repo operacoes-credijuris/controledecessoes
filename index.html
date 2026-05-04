@@ -1615,7 +1615,7 @@ const _SB_URL='https://uekoindsadcthbdkkbjt.supabase.co';
 const _SB_KEY='sb_publishable_mU_fyDVVG1xrt60gOwdrsA_TLgrz1H_';
 // Tokens carregados dinamicamente do Supabase (tabela configuracoes) — não hardcodar aqui
 const _ADVBOX_BASE='https://app.advbox.com.br/api/v1';
-const _secrets=(()=>{let _a='',_g='';return{setAdvbox:v=>{_a=v;},setGemini:v=>{_g=v;},advbox:()=>_a,gemini:()=>_g};})();
+const _secrets=(()=>{let _a='';return{setAdvbox:v=>{_a=v;},advbox:()=>_a};})();
 let sb=null;
 (function(){
   try{
@@ -1725,20 +1725,12 @@ async function _loadAdvboxToken(){
   }catch(e){console.warn('[Credijuris] _loadAdvboxToken:',e);}
 }
 
-async function _loadGeminiKey(){
-  if(!sb)return;
-  try{
-    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave','gemini_key').single();
-    if(!error&&data?.valor)_secrets.setGemini(data.valor||'');
-  }catch(e){console.warn('[Credijuris] _loadGeminiKey:',e);}
-}
-
 async function _onAuthenticated(session){
   _currentUserId=session.user.id;
   document.getElementById('login-screen').style.display='none';
   const ls=document.getElementById('loading-screen');
   ls.style.display='flex';
-  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken(),_loadGeminiKey()]);
+  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken()]);
   ls.style.display='none';
   document.getElementById('logout-btn').style.display='';
   migrateCartorios();
@@ -3749,57 +3741,74 @@ function _syncProgressUpdate(el,{label,pct,sub}){
 }
 function _syncProgressHide(el){el?.remove();}
 
-// Chamada ao Gemini em lote — items: [{pi, mi, data, texto}]
+function _limitarResumoLocal(txt,max=12){
+  const words=String(txt||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
+  return words.length<=max?words.join(' '):words.slice(0,max).join(' ');
+}
+function _temAlgumTermo(txt,termos){return termos.some(t=>txt.includes(t));}
+function _resumirMovimentacaoLocal(txt){
+  const clean=_limparDescricao(txt||'');
+  const n=normKw(clean);
+  let resumo='';
+
+  if(_temAlgumTermo(n,['acordao','acordam','turma recursal'])){
+    resumo=_temAlgumTermo(n,['publicad','disponibilizad'])?'Acórdão publicado':'Acórdão proferido';
+  }else if(_temAlgumTermo(n,['sentenca','sentenc'])){
+    resumo=_temAlgumTermo(n,['conclus'])?'Concluso para sentença':'Sentença proferida';
+  }else if(_temAlgumTermo(n,['decisao','decido','defiro','indefiro'])){
+    if(_temAlgumTermo(n,['homolog']))resumo='Decisão sobre homologação';
+    else if(_temAlgumTermo(n,['alvara']))resumo='Decisão sobre alvará';
+    else if(_temAlgumTermo(n,['bloqueio','sisbajud','penhora']))resumo='Decisão sobre bloqueio ou penhora';
+    else resumo='Decisão proferida';
+  }else if(_temAlgumTermo(n,['despacho','despache'])) {
+    if(_temAlgumTermo(n,['manifest']))resumo='Despacho para manifestação';
+    else if(_temAlgumTermo(n,['emenda','emende']))resumo='Despacho para emenda';
+    else resumo='Despacho proferido';
+  }else if(_temAlgumTermo(n,['intimacao','intimad','intime se','intime-se'])){
+    if(_temAlgumTermo(n,['manifest']))resumo='Intimação para manifestação';
+    else if(_temAlgumTermo(n,['pagamento']))resumo='Intimação sobre pagamento';
+    else resumo='Intimação expedida';
+  }else if(_temAlgumTermo(n,['citacao','citad','cite se','cite-se'])){
+    resumo='Citação expedida';
+  }else if(_temAlgumTermo(n,['juntada','juntad','peticao','manifestacao'])){
+    if(_temAlgumTermo(n,['comprovante']))resumo='Juntada de comprovante';
+    else if(_temAlgumTermo(n,['calculo','planilha']))resumo='Juntada de cálculos';
+    else if(_temAlgumTermo(n,['peticao','manifestacao']))resumo='Petição juntada';
+    else resumo='Documento juntado';
+  }else if(_temAlgumTermo(n,['expedicao','expedido','expedida','expedir'])){
+    if(_temAlgumTermo(n,['alvara']))resumo='Expedição de alvará';
+    else if(_temAlgumTermo(n,['r pv','rpv','requisitorio','precatorio']))resumo='RPV expedido';
+    else resumo='Documento expedido';
+  }else if(_temAlgumTermo(n,['certidao','certifico','certificad'])){
+    resumo='Certidão juntada';
+  }else if(_temAlgumTermo(n,['conclusao','conclusos','concluso'])){
+    if(_temAlgumTermo(n,['sentenca']))resumo='Concluso para sentença';
+    else if(_temAlgumTermo(n,['decisao']))resumo='Concluso para decisão';
+    else if(_temAlgumTermo(n,['despacho']))resumo='Concluso para despacho';
+    else resumo='Processo concluso';
+  }else if(_temAlgumTermo(n,['remessa','remetido','remetida','redistribuicao','redistribuido'])){
+    resumo=_temAlgumTermo(n,['redistribu'])?'Processo redistribuído':'Processo remetido';
+  }else if(_temAlgumTermo(n,['audiencia','pericia','pericial'])){
+    if(_temAlgumTermo(n,['designad','marcad']))resumo=_temAlgumTermo(n,['peric'])?'Perícia designada':'Audiência designada';
+    else resumo=_temAlgumTermo(n,['peric'])?'Movimentação de perícia':'Movimentação de audiência';
+  }else if(_temAlgumTermo(n,['pagamento','deposito','levantamento','precatorio','rpv','requisitorio'])){
+    if(_temAlgumTermo(n,['rpv','requisitorio']))resumo='RPV expedido';
+    else if(_temAlgumTermo(n,['precatorio']))resumo='Precatório movimentado';
+    else resumo='Pagamento informado';
+  }else if(_temAlgumTermo(n,['publicacao','publicado','disponibilizado','dje'])){
+    resumo='Publicação realizada';
+  }
+
+  return _limitarResumoLocal(resumo||clean);
+}
+
+// Resumo local em lote — items: [{pi, mi, data, texto}]
 async function _summarizeBatch(items){
   if(!items.length) return [];
-  if(!_secrets.gemini()){
-    showToast('ℹ️ Chave Gemini não configurada — movimentações salvas sem resumo por IA', 5000);
-    return items.map(x=>({...x,resumo:x.texto}));
-  }
-  showToast(`🤖 Gemini: resumindo ${items.length} movimentação(ões)…`, 4000);
-  const instrucao=`Você é um assistente jurídico brasileiro. Receberá um JSON array com movimentações processuais. Para cada item retorne um resumo curtíssimo (máximo 12 palavras) em português, mencionando apenas o ato principal. Omita datas, horários, CNJ, referências a outras movimentações e detalhes de publicação. Retorne SOMENTE um JSON array no formato [{pi:0,mi:0,resumo:"..."},...] sem nenhum texto adicional, sem markdown, sem blocos de código.`;
-  const payload=JSON.stringify(items.map(x=>({pi:x.pi,mi:x.mi,texto:x.texto})));
-  try{
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${_secrets.gemini()}`,{
-      method:'POST',
-      headers:{'content-type':'application/json'},
-      body:JSON.stringify({
-        contents:[{parts:[{text:instrucao+'\n\n'+payload}]}],
-        generationConfig:{maxOutputTokens:65536,temperature:0.1,responseMimeType:'application/json'}
-      })
-    });
-    if(!res.ok){
-      const errBody=await res.text().catch(()=>'');
-      throw new Error(`Gemini HTTP ${res.status}: ${errBody.slice(0,300)}`);
-    }
-    const d=await res.json();
-    const rawTxt=(d.candidates?.[0]?.content?.parts?.[0]?.text)||'';
-    console.log('[Gemini] resposta bruta (primeiros 500 chars):', rawTxt.slice(0,500));
-    // Extrair JSON mesmo que venha com markdown
-    const m=rawTxt.match(/\[[\s\S]*\]/);
-    if(!m){
-      showToast('⚠️ Gemini: resposta não continha JSON — usando texto limpo', 6000);
-      console.error('[Gemini] Nenhum array encontrado na resposta:', rawTxt.slice(0,300));
-      return items.map(x=>({...x,resumo:x.texto}));
-    }
-    let summaries=[];
-    try{
-      summaries=JSON.parse(m[0]);
-    }catch(parseErr){
-      showToast('⚠️ Gemini: JSON inválido na resposta — usando texto limpo', 6000);
-      console.error('[Gemini] Erro de parse:', parseErr, '| Trecho:', m[0].slice(0,300));
-      return items.map(x=>({...x,resumo:x.texto}));
-    }
-    const map=Object.fromEntries(summaries.map(s=>[`${s.pi}:${s.mi}`,s.resumo||'']));
-    const resultado=items.map(x=>({...x,resumo:map[`${x.pi}:${x.mi}`]||x.texto}));
-    const resumidos=resultado.filter(x=>x.resumo!==x.texto).length;
-    showToast(`✅ Gemini: ${resumidos}/${items.length} movimentações resumidas`, 4000);
-    return resultado;
-  }catch(e){
-    console.error('[Gemini] Erro no batch:',e);
-    showToast('⚠️ Gemini: '+e.message, 6000);
-    return items.map(x=>({...x,resumo:x.texto}));
-  }
+  const resultado=items.map(x=>({...x,resumo:_resumirMovimentacaoLocal(x.texto)}));
+  const resumidos=resultado.filter(x=>x.resumo&&x.resumo!==x.texto).length;
+  showToast(`Resumo local: ${resumidos}/${items.length} movimentação(ões) tratadas`, 3500);
+  return resultado;
 }
 
 async function syncAdvbox(){
@@ -3903,9 +3912,9 @@ async function syncAdvbox(){
     for(const{mod,rec,tentativa}of lote) await _buscarProcesso({mod,rec},tentativa);
   }
 
-  // FASE 2 — Gemini
+  // FASE 2 — resumo local
   if(pendentes.length){
-    _syncProgressUpdate(prog,{label:`Resumindo com IA (${pendentes.length} processo(s))`,pct:0});
+    _syncProgressUpdate(prog,{label:`Resumindo movimentações (${pendentes.length} processo(s))`,pct:0});
     const allItems=pendentes.flatMap(({movs,pi})=>
       movs.map((mv,mi)=>({
         pi,mi,
