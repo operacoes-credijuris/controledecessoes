@@ -4094,29 +4094,47 @@ async function loadDiligencias(){
     const rec=data.find(r=>r.id===hId);
     if(!rec){el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280">Processo não encontrado.</div>';return;}
     const num=rec.numeroProcesso;
-    const headers={
-      'Authorization':`Bearer ${_secrets.advbox()}`,
-      'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
-      'Accept':'application/json',
-      'Origin':'https://app.advbox.com.br',
-      'Referer':'https://app.advbox.com.br/'
-    };
-    const lawsuitsResp=await fetch(`https://app.advbox.com.br/api/v1/lawsuits?process_number=${encodeURIComponent(num)}`,{headers});
-    const lawsuitsData=await lawsuitsResp.json();
-    const lawsuit=(lawsuitsData.data||lawsuitsData)?.[0];
+
+    // Usar o mesmo proxy Supabase que o syncAdvbox usa (evita CORS)
+    const{data:{session}}=await sb.auth.getSession();
+    const hdrs={...(session?.access_token?{'Authorization':'Bearer '+session.access_token}:{}),'apikey':_SB_KEY};
+    const _PROXY=`${_SB_URL}/functions/v1/advbox-proxy`;
+
+    async function _proxyGet(url){
+      const r=await fetch(url,{headers:hdrs});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const body=await r.text();
+      if(body.trimStart().startsWith('<'))throw new Error('Token Advbox expirado ou inválido');
+      return JSON.parse(body);
+    }
+
+    // 1. Buscar lawsuit pelo número do processo
+    const lawsuitsData=await _proxyGet(`${_PROXY}?action=lawsuits&process_number=${encodeURIComponent(num)}`);
+    const lawsuits=Array.isArray(lawsuitsData)?lawsuitsData:(lawsuitsData.results||lawsuitsData.data||[]);
+    const lawsuit=lawsuits[0];
     if(!lawsuit){
       el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px">Processo não encontrado no Advbox.</div>';
       return;
     }
-    const postsResp=await fetch(`https://app.advbox.com.br/api/v1/posts?lawsuit_id=${lawsuit.id}`,{headers});
-    const postsData=await postsResp.json();
-    const posts=(postsData.data||postsData||[])
-      .filter(p=>['TAREFA','COMENTÁRIO','COMENTARIO'].includes((p.type||p.tipo||'').toUpperCase()))
-      .sort((a,b)=>new Date(b.date||b.data||b.created_at)-new Date(a.date||a.data||a.created_at));
+
+    // 2. Buscar posts/tarefas via proxy (action=posts)
+    let posts=[];
+    try{
+      const postsData=await _proxyGet(`${_PROXY}?action=posts&lawsuit_id=${lawsuit.id}`);
+      const all=Array.isArray(postsData)?postsData:(postsData.results||postsData.data||[]);
+      posts=all.filter(p=>['TAREFA','COMENTÁRIO','COMENTARIO'].includes((p.type||p.tipo||'').toUpperCase()))
+               .sort((a,b)=>new Date(b.date||b.data||b.created_at)-new Date(a.date||a.data||a.created_at));
+    }catch(e){
+      // Se o proxy não suportar posts, avisar o usuário
+      el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Diligências indisponíveis: endpoint não suportado pelo proxy.<br><small style="color:#6b7280">${esc(e.message)}</small></div>`;
+      return;
+    }
+
     if(!posts.length){
       el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px">Nenhuma diligência registrada para este processo.</div>';
       return;
     }
+
     el.innerHTML='<div class="tl">'+posts.map(p=>{
       const date=p.date||p.data||p.created_at||'';
       const note=p.note||p.nota||p.content||p.description||'';
