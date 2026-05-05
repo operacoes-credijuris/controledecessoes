@@ -14,9 +14,6 @@ Como usar:
   3. Rode este servidor:
        python notebooklm_bridge.py
 
-  4. Acesse a plataforma normalmente — o botão NotebookLM aparecerá
-     automaticamente nos processos que tiverem notebook vinculado.
-
 O servidor roda em http://localhost:8765
 """
 
@@ -27,7 +24,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
 # ──────────────────────────────────────────────
-# Cache em memória (evita chamar a API a todo momento)
+# Cache em memória
 # ──────────────────────────────────────────────
 _cache: list[dict] = []
 _cache_ok = False
@@ -39,23 +36,13 @@ NOTEBOOKLM_BASE = "https://notebooklm.google.com/notebook/"
 # ──────────────────────────────────────────────
 
 def normalizar_numero(texto: str) -> str:
-    """Remove tudo que não é dígito para comparação."""
     return re.sub(r"\D", "", texto)
 
 
 def extrair_numero_processo(titulo: str) -> str | None:
-    """
-    Tenta extrair um número de processo do título do notebook.
-    Aceita formatos como:
-      - 1234567-89.2023.8.26.0001
-      - 12345678920238260001
-      - Qualquer sequência de ≥15 dígitos
-    """
-    # Formato CNJ com pontos e traço
     m = re.search(r"\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}", titulo)
     if m:
         return m.group(0)
-    # Sequência longa de dígitos (≥15)
     m = re.search(r"\d{15,}", titulo)
     if m:
         return m.group(0)
@@ -63,7 +50,6 @@ def extrair_numero_processo(titulo: str) -> str | None:
 
 
 async def carregar_notebooks() -> list[dict]:
-    """Busca todos os notebooks do NotebookLM e monta o mapa de processos."""
     global _cache, _cache_ok
     try:
         from notebooklm import NotebookLMClient
@@ -94,7 +80,6 @@ async def carregar_notebooks() -> list[dict]:
 
 
 def buscar_por_processo(numero: str) -> dict | None:
-    """Retorna o notebook cujo título contém o número do processo."""
     numero_norm = normalizar_numero(numero)
     if not numero_norm:
         return None
@@ -102,10 +87,25 @@ def buscar_por_processo(numero: str) -> dict | None:
         if nb.get("numero_processo"):
             if normalizar_numero(nb["numero_processo"]) == numero_norm:
                 return nb
-        # Fallback: busca o número normalizado dentro do título
         if numero_norm in normalizar_numero(nb.get("titulo", "")):
             return nb
     return None
+
+
+async def query_notebook(notebook_id: str, prompt: str) -> str:
+    """Envia um prompt ao notebook e retorna o texto da resposta."""
+    from notebooklm import NotebookLMClient
+    client = NotebookLMClient()
+    response = await client.chat.ask(notebook_id, prompt)
+    # A resposta pode ser str ou objeto com .text / .answer / .content
+    if isinstance(response, str):
+        return response
+    for attr in ("text", "answer", "content", "message"):
+        if hasattr(response, attr):
+            val = getattr(response, attr)
+            if val:
+                return str(val)
+    return str(response)
 
 
 # ──────────────────────────────────────────────
@@ -115,19 +115,28 @@ def buscar_por_processo(numero: str) -> dict | None:
 CORS_HEADERS = {
     "Access-Control-Allow-Origin":  "*",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Content-Type":                 "application/json",
 }
+
+PROMPT_RESUMO = """Faça um resumo do processo, começando com "Trata-se", citando:
+a) A natureza da ação e o tipo de crédito discutido;
+b) O nome do autor e do réu;
+c) O pedido autoral e a causa de pedir;
+d) As movimentações processuais mais relevantes — sentença, recurso, trânsito em julgado, início do cumprimento de sentença, manifestação da contadoria judicial, decisão de expedição — cada qual com sua respectiva data;
+e) Se há requisitório expedido (RPV, minuta de RPV ou alvará), informando o tipo;
+f) O estágio atual do processo.
+
+Use no máximo 10 linhas. Seja objetivo e preciso. Não use marcadores ou listas — escreva em parágrafo corrido."""
 
 
 class BridgeHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        # Silencia o log padrão verboso
-        pass
+        pass  # silencia log padrão
 
     def _send(self, status: int, body: dict):
-        payload = json.dumps(body, ensure_ascii=False).encode()
+        payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         for k, v in CORS_HEADERS.items():
             self.send_header(k, v)
@@ -141,25 +150,20 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self.send_header(k, v)
         self.end_headers()
 
+    # ── GET ──────────────────────────────────────
+
     def do_GET(self):
         parsed = urlparse(self.path)
         qs     = parse_qs(parsed.query)
 
-        # GET /status
         if parsed.path == "/status":
-            self._send(200, {
-                "ok":      _cache_ok,
-                "total":   len(_cache),
-                "version": "1.0.0",
-            })
+            self._send(200, {"ok": _cache_ok, "total": len(_cache), "version": "1.1.0"})
             return
 
-        # GET /notebooks  →  lista completa
         if parsed.path == "/notebooks":
             self._send(200, {"notebooks": _cache})
             return
 
-        # GET /notebook?processo=XXXX  →  busca por número
         if parsed.path == "/notebook":
             numero = qs.get("processo", [""])[0].strip()
             if not numero:
@@ -172,10 +176,55 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 self._send(404, {"error": "Notebook não encontrado para este processo"})
             return
 
-        # GET /reload  →  força recarga dos notebooks
         if parsed.path == "/reload":
             asyncio.run(carregar_notebooks())
             self._send(200, {"ok": True, "total": len(_cache)})
+            return
+
+        self._send(404, {"error": "Rota não encontrada"})
+
+    # ── POST ─────────────────────────────────────
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+
+        # POST /resumo  →  gera resumo de um processo
+        if parsed.path == "/resumo":
+            try:
+                length  = int(self.headers.get("Content-Length", 0))
+                body    = json.loads(self.rfile.read(length) if length else b"{}")
+                numero  = (body.get("processo") or "").strip()
+                prompt  = (body.get("prompt") or PROMPT_RESUMO).strip()
+            except Exception:
+                self._send(400, {"error": "JSON inválido"})
+                return
+
+            if not numero:
+                self._send(400, {"error": "Campo 'processo' obrigatório"})
+                return
+
+            nb = buscar_por_processo(numero)
+            if not nb:
+                # Tenta recarregar uma vez antes de desistir
+                asyncio.run(carregar_notebooks())
+                nb = buscar_por_processo(numero)
+
+            if not nb:
+                self._send(404, {"error": f"Nenhum notebook encontrado para o processo {numero}"})
+                return
+
+            print(f"[bridge] Gerando resumo → {nb['titulo']}")
+            try:
+                texto = asyncio.run(query_notebook(nb["id"], prompt))
+                self._send(200, {
+                    "resumo":   texto,
+                    "notebook": nb["titulo"],
+                    "url":      nb["url"],
+                })
+                print(f"[bridge] Resumo gerado ({len(texto)} chars).")
+            except Exception as e:
+                print(f"[bridge] Erro na query: {e}")
+                self._send(500, {"error": f"Erro ao consultar o notebook: {e}"})
             return
 
         self._send(404, {"error": "Rota não encontrada"})
@@ -189,11 +238,10 @@ PORT = 8765
 
 def main():
     print("=" * 52)
-    print("  Credijuris — NotebookLM Bridge")
+    print("  Credijuris — NotebookLM Bridge  v1.1")
     print(f"  Rodando em http://localhost:{PORT}")
     print("=" * 52)
 
-    # Carrega notebooks ao iniciar
     print("[bridge] Carregando notebooks do NotebookLM...")
     asyncio.run(carregar_notebooks())
 
@@ -201,7 +249,6 @@ def main():
         print()
         print("[ATENÇÃO] Não foi possível carregar os notebooks.")
         print("  Verifique se você fez login: notebooklm login")
-        print("  O servidor vai continuar, mas as buscas não funcionarão.")
         print()
 
     server = HTTPServer(("localhost", PORT), BridgeHandler)

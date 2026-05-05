@@ -1163,9 +1163,10 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 /* UNIFORMITY PASS — legacy inline fragments */
 #pane-credito{
   background:
-    radial-gradient(circle at 50% 10%,rgba(0,119,255,.10),transparent 34%),
-    #171a1f!important;
-  color:var(--txt3)!important;
+    radial-gradient(circle at 50% 10%,rgba(0,119,255,.07),transparent 34%),
+    var(--bg1);
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
 }
 
 /* CONFIGURAÇÕES */
@@ -1241,12 +1242,6 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   justify-content:center;
   margin:4px auto 6px;
 }
-#pane-credito svg{opacity:.42!important}
-#pane-credito div[style*="font-size:16px"]{
-  color:#f2f6fb!important;
-  font-family:var(--font-head)!important;
-}
-#pane-credito div[style*="font-size:13px"]{color:#7f8a99!important}
 
 #hist-add,
 #migr-counts,
@@ -1881,10 +1876,49 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
 </div>
 
 <!-- PAINEL ANÁLISES DE CRÉDITO -->
-<div id="pane-credito" style="display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;color:#4b5563">
-  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="opacity:.3"><rect x="4" y="24" width="7" height="12" rx="1.5" stroke="#6b7280" stroke-width="1.8"/><rect x="16.5" y="14" width="7" height="22" rx="1.5" stroke="#6b7280" stroke-width="1.8"/><rect x="29" y="4" width="7" height="32" rx="1.5" stroke="#6b7280" stroke-width="1.8"/></svg>
-  <div style="font-size:16px;font-weight:600;color:#6b7280;margin-top:16px">Análises de Crédito</div>
-  <div style="font-size:13px;color:#4b5563;margin-top:6px">Em construção</div>
+<div id="pane-credito" style="display:none;flex:1;flex-direction:row;align-items:flex-start;gap:20px;padding:28px 28px 28px 28px;overflow:auto">
+
+  <!-- COLUNA: RESUMO DO PROCESSO -->
+  <div style="flex:1;min-width:320px;max-width:560px;display:flex;flex-direction:column;gap:0">
+    <div style="font-size:13px;font-weight:700;color:var(--txt);letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px">Resumo do Processo</div>
+
+    <!-- input CNJ -->
+    <div style="position:relative;margin-bottom:12px">
+      <input id="nlm-proc-input" type="text" maxlength="25" placeholder="0000000-00.0000.0.00.0000"
+        autocomplete="off" spellcheck="false"
+        oninput="_nlmMaskCNJ(this)"
+        onkeydown="if(event.key==='Enter')_nlmGerarResumo()"
+        style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--brd2);border-radius:8px;color:var(--txt);font-size:14px;font-family:var(--font-body);padding:10px 14px;outline:none;transition:border-color .2s"
+        onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--brd2)'">
+    </div>
+
+    <!-- botão + status bridge -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <button onclick="_nlmGerarResumo()" style="flex-shrink:0;background:var(--blue);color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        Gerar Resumo
+      </button>
+      <span id="nlm-bridge-status" style="font-size:11px;color:var(--txt3);display:flex;align-items:center;gap:5px">
+        <span id="nlm-bridge-dot" style="width:6px;height:6px;border-radius:50%;background:var(--txt3);display:inline-block"></span>
+        <span id="nlm-bridge-lbl">Verificando bridge…</span>
+      </span>
+    </div>
+
+    <!-- área de resultado -->
+    <div id="nlm-result-wrap" style="display:none;flex-direction:column;gap:10px">
+      <div id="nlm-result-notebook" style="font-size:11px;color:var(--txt3);display:flex;align-items:center;gap:6px"></div>
+      <div id="nlm-result-body" style="background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:18px 20px;font-size:13px;line-height:1.75;color:var(--txt);white-space:pre-wrap"></div>
+    </div>
+
+    <!-- loading -->
+    <div id="nlm-loading" style="display:none;align-items:center;gap:10px;color:var(--txt2);font-size:13px">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="animation:spin 1s linear infinite"><circle cx="9" cy="9" r="7" stroke="var(--brd2)" stroke-width="2"/><path d="M9 2a7 7 0 017 7" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"/></svg>
+      Consultando NotebookLM…
+    </div>
+
+    <!-- erro -->
+    <div id="nlm-error" style="display:none;background:var(--red3);border:1px solid var(--red);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--red2)"></div>
+  </div>
+
 </div>
 
 </div><!-- /app-content -->
@@ -2354,6 +2388,7 @@ function _sbShowCredito(){
   document.querySelector('.main').style.display='none';
   document.getElementById('sb-item-credito').classList.add('active');
   localStorage.setItem('cj-sidebar-active','credito');
+  _nlmCreditoInit(); // verifica status da ponte ao abrir o painel
 }
 
 function _sbShowConfig(){
@@ -3848,9 +3883,110 @@ async function _nlmOpen(numeroProcesso){
 }
 
 async function _nlmReload(){
-  _nlmSetPill(false,'Conectando…');
   await _nlmInit();
-  renderReq();
+}
+
+/* ======================================================
+   ANÁLISES DE CRÉDITO — RESUMO DO PROCESSO
+====================================================== */
+const _NLM_PROMPT_RESUMO=`Faça um resumo do processo, começando com "Trata-se", citando:
+a) A natureza da ação e o tipo de crédito discutido;
+b) O nome do autor e do réu;
+c) O pedido autoral e a causa de pedir;
+d) As movimentações processuais mais relevantes — sentença, recurso, trânsito em julgado, início do cumprimento de sentença, manifestação da contadoria judicial, decisão de expedição — cada qual com sua respectiva data;
+e) Se há requisitório expedido (RPV, minuta de RPV ou alvará), informando o tipo;
+f) O estágio atual do processo.
+
+Use no máximo 10 linhas. Seja objetivo e preciso. Não use marcadores ou listas — escreva em parágrafo corrido.`;
+
+function _nlmMaskCNJ(input){
+  let v=input.value.replace(/\D/g,'');
+  if(v.length>20)v=v.slice(0,20);
+  let out='';
+  if(v.length>0) out=v.slice(0,Math.min(7,v.length));
+  if(v.length>7) out+='-'+v.slice(7,Math.min(9,v.length));
+  if(v.length>9) out+='.'+v.slice(9,Math.min(13,v.length));
+  if(v.length>13)out+='.'+v.slice(13,Math.min(14,v.length));
+  if(v.length>14)out+='.'+v.slice(14,Math.min(16,v.length));
+  if(v.length>16)out+='.'+v.slice(16,Math.min(20,v.length));
+  const pos=input.selectionStart;
+  input.value=out;
+  // restaura cursor aproximado
+  try{input.setSelectionRange(pos,pos);}catch{}
+}
+
+function _nlmCreditoSetBridge(ok,label){
+  const dot=document.getElementById('nlm-bridge-dot');
+  const lbl=document.getElementById('nlm-bridge-lbl');
+  if(!dot||!lbl)return;
+  dot.style.background=ok?'var(--grn2)':'var(--txt3)';
+  lbl.style.color=ok?'var(--grn2)':'var(--txt3)';
+  lbl.textContent=label;
+}
+
+async function _nlmCreditoInit(){
+  try{
+    const r=await fetch(`${_NLM_BASE}/status`,{signal:AbortSignal.timeout(2500)});
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    _nlmReady=!!d.ok;
+    if(!_nlmBooks.length){
+      const nb=await (await fetch(`${_NLM_BASE}/notebooks`,{signal:AbortSignal.timeout(4000)})).json();
+      _nlmBooks=nb.notebooks||[];
+    }
+    _nlmCreditoSetBridge(true,`Bridge conectado — ${_nlmBooks.length} notebooks`);
+  }catch{
+    _nlmReady=false;
+    _nlmCreditoSetBridge(false,'Bridge desconectado — rode: python notebooklm_bridge.py');
+  }
+}
+
+async function _nlmGerarResumo(){
+  const input=document.getElementById('nlm-proc-input');
+  const numero=(input?.value||'').trim();
+  if(!numero||numero.replace(/\D/g,'').length<15){
+    document.getElementById('nlm-error').style.display='block';
+    document.getElementById('nlm-error').textContent='Informe um número de processo CNJ válido (ex: 0000000-00.0000.0.00.0000).';
+    return;
+  }
+  if(!_nlmReady){
+    document.getElementById('nlm-error').style.display='block';
+    document.getElementById('nlm-error').textContent='O NotebookLM Bridge não está rodando. Execute: python notebooklm_bridge.py';
+    return;
+  }
+  // limpa estado anterior
+  document.getElementById('nlm-error').style.display='none';
+  document.getElementById('nlm-result-wrap').style.display='none';
+  document.getElementById('nlm-loading').style.display='flex';
+
+  try{
+    const res=await fetch(`${_NLM_BASE}/resumo`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({processo:numero,prompt:_NLM_PROMPT_RESUMO}),
+      signal:AbortSignal.timeout(60000),
+    });
+    const data=await res.json();
+    document.getElementById('nlm-loading').style.display='none';
+    if(!res.ok){
+      document.getElementById('nlm-error').style.display='block';
+      document.getElementById('nlm-error').textContent=data.error||`Erro ${res.status}`;
+      return;
+    }
+    // exibe resultado
+    document.getElementById('nlm-result-notebook').innerHTML=
+      `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10.5V2.5A.5.5 0 012.5 2h7a.5.5 0 01.5.5v8L6 9 2 10.5z" stroke="var(--blue)" stroke-width="1.2" stroke-linejoin="round"/></svg>`+
+      `<span style="color:var(--blue);font-weight:600">${esc(data.notebook||'')}</span>`+
+      (data.url?`<a href="${esc(data.url)}" target="_blank" rel="noopener" style="color:var(--txt3);font-size:10px;margin-left:4px">↗ Abrir</a>`:'');
+    document.getElementById('nlm-result-body').textContent=data.resumo||'';
+    document.getElementById('nlm-result-wrap').style.display='flex';
+  }catch(e){
+    document.getElementById('nlm-loading').style.display='none';
+    document.getElementById('nlm-error').style.display='block';
+    document.getElementById('nlm-error').textContent=String(e).includes('timeout')||String(e).includes('abort')
+      ?'O NotebookLM demorou demais para responder. Tente novamente.'
+      :'Erro ao comunicar com o bridge. Verifique se ele está rodando.';
+  }
 }
 
 /* ======================================================
