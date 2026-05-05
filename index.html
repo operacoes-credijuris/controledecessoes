@@ -4163,11 +4163,11 @@ async function loadDiligencias(){
 }
 
 const _MOV_BADGES=[
-  {pattern:/acórdão|acordao/i,          label:'Acórdão'},
-  {pattern:/sentença|sentenca/i,         label:'Sentença'},
-  {pattern:/decisão|decisao/i,           label:'Decisão'},
-  {pattern:/despacho/i,                  label:'Despacho'},
-  {pattern:/rpv\s*exp|requisição.*pequeno.*valor.*exp|requisicao.*pequeno.*valor.*exp/i, label:'RPV Expedida'},
+  {pattern:/^\s*(acórdão|acordao)\b/i,                                                   label:'Acórdão'},
+  {pattern:/^\s*(sentença|sentenca)\b/i,                                                  label:'Sentença'},
+  {pattern:/^\s*(decisão|decisao)\b/i,                                                    label:'Decisão'},
+  {pattern:/^\s*(despacho)\b/i,                                                           label:'Despacho'},
+  {pattern:/^\s*(rpv\s*exp|requisição.*pequeno.*valor.*exp|requisicao.*pequeno.*valor.*exp)/i, label:'RPV Expedida'},
 ];
 
 function _movBadge(desc){
@@ -4188,8 +4188,8 @@ function renderHistBody(rec){
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
           <div class="tl-date">${fmtDate(h.data)}</div>
           ${badge}
-          <button title="Editar" onclick="editHistEntry(${si})" style="padding:2px 5px;font-size:11px;border-radius:5px;border:1px solid rgba(0,119,255,.4);background:rgba(0,119,255,.12);color:#60a5fa;cursor:pointer;line-height:1">✎</button>
-          <button title="Remover" onclick="delHistEntry(${si})" style="padding:2px 5px;font-size:11px;border-radius:5px;border:1px solid rgba(220,38,38,.4);background:rgba(220,38,38,.12);color:#f87171;cursor:pointer;line-height:1">✕</button>
+          <button title="Editar" onclick="editHistEntry(${si})" style="padding:1px 4px;font-size:11px;border-radius:4px;border:none;background:transparent;color:#4b5563;cursor:pointer;line-height:1" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#4b5563'">✎</button>
+          <button title="Remover" onclick="delHistEntry(${si})" style="padding:1px 4px;font-size:11px;border-radius:4px;border:none;background:transparent;color:#4b5563;cursor:pointer;line-height:1" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#4b5563'">✕</button>
         </div>
         <div class="tl-desc">${esc(h.descricao||'')}</div>
       </div>`;}).join('')}</div>`;
