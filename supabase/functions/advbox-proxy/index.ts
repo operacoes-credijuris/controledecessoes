@@ -29,6 +29,8 @@ serve(async (req) => {
       advboxUrl = `${ADVBOX_BASE}/lawsuits?process_number=${encodeURIComponent(processNumber)}`;
     } else if (action === 'movements') {
       advboxUrl = `${ADVBOX_BASE}/movements/${lawsuitId}?origin=TRIBUNAL`;
+    } else if (action === 'posts') {
+      advboxUrl = `${ADVBOX_BASE}/posts?lawsuit_id=${encodeURIComponent(lawsuitId)}`;
     } else {
       return new Response(JSON.stringify({ error: 'action inválida' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
