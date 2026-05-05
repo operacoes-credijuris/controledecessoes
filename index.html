@@ -4162,14 +4162,33 @@ async function loadDiligencias(){
   }
 }
 
+const _MOV_BADGES=[
+  {pattern:/acórdão|acordao/i,          label:'Acórdão',   bg:'rgba(139,92,246,.15)', border:'rgba(139,92,246,.4)', color:'#c4b5fd'},
+  {pattern:/sentença|sentenca/i,         label:'Sentença',  bg:'rgba(220,38,38,.15)',  border:'rgba(220,38,38,.4)',  color:'#f87171'},
+  {pattern:/decisão|decisao/i,           label:'Decisão',   bg:'rgba(234,179,8,.15)',  border:'rgba(234,179,8,.4)',  color:'#fde047'},
+  {pattern:/despacho/i,                  label:'Despacho',  bg:'rgba(59,130,246,.15)', border:'rgba(59,130,246,.4)', color:'#93c5fd'},
+  {pattern:/rpv\s*exp|requisição.*pequeno.*valor.*exp|requisicao.*pequeno.*valor.*exp/i, label:'RPV Expedida', bg:'rgba(16,185,129,.15)', border:'rgba(16,185,129,.4)', color:'#6ee7b7'},
+];
+
+function _movBadge(desc){
+  const hit=_MOV_BADGES.find(b=>b.pattern.test(desc));
+  if(!hit)return'';
+  return`<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;background:${hit.bg};border:1px solid ${hit.border};color:${hit.color};white-space:nowrap">${hit.label}</span>`;
+}
+
 function renderHistBody(rec){
   const hist=rec.historicoProcessual||[];
   const sorted=hist.slice().sort((a,b)=>b.data.localeCompare(a.data));
   const tlHtml=hist.length===0
     ?'<p style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhuma entrada no histórico.</p>'
-    :`<div class="tl">${sorted.map((h,si)=>{return`
+    :`<div class="tl">${sorted.map((h,si)=>{
+      const badge=_movBadge(h.descricao||'');
+      return`
       <div class="tl-item" id="tl-item-${si}">
-        <div class="tl-date">${fmtDate(h.data)}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
+          <div class="tl-date">${fmtDate(h.data)}</div>
+          ${badge}
+        </div>
         <div class="tl-desc">${esc(h.descricao||'')}</div>
         <div style="display:flex;gap:5px;margin-top:6px">
           <button class="btn btn-xs" style="background:rgba(0,119,255,.15);color:#60a5fa;border:1px solid rgba(0,119,255,.4)" onclick="editHistEntry(${si})">Editar</button>
