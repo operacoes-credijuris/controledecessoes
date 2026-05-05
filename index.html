@@ -4122,9 +4122,10 @@ async function loadDiligencias(){
         return;
       }
 
-      // DEBUG temporário: mostrar chaves do primeiro item para identificar campo de conclusão
-      const _keys=Object.keys(all[0]);
-      console.log('[Diligências] Chaves do item:', _keys, all[0]);
+      // DEBUG temporário: salvar item no window para inspeção
+      window._lastDil=all[0];
+      console.log('[Diligências] Chaves:', Object.keys(all[0]));
+      console.log('[Diligências] Item completo:', JSON.stringify(all[0], null, 2));
 
       const sorted=all.slice().sort((a,b)=>new Date(b.date||b.created_at)-new Date(a.date||a.created_at));
 
