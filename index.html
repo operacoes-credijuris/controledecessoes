@@ -4112,53 +4112,39 @@ async function loadDiligencias(){
       return;
     }
 
-    // 2. Buscar posts/tarefas via proxy (action=posts)
-    let posts=[];
+    // 2. Buscar diligências via proxy (action=posts)
     try{
       const postsData=await _proxyGet(`${_PROXY}?action=posts&lawsuit_id=${lawsuit.id}`);
       const all=Array.isArray(postsData)?postsData:(postsData.results||postsData.data||[]);
-      // DEBUG: mostrar todos os tipos recebidos para calibrar o filtro
+
       if(!all.length){
-        el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px">API retornou lista vazia para este processo.</div>';
+        el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px">Nenhuma diligência registrada para este processo.</div>';
         return;
       }
-      const tipos=[...new Set(all.map(p=>(p.type||p.tipo||'(sem tipo)').toString()))];
-      el.innerHTML=`<div style="padding:16px;color:#6b7280;font-size:12px">
-        <b style="color:#e2e8f0">DEBUG — ${all.length} item(s) recebido(s)</b><br>
-        Tipos encontrados: <code>${tipos.join(', ')}</code><br><br>
-        <details><summary style="cursor:pointer;color:#0077ff">Ver JSON completo</summary>
-        <pre style="font-size:10px;overflow:auto;max-height:300px;background:#0d0f13;padding:10px;border-radius:6px;margin-top:8px">${esc(JSON.stringify(all,null,2))}</pre>
-        </details>
-      </div>`;
-      return;
+
+      const sorted=all.slice().sort((a,b)=>new Date(b.date||b.created_at)-new Date(a.date||a.created_at));
+
+      el.innerHTML='<div class="tl">'+sorted.map(p=>{
+        const date=p.date||p.created_at||'';
+        const task=p.task||'';
+        const notes=p.notes||'';
+        const deadline=p.date_deadline||'';
+        const deadlineHtml=deadline
+          ?`<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24">Prazo: ${fmtDate(normDate(deadline))}</span>`
+          :'';
+        return`<div class="tl-item">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+            <div class="tl-date">${fmtDate(normDate(date))}</div>
+            ${deadlineHtml}
+          </div>
+          <div class="tl-desc" style="font-weight:600;color:#e2e8f0">${esc(task)}</div>
+          ${notes?`<div class="tl-desc" style="margin-top:4px">${esc(notes)}</div>`:''}
+        </div>`;
+      }).join('')+'</div>';
     }catch(e){
-      el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Erro: ${esc(e.message)}</div>`;
+      el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Erro ao carregar diligências: ${esc(e.message)}</div>`;
       return;
     }
-    posts=[];//nunca chega aqui neste modo debug
-
-    el.innerHTML='<div class="tl">'+posts.map(p=>{
-      const date=p.date||p.data||p.created_at||'';
-      const note=p.note||p.nota||p.content||p.description||'';
-      const type=p.type||p.tipo||'';
-      const users=p.users||p.usuarios||[];
-      const typeColor=type.toUpperCase().includes('TAREFA')?'#0077ff':'#6b7280';
-      const typeLabel=type.toUpperCase().includes('TAREFA')?'Tarefa':'Comentário';
-      const usersHtml=users.length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${users.map(u=>{
-        const name=u.name||u.nome||'';
-        const status=(u.status||u.completed)?'concluído':'pendente';
-        const col=status==='concluído'?'#4ade80':'#fbbf24';
-        return`<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid #2a3348;color:${col}">${esc(name)} · ${status}</span>`;
-      }).join('')}</div>`:'';
-      return`<div class="tl-item">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <div class="tl-date">${fmtDate(normDate(date))}</div>
-          <span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid #2a3348;color:${typeColor}">${typeLabel}</span>
-        </div>
-        <div class="tl-desc">${esc(note)}</div>
-        ${usersHtml}
-      </div>`;
-    }).join('')+'</div>';
   }catch(e){
     el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Erro ao carregar diligências: ${esc(e.message)}</div>`;
   }
