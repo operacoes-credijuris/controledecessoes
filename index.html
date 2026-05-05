@@ -4122,10 +4122,7 @@ async function loadDiligencias(){
         return;
       }
 
-      // DEBUG temporário: salvar item no window para inspeção
-      window._lastDil=all[0];
-      console.log('[Diligências] Chaves:', Object.keys(all[0]));
-      console.log('[Diligências] Item completo:', JSON.stringify(all[0], null, 2));
+      window._lastDil=all[0]; // manter para debug via console se necessário
 
       const sorted=all.slice().sort((a,b)=>new Date(b.date||b.created_at)-new Date(a.date||a.created_at));
 
@@ -4134,13 +4131,21 @@ async function loadDiligencias(){
         const task=p.task||'';
         const notes=p.notes||'';
         const deadline=p.date_deadline||'';
+        const users=Array.isArray(p.users)?p.users:[];
+        // Verifica conclusão: todos os usuários concluíram, ou item tem finished_at/completed
+        const concluded=p.finished_at||p.completed||p.done||
+          (users.length>0&&users.every(u=>u.finished_at||u.completed||u.done||u.status==='done'||u.status==='completed'));
         const deadlineHtml=deadline
           ?`<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24">Prazo: ${fmtDate(normDate(deadline))}</span>`
+          :'';
+        const checkHtml=concluded
+          ?`<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.35);color:#4ade80">✓ Concluída</span>`
           :'';
         return`<div class="tl-item">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
             <div class="tl-date">${fmtDate(normDate(date))}</div>
             ${deadlineHtml}
+            ${checkHtml}
           </div>
           <div class="tl-desc" style="font-weight:600;color:#e2e8f0">${esc(task)}</div>
           ${notes?`<div class="tl-desc" style="margin-top:4px">${esc(notes)}</div>`:''}
