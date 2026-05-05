@@ -1952,7 +1952,20 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       </div>
       <button class="mdl-x" onclick="closeModal('hist-ov')">✕</button>
     </div>
-    <div class="mdl-body" id="hist-body" style="overflow-y:auto;flex:1"></div>
+    <div class="mdl-body" id="hist-body" style="overflow-y:auto;flex:1">
+      <div style="display:flex;gap:0;border-bottom:1px solid #1e2433;margin-bottom:16px">
+        <button id="hist-tab-hist" onclick="switchHistTab('historico')"
+          style="padding:8px 16px;font-size:12px;font-weight:600;border:none;background:transparent;cursor:pointer;color:#0077ff;border-bottom:2px solid #0077ff">
+          Histórico
+        </button>
+        <button id="hist-tab-dil" onclick="switchHistTab('diligencias')"
+          style="padding:8px 16px;font-size:12px;font-weight:600;border:none;background:transparent;cursor:pointer;color:#6b7280;border-bottom:2px solid transparent">
+          Diligências
+        </button>
+      </div>
+      <div id="hist-tab-content-historico"></div>
+      <div id="hist-tab-content-diligencias" style="display:none"></div>
+    </div>
     <div id="hist-add" style="padding:14px 22px;flex-shrink:0"></div>
     <div class="mdl-footer">
       <button class="btn btn-blue" onclick="closeModal('hist-ov')">Fechar</button>
@@ -4057,7 +4070,76 @@ function openHist(mod,id){
   if(!rec)return;
   document.getElementById('hist-proc').textContent=rec.numeroProcesso||'';
   renderHistBody(rec);
+  switchHistTab('historico');
   openModal('hist-ov');
+}
+
+function switchHistTab(tab){
+  ['historico','diligencias'].forEach(t=>{
+    document.getElementById('hist-tab-content-'+t).style.display=t===tab?'block':'none';
+    const btn=document.getElementById('hist-tab-'+(t==='historico'?'hist':'dil'));
+    btn.style.color=t===tab?'#0077ff':'#6b7280';
+    btn.style.borderBottom=t===tab?'2px solid #0077ff':'2px solid transparent';
+  });
+  if(tab==='diligencias')loadDiligencias();
+}
+
+async function loadDiligencias(){
+  const el=document.getElementById('hist-tab-content-diligencias');
+  el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px"><div class="spin"></div> Carregando diligências...</div>';
+  try{
+    const data=load(hMod);
+    const rec=data.find(r=>r.id===hId);
+    if(!rec){el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280">Processo não encontrado.</div>';return;}
+    const num=rec.numeroProcesso;
+    const headers={
+      'Authorization':`Bearer ${_secrets.advbox()}`,
+      'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
+      'Accept':'application/json',
+      'Origin':'https://app.advbox.com.br',
+      'Referer':'https://app.advbox.com.br/'
+    };
+    const lawsuitsResp=await fetch(`https://app.advbox.com.br/api/v1/lawsuits?process_number=${encodeURIComponent(num)}`,{headers});
+    const lawsuitsData=await lawsuitsResp.json();
+    const lawsuit=(lawsuitsData.data||lawsuitsData)?.[0];
+    if(!lawsuit){
+      el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px">Processo não encontrado no Advbox.</div>';
+      return;
+    }
+    const postsResp=await fetch(`https://app.advbox.com.br/api/v1/posts?lawsuit_id=${lawsuit.id}`,{headers});
+    const postsData=await postsResp.json();
+    const posts=(postsData.data||postsData||[])
+      .filter(p=>['TAREFA','COMENTÁRIO','COMENTARIO'].includes((p.type||p.tipo||'').toUpperCase()))
+      .sort((a,b)=>new Date(b.date||b.data||b.created_at)-new Date(a.date||a.data||a.created_at));
+    if(!posts.length){
+      el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px">Nenhuma diligência registrada para este processo.</div>';
+      return;
+    }
+    el.innerHTML='<div class="tl">'+posts.map(p=>{
+      const date=p.date||p.data||p.created_at||'';
+      const note=p.note||p.nota||p.content||p.description||'';
+      const type=p.type||p.tipo||'';
+      const users=p.users||p.usuarios||[];
+      const typeColor=type.toUpperCase().includes('TAREFA')?'#0077ff':'#6b7280';
+      const typeLabel=type.toUpperCase().includes('TAREFA')?'Tarefa':'Comentário';
+      const usersHtml=users.length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${users.map(u=>{
+        const name=u.name||u.nome||'';
+        const status=(u.status||u.completed)?'concluído':'pendente';
+        const col=status==='concluído'?'#4ade80':'#fbbf24';
+        return`<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid #2a3348;color:${col}">${esc(name)} · ${status}</span>`;
+      }).join('')}</div>`:'';
+      return`<div class="tl-item">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <div class="tl-date">${fmtDate(normDate(date))}</div>
+          <span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid #2a3348;color:${typeColor}">${typeLabel}</span>
+        </div>
+        <div class="tl-desc">${esc(note)}</div>
+        ${usersHtml}
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){
+    el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Erro ao carregar diligências: ${esc(e.message)}</div>`;
+  }
 }
 
 function renderHistBody(rec){
@@ -4084,7 +4166,7 @@ function renderHistBody(rec){
       <button class="btn btn-gold btn-sm" onclick="addHistEntry()">Adicionar</button>
     </div>`;
 
-  document.getElementById('hist-body').innerHTML=tlHtml;
+  document.getElementById('hist-tab-content-historico').innerHTML=tlHtml;
   document.getElementById('hist-add').innerHTML=addHtml;
 }
 
