@@ -3741,27 +3741,15 @@ function openMotivo(id){
   openModal('motivo-ov');
 }
 
-let _senhaCopiar='';
-function copiarSenha(){
-  navigator.clipboard.writeText(_senhaCopiar).then(()=>{
-    const btn=document.getElementById('btn-copiar-senha');
-    if(!btn)return;
-    btn.textContent='✓ Copiado!';
-    setTimeout(()=>{btn.textContent='📋 Copiar Senha';},2000);
-  });
-}
-
 function openSenha(id){
   const rec=load('requerimentos').find(r=>r.id===id);
   if(!rec)return;
   document.getElementById('senha-proc').textContent=rec.numeroProcesso||'';
   const s=rec.senhaAcesso||'';
-  _senhaCopiar=s;
   document.getElementById('senha-body').innerHTML=`
     <div style="text-align:center;padding:10px 0 20px">
       ${s
-        ?`<div class="senha-display">${esc(s)}</div>
-          <button id="btn-copiar-senha" class="btn btn-blue" style="margin-top:16px" onclick="copiarSenha()">📋 Copiar Senha</button>`
+        ?`<div class="senha-display">${esc(s)}</div>`
         :'<div style="color:var(--txt3);font-size:14px;padding:20px 0">Nenhuma senha cadastrada.</div>'
       }
     </div>`;
