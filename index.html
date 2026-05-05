@@ -4163,17 +4163,17 @@ async function loadDiligencias(){
 }
 
 const _MOV_BADGES=[
-  {pattern:/acórdão|acordao/i,          label:'Acórdão',   bg:'rgba(139,92,246,.15)', border:'rgba(139,92,246,.4)', color:'#c4b5fd'},
-  {pattern:/sentença|sentenca/i,         label:'Sentença',  bg:'rgba(220,38,38,.15)',  border:'rgba(220,38,38,.4)',  color:'#f87171'},
-  {pattern:/decisão|decisao/i,           label:'Decisão',   bg:'rgba(234,179,8,.15)',  border:'rgba(234,179,8,.4)',  color:'#fde047'},
-  {pattern:/despacho/i,                  label:'Despacho',  bg:'rgba(59,130,246,.15)', border:'rgba(59,130,246,.4)', color:'#93c5fd'},
-  {pattern:/rpv\s*exp|requisição.*pequeno.*valor.*exp|requisicao.*pequeno.*valor.*exp/i, label:'RPV Expedida', bg:'rgba(16,185,129,.15)', border:'rgba(16,185,129,.4)', color:'#6ee7b7'},
+  {pattern:/acórdão|acordao/i,          label:'Acórdão'},
+  {pattern:/sentença|sentenca/i,         label:'Sentença'},
+  {pattern:/decisão|decisao/i,           label:'Decisão'},
+  {pattern:/despacho/i,                  label:'Despacho'},
+  {pattern:/rpv\s*exp|requisição.*pequeno.*valor.*exp|requisicao.*pequeno.*valor.*exp/i, label:'RPV Expedida'},
 ];
 
 function _movBadge(desc){
   const hit=_MOV_BADGES.find(b=>b.pattern.test(desc));
   if(!hit)return'';
-  return`<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;background:${hit.bg};border:1px solid ${hit.border};color:${hit.color};white-space:nowrap">${hit.label}</span>`;
+  return`<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);color:#fbbf24;white-space:nowrap">${hit.label}</span>`;
 }
 
 function renderHistBody(rec){
