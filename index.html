@@ -3759,7 +3759,6 @@ function openSenha(id){
   _senhaCopiar=s;
   document.getElementById('senha-body').innerHTML=`
     <div style="text-align:center;padding:10px 0 20px">
-      <div style="font-size:11px;color:var(--txt3);margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px">Processo: <strong style="color:var(--gold2)">${esc(rec.numeroProcesso)}</strong></div>
       ${s
         ?`<div class="senha-display">${esc(s)}</div>
           <button id="btn-copiar-senha" class="btn btn-blue" style="margin-top:16px" onclick="copiarSenha()">📋 Copiar Senha</button>`
