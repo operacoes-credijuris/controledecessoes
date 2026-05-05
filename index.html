@@ -4188,8 +4188,6 @@ function renderHistBody(rec){
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
           <div class="tl-date">${fmtDate(h.data)}</div>
           ${badge}
-          <button title="Editar" onclick="editHistEntry(${si})" style="padding:1px 4px;font-size:11px;border-radius:4px;border:none;background:transparent;color:#4b5563;cursor:pointer;line-height:1" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#4b5563'">✎</button>
-          <button title="Remover" onclick="delHistEntry(${si})" style="padding:1px 4px;font-size:11px;border-radius:4px;border:none;background:transparent;color:#4b5563;cursor:pointer;line-height:1" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#4b5563'">✕</button>
         </div>
         <div class="tl-desc">${esc(h.descricao||'')}</div>
       </div>`;}).join('')}</div>`;
