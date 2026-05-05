@@ -4122,7 +4122,9 @@ async function loadDiligencias(){
         return;
       }
 
-      window._lastDil=all[0]; // manter para debug via console se necessário
+      window._lastDil=all[0];
+      window._allDil=all;
+      console.log('[Diligências] completed de cada item:', all.map(p=>({task:p.task,users_completed:p.users?.map(u=>u.completed)})));
 
       const sorted=all.slice().sort((a,b)=>new Date(b.date||b.created_at)-new Date(a.date||a.created_at));
 
