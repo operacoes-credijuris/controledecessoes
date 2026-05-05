@@ -9,18 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="favicon.png">
 <style>
-:root{
-  --font-head:'Space Grotesk',system-ui,sans-serif;
-  --font-body:'Inter',system-ui,sans-serif;
-  --bg0:#0f1117;--bg1:#151820;--bg2:#151820;--bg3:#1a1f2e;
-  --brd:#1e2433;--brd2:#2a3348;
-  --gold:#0077ff;--gold2:#4db3ff;--gold3:#0055cc;
-  --blue:#2563eb;--blue2:#3b82f6;--blue3:#1e40af;
-  --txt:#e2e8f0;--txt2:#94a3b8;--txt3:#6b7280;
-  --red:#dc2626;--red2:#f87171;--red3:rgba(239,68,68,.08);
-  --grn:#16a34a;--grn2:#4ade80;--grn3:rgba(22,163,74,.12);
-  --ylw:#d97706;--ylw2:#fbbf24;--ylw3:rgba(217,119,6,.12);
-}
 *{margin:0;padding:0;box-sizing:border-box}
 *::-webkit-scrollbar{width:4px;height:4px}
 *::-webkit-scrollbar-thumb{background:#2a3348;border-radius:4px}
@@ -39,7 +27,6 @@ body.light thead th{font-weight:500;letter-spacing:.2px}
 body.light .urg-main span:last-child{font-weight:300}
 body.light .al-text,body.light .cfg-section-title{font-weight:400}
 body.light .flbl{font-weight:600}
-body.light .hdr-name{font-weight:500}
 body.light .btn{font-weight:400}
 body.light .tab{font-weight:400}
 body.light .tl-date{font-weight:500}
@@ -84,7 +71,6 @@ a{color:inherit;text-decoration:none}
 /* HEADER */
 .hdr{background:#151820;border-bottom:1px solid #1e2433;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:200;flex-shrink:0}
 .hdr-logo{display:flex;align-items:center;gap:10px}
-.hdr-name{font-size:18px;font-weight:700;color:#0077ff;letter-spacing:-.3px;font-family:var(--font-head)}
 .hdr-search{position:relative;display:flex;align-items:center;width:600px}
 .hdr-search input{background:#0d1117;border:1px solid #1e2433;border-radius:8px;padding:6px 32px 6px 10px;color:#e2e8f0;font-size:12px;font-family:inherit;outline:none;transition:border-color .2s;width:100%}
 .hdr-search input:focus{border-color:#0077ff}
@@ -549,7 +535,7 @@ body{
 
 .btn{
   border-radius:8px;
-  font-weight:650;
+  font-weight:600;
 }
 .btn-gold{
   background:linear-gradient(180deg,#1593ff,#0077ff);
@@ -672,7 +658,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   display:inline-flex;align-items:center;
   border-radius:999px;
   font-size:10.5px!important;
-  font-weight:750;
+  font-weight:700;
   line-height:1;
   padding:3px 9px;
   border:1px solid transparent;
@@ -762,7 +748,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .mdl-title{
   color:#f2f6fb;
   font-size:15px;
-  font-weight:750;
+  font-weight:700;
   font-family:var(--font-head);
   letter-spacing:-.1px;
 }
@@ -918,7 +904,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-panel-title{
   color:#f2f6fb;
   font-size:15px;
-  font-weight:750;
+  font-weight:700;
   margin-top:2px;
 }
 .dash-count{
@@ -1062,7 +1048,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   gap:10px;
   color:#f1f6ff;
   font-size:13px;
-  font-weight:650;
+  font-weight:600;
 }
 .urg-dot{
   width:7px;
@@ -1119,7 +1105,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-urgency-body .al-text{
   color:#f4f7fb;
   font-size:12.5px!important;
-  font-weight:760!important;
+  font-weight:700!important;
 }
 .dash-urgency-body .alert-item [style*="font-size:10px"]{
   color:#8793a3!important;
@@ -1129,21 +1115,6 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   font-size:12px!important;
   font-weight:800!important;
 }
-.dash-panel-close{
-  width:28px;
-  height:28px;
-  border-radius:50%;
-  border:1px solid rgba(255,255,255,.08);
-  background:#20242b;
-  color:#b4bfcd;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:18px;
-  line-height:1;
-}
-.dash-panel-close:hover{border-color:rgba(88,183,255,.35);color:#fff;background:#252b35}
 #pane-dashboard .mov-group{border-bottom-color:rgba(255,255,255,.055)}
 #pane-dashboard .mov-group-hdr{
   padding:14px 18px!important;
@@ -1157,7 +1128,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 #pane-dashboard .al-text,
 #pane-dashboard .mov-group-hdr span[style*="font-size:12px"]{
   font-size:13px!important;
-  font-weight:750!important;
+  font-weight:700!important;
 }
 #pane-dashboard .db-empty{
   min-height:220px;
@@ -1215,7 +1186,6 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   border-bottom:1px solid rgba(255,255,255,.04);
 }
 .cfg-row-lbl-side{flex:1;min-width:0}
-.cfg-row-ctrl{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
 .cfg-row:last-child{border-bottom:none}
 .cfg-row-lbl{font-size:13px;color:#c8d3de;font-weight:500}
 .cfg-row-sub{font-size:11px;color:#4b5563;margin-top:2px}
@@ -1323,7 +1293,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 #dash-modal-body .al-text{
   color:#f4f7fb;
   font-size:13px!important;
-  font-weight:760!important;
+  font-weight:700!important;
   letter-spacing:0;
 }
 #dash-modal-body .alert-item [style*="font-size:10px"]{
@@ -1440,7 +1410,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 #pane-dashboard .mov-group .bdg{
   font-size:10.5px!important;
-  font-weight:750!important;
+  font-weight:700!important;
   color:#d5f1ff!important;
 }
 #pane-dashboard .mov-group .bdg-blue{
@@ -1502,11 +1472,11 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
     </div>
     <div id="lc-err" class="lc-err"></div>
     <div class="fg" style="margin-bottom:14px">
-      <label class="flbl">E-mail</label>
+      <label class="flbl" for="login-email">E-mail</label>
       <input id="login-email" type="email" class="finp" placeholder="seu@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
     </div>
     <div class="fg" style="margin-bottom:22px">
-      <label class="flbl">Senha</label>
+      <label class="flbl" for="login-password">Senha</label>
       <input id="login-password" type="password" class="finp" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button id="login-btn" class="btn btn-gold" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()">Entrar</button>
@@ -1802,7 +1772,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
     </div>
     <div class="fb">
       <div class="srch-wrap"><input id="fct-q" placeholder="Buscar na aba" oninput="render('contatos')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
-      <button class="btn btn-blue btn-sm" onclick="document.getElementById('fct-q').value='';render('contatos')">Limpar</button>
+      <button class="btn btn-blue btn-sm" onclick="document.getElementById('fct-q').value='';PG['contatos']=1;render('contatos')">Limpar</button>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-scroll">
@@ -1908,25 +1878,6 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
 </div><!-- /app-content -->
 </div><!-- /app-body -->
 
-<!-- MIGRATION MODAL -->
-<div id="migr-ov" class="ov" onclick="ovClick(event,'migr-ov')">
-  <div class="mdl" style="max-width:480px">
-    <div class="mdl-hdr">
-      <div class="mdl-title">Migrar dados locais para a nuvem</div>
-    </div>
-    <div class="mdl-body">
-      <p style="color:var(--txt2);font-size:13px;line-height:1.7;margin-bottom:16px">
-        Foram encontrados dados neste navegador (localStorage). Deseja migrá-los para o Supabase para que fiquem disponíveis para todos os usuários?
-      </p>
-      <div id="migr-counts" style="background:var(--bg0);border:1px solid var(--brd);border-radius:8px;padding:12px;font-size:13px;color:var(--txt2)"></div>
-    </div>
-    <div class="mdl-footer">
-      <button class="btn btn-blue" onclick="skipMigration()">Ignorar e apagar dados locais</button>
-      <button class="btn btn-gold" onclick="doMigration()">✅ Migrar para Supabase</button>
-    </div>
-  </div>
-</div>
-
 <!-- FORM MODAL -->
 <div id="form-ov" class="ov" onclick="ovClick(event,'form-ov')">
   <div class="mdl">
@@ -1970,20 +1921,6 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
   </div>
 </div>
 
-
-<!-- DASHBOARD EXPAND MODAL -->
-<div id="dash-modal-ov" class="ov" onclick="ovClick(event,'dash-modal-ov')">
-  <div class="mdl" style="max-width:700px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
-    <div class="mdl-hdr" id="dash-modal-hdr" style="flex-shrink:0">
-      <div>
-        <div class="mdl-title" id="dash-modal-title">—</div>
-        <div style="font-size:11px;color:#4b5563;margin-top:2px" id="dash-modal-sub"></div>
-      </div>
-      <button class="mdl-x" onclick="closeModal('dash-modal-ov')">×</button>
-    </div>
-    <div id="dash-modal-body" style="overflow-y:auto;flex:1;min-height:0"></div>
-  </div>
-</div>
 
 <!-- DELETE CONFIRM MODAL -->
 <div id="del-ov" class="ov" onclick="ovClick(event,'del-ov')">
@@ -2131,7 +2068,7 @@ async function _sbSync(k,d,prev){
       const{error}=await sb.from(tbl).upsert(rows,{onConflict:'id'});
       if(error)throw error;
     }
-  }catch(e){console.error('[Credijuris] sync error',tbl,e);}
+  }catch(e){console.error('[Credijuris] sync error',tbl,e);showToast('Erro ao salvar dados. Verifique sua conexão.');}
 }
 
 async function _loadAllFromSupabase(){
@@ -2212,8 +2149,6 @@ async function _onAuthenticated(session){
   await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken()]);
   ls.style.display='none';
   document.getElementById('logout-btn').style.display='';
-  migrateCartorios();
-  _checkLocalMigration();
   _setupRealtime();
   updateDash();
 }
@@ -2247,51 +2182,6 @@ async function _initApp(){
   }
 }
 
-/* ======================================================
-   MIGRATION — localStorage → Supabase
-====================================================== */
-function _checkLocalMigration(){
-  const LS_MAP=[['cj_cess','cessoes','Cessões Ativas'],['cj_rpv','rpv','RPV Complementar'],
-                ['cj_req','requerimentos','Diversos'],['cj_enc','encerrados','Encerrados']];
-  const found=[];
-  LS_MAP.forEach(([lsk,,name])=>{
-    try{const d=JSON.parse(localStorage.getItem(lsk))||[];if(d.length)found.push({lsk,name,count:d.length});}catch{}
-  });
-  if(!found.length)return;
-  document.getElementById('migr-counts').innerHTML=
-    found.map(f=>`<div style="padding:4px 0">📋 ${f.name}: <strong style="color:var(--txt)">${f.count}</strong> registro(s)</div>`).join('');
-  openModal('migr-ov');
-}
-
-async function doMigration(){
-  closeModal('migr-ov');
-  const ls=document.getElementById('loading-screen');
-  ls.style.display='flex';
-  const LS_MAP=[['cj_cess','cessoes'],['cj_rpv','rpv'],['cj_req','requerimentos'],['cj_enc','encerrados']];
-  for(const[lsk,mod]of LS_MAP){
-    try{
-      const d=JSON.parse(localStorage.getItem(lsk))||[];
-      if(!d.length){localStorage.removeItem(lsk);continue;}
-      const existing=CACHE[mod]||[];
-      const existNums=new Set(existing.map(r=>(r.numeroProcesso||'').replace(/[\s.\-\/]/g,'').toLowerCase()));
-      const toAdd=d.filter(r=>{const n=(r.numeroProcesso||'').replace(/[\s.\-\/]/g,'').toLowerCase();return n&&!existNums.has(n);});
-      if(toAdd.length){
-        const merged=[...existing,...toAdd];
-        CACHE[mod]=merged;
-        await _sbSync(mod,merged,[]);
-      }
-      localStorage.removeItem(lsk);
-    }catch(e){console.error('[Credijuris] migration error',mod,e);}
-  }
-  ls.style.display='none';
-  updateDash();
-  if(curTab!=='dashboard')render(curTab);
-}
-
-function skipMigration(){
-  closeModal('migr-ov');
-  ['cj_cess','cj_rpv','cj_req','cj_enc'].forEach(k=>localStorage.removeItem(k));
-}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
@@ -2384,10 +2274,11 @@ let lastExecTab=localStorage.getItem('cj-sidebar-lasttab')||'dashboard';
 
 // SIDEBAR
 (function _initSidebar(){
-  const collapsed=localStorage.getItem('cj-sidebar-state')!=='expanded';
+  const saved=localStorage.getItem('cj-sidebar-state'); const collapsed=saved?saved!=='expanded':false;
   if(collapsed)_sbSetCollapsed(true);
   const active=localStorage.getItem('cj-sidebar-active')||'exec';
   if(active==='credito')_sbShowCredito();
+  else if(active==='config')_sbShowConfig();
 })();
 
 function _sbSetCollapsed(v){
@@ -2483,6 +2374,7 @@ async function cfgSaveAdvboxToken(){
   const status=document.getElementById('cfg-advbox-status');
   const val=(inp?.value||'').trim();
   if(!val){status.textContent='Token vazio';status.className='cfg-status err';return;}
+  const saveBtn=document.querySelector('.cfg-save-btn');if(saveBtn)saveBtn.disabled=true;
   status.textContent='Salvando…';status.className='cfg-status';
   try{
     const{error}=await sb.from('configuracoes').upsert({chave:'advbox_token',valor:val},{onConflict:'chave'});
@@ -2495,6 +2387,8 @@ async function cfgSaveAdvboxToken(){
   }catch(e){
     status.textContent='Erro ao salvar';status.className='cfg-status err';
     console.error(e);
+  }finally{
+    if(saveBtn)saveBtn.disabled=false;
   }
 }
 
@@ -3368,41 +3262,6 @@ function openCartorioAnexo(){
 }
 
 /* ======================================================
-   MIGRAÇÃO — cj_cart → diligencias embutidas em cessões
-====================================================== */
-function migrateCartorios(){
-  const raw=localStorage.getItem('cj_cart');
-  if(!raw)return;
-  let cartData;
-  try{cartData=JSON.parse(raw)||[];}catch{localStorage.removeItem('cj_cart');return;}
-  if(!cartData.length){localStorage.removeItem('cj_cart');return;}
-  const cessoes=load('cessoes');
-  let changed=false;
-  const norm=s=>(s||'').replace(/[\s.\-\/]/g,'').toLowerCase();
-  cartData.forEach(c=>{
-    const key=norm(c.numeroProcesso);
-    if(!key)return;
-    const cess=cessoes.find(r=>norm(r.numeroProcesso)===key);
-    if(!cess)return;
-    if(!cess.diligencias)cess.diligencias=[];
-    if(cess.diligencias.some(d=>d.id===c.id))return;
-    cess.diligencias.push({
-      id:c.id||uid(),
-      objeto:c.objeto||'',
-      instrumento:c.instrumento||'',
-      protocoloRTDPJ:c.protocoloRTDPJ||'',
-      orcamento:c.orcamento||0,
-      pago:!!c.pago,
-      status:c.status||'',
-      resolvido:!!c.resolvido,
-    });
-    changed=true;
-  });
-  if(changed)save('cessoes',cessoes);
-  localStorage.removeItem('cj_cart');
-}
-
-/* ======================================================
    RENDER REQUERIMENTOS
 ====================================================== */
 function reqRow(r,allData,isChild){
@@ -3533,34 +3392,8 @@ function closeDashPanel(){
   document.querySelectorAll('.urg-card').forEach(el=>el.classList.remove('on'));
 }
 
-function openDashModal(tipo){
-  const map={
-    prazos:       {srcId:'ds-alerts-body', title:'Prazos Fatais',                  cntId:'ds-cnt-alerts'},
-    liquidacao:   {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida',   cntId:'ds-cnt-liq'},
-    paralisados:  {srcId:'ds-par-body',    title:'Paralisados',                     cntId:'ds-cnt-par'},
-    movimentacoes:{srcId:'ds-mov-body',    title:'Últimas Movimentações',           cntId:'ds-cnt-mov'},
-  };
-  const cfg=map[tipo]; if(!cfg)return;
-  const src=document.getElementById(cfg.srcId);
-  const cnt=document.getElementById(cfg.cntId).textContent;
-  document.getElementById('dash-modal-title').textContent=cfg.title;
-  document.getElementById('dash-modal-sub').textContent=cnt?`${cnt.replace('· ','')} registros`:'';
-  const hdr=document.getElementById('dash-modal-hdr');
-  hdr.style.background='';
-  hdr.style.borderLeft='';
-  const body=document.getElementById('dash-modal-body');
-  body.className=`dash-modal-${tipo}`;
-  body.innerHTML='';
-  // clonar conteúdo e ajustar padding dos itens
-  const clone=src.cloneNode(true);
-  clone.removeAttribute('id');
-  clone.classList.add('dash-modal-list');
-  clone.style.cssText='';
-  body.appendChild(clone);
-  openModal('dash-modal-ov');
-}
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','migr-ov','contato-ov','dash-modal-ov'].forEach(closeModal);}
+  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov'].forEach(closeModal);}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
     const elId=mp[curTab];
@@ -3949,6 +3782,7 @@ function desvincular(mod,filhoId){
   delete filho.vinculoPai;
   save(mod,data);
   render(mod);
+  updateDash();
 }
 
 function openVinculo(mod,paiId){
@@ -3994,6 +3828,7 @@ function vincularProcesso(filhoId){
   save(vMod,data);
   closeModal('vinculo-ov');
   render(vMod);
+  updateDash();
 }
 
 /* ======================================================
@@ -4082,12 +3917,13 @@ function switchHistTab(tab){
 }
 
 async function loadDiligencias(){
+  if(!document.getElementById('hist-ov').classList.contains('on')) return;
   const el=document.getElementById('hist-tab-content-diligencias');
   el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px"><div class="spin"></div> Carregando diligências...</div>';
   try{
     const data=load(hMod);
     const rec=data.find(r=>r.id===hId);
-    if(!rec){el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280">Processo não encontrado.</div>';return;}
+    if(!rec){if(!document.getElementById('hist-ov').classList.contains('on')) return;el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280">Processo não encontrado.</div>';return;}
     const num=rec.numeroProcesso;
 
     // Usar o mesmo proxy Supabase que o syncAdvbox usa (evita CORS)
@@ -4118,6 +3954,7 @@ async function loadDiligencias(){
       const all=Array.isArray(postsData)?postsData:(postsData.results||postsData.data||[]);
 
       if(!all.length){
+        if(!document.getElementById('hist-ov').classList.contains('on')) return;
         el.innerHTML='<div style="padding:20px;text-align:center;color:#6b7280;font-size:13px">Nenhuma diligência registrada para este processo.</div>';
         return;
       }
@@ -4128,6 +3965,7 @@ async function loadDiligencias(){
 
       const sorted=all.slice().sort((a,b)=>new Date(b.date||b.created_at)-new Date(a.date||a.created_at));
 
+      if(!document.getElementById('hist-ov').classList.contains('on')) return;
       el.innerHTML='<div class="tl">'+sorted.map(p=>{
         const date=p.date||p.created_at||'';
         const task=p.task||'';
@@ -4154,10 +3992,12 @@ async function loadDiligencias(){
         </div>`;
       }).join('')+'</div>';
     }catch(e){
+      if(!document.getElementById('hist-ov').classList.contains('on')) return;
       el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Erro ao carregar diligências: ${esc(e.message)}</div>`;
       return;
     }
   }catch(e){
+    if(!document.getElementById('hist-ov').classList.contains('on')) return;
     el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Erro ao carregar diligências: ${esc(e.message)}</div>`;
   }
 }
