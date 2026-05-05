@@ -4163,17 +4163,17 @@ async function loadDiligencias(){
 }
 
 const _MOV_BADGES=[
-  {pattern:/^\s*(decisão|decisao)\b/i,                                                        label:'Decisão',    bg:'rgba(251,191,36,.12)', border:'rgba(251,191,36,.35)', color:'#fbbf24'},
-  {pattern:/^\s*(despacho)\b/i,                                                               label:'Despacho',   bg:'rgba(251,191,36,.12)', border:'rgba(251,191,36,.35)', color:'#fbbf24'},
-  {pattern:/^\s*(sentença|sentenca)\b/i,                                                      label:'Sentença',   bg:'rgba(249,115,22,.12)', border:'rgba(249,115,22,.35)', color:'#fb923c'},
-  {pattern:/^\s*(acórdão|acordao)\b/i,                                                        label:'Acórdão',    bg:'rgba(249,115,22,.12)', border:'rgba(249,115,22,.35)', color:'#fb923c'},
-  {pattern:/^\s*(rpv\s*exp|requisição.*pequeno.*valor.*exp|requisicao.*pequeno.*valor.*exp)/i,label:'RPV Expedida',bg:'rgba(16,185,129,.12)', border:'rgba(16,185,129,.35)', color:'#34d399'},
+  {pattern:/^\s*(decisão|decisao)\b/i,                                                        label:'Decisão',    bg:'#b45309'},
+  {pattern:/^\s*(despacho)\b/i,                                                               label:'Despacho',   bg:'#b45309'},
+  {pattern:/^\s*(sentença|sentenca)\b/i,                                                      label:'Sentença',   bg:'#c2410c'},
+  {pattern:/^\s*(acórdão|acordao)\b/i,                                                        label:'Acórdão',    bg:'#c2410c'},
+  {pattern:/^\s*(rpv\s*exp|requisição.*pequeno.*valor.*exp|requisicao.*pequeno.*valor.*exp)/i,label:'RPV Expedida',bg:'#047857'},
 ];
 
 function _movBadge(desc){
   const hit=_MOV_BADGES.find(b=>b.pattern.test(desc));
   if(!hit)return'';
-  return`<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;background:${hit.bg};border:1px solid ${hit.border};color:${hit.color};white-space:nowrap">${hit.label}</span>`;
+  return`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${hit.bg};color:#fff;white-space:nowrap">${hit.label}</span>`;
 }
 
 function renderHistBody(rec){
