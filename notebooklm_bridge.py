@@ -53,8 +53,8 @@ async def carregar_notebooks() -> list[dict]:
     global _cache, _cache_ok
     try:
         from notebooklm import NotebookLMClient
-        client = NotebookLMClient()
-        notebooks_raw = await client.notebooks.list()
+        async with await NotebookLMClient.from_storage() as client:
+            notebooks_raw = await client.notebooks.list()
 
         resultado = []
         for nb in notebooks_raw:
@@ -95,12 +95,12 @@ def buscar_por_processo(numero: str) -> dict | None:
 async def query_notebook(notebook_id: str, prompt: str) -> str:
     """Envia um prompt ao notebook e retorna o texto da resposta."""
     from notebooklm import NotebookLMClient
-    client = NotebookLMClient()
-    response = await client.chat.ask(notebook_id, prompt)
-    # A resposta pode ser str ou objeto com .text / .answer / .content
+    async with await NotebookLMClient.from_storage() as client:
+        response = await client.chat.ask(notebook_id, prompt)
+    # A resposta pode ser str ou objeto com .answer / .text / .content
     if isinstance(response, str):
         return response
-    for attr in ("text", "answer", "content", "message"):
+    for attr in ("answer", "text", "content", "message"):
         if hasattr(response, attr):
             val = getattr(response, attr)
             if val:
