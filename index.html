@@ -4081,8 +4081,6 @@ function switchHistTab(tab){
     btn.style.color=t===tab?'#0077ff':'#6b7280';
     btn.style.borderBottom=t===tab?'2px solid #0077ff':'2px solid transparent';
   });
-  const histAdd=document.getElementById('hist-add');
-  if(histAdd)histAdd.style.display=tab==='historico'?'':'none';
   if(tab==='diligencias')loadDiligencias();
 }
 
@@ -4177,17 +4175,8 @@ function renderHistBody(rec){
         </div>
       </div>`;}).join('')}</div>`;
 
-  const today=new Date().toISOString().split('T')[0];
-  const addHtml=`
-    <div style="font-size:10px;font-weight:800;color:#6e9fce;margin-bottom:10px;text-transform:uppercase;letter-spacing:.9px;font-family:var(--font-head)">Nova Entrada</div>
-    <div class="tl-add">
-      <input type="date" id="h-date" value="${today}" style="width:150px">
-      <input type="text" id="h-desc" placeholder="Descrição da movimentação…" style="flex:1">
-      <button class="btn btn-gold btn-sm" onclick="addHistEntry()">Adicionar</button>
-    </div>`;
-
   document.getElementById('hist-tab-content-historico').innerHTML=tlHtml;
-  document.getElementById('hist-add').innerHTML=addHtml;
+  document.getElementById('hist-add').innerHTML='';
 }
 
 function addHistEntry(){
