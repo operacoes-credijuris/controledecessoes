@@ -4133,8 +4133,8 @@ async function loadDiligencias(){
         const deadline=p.date_deadline||'';
         const users=Array.isArray(p.users)?p.users:[];
         // Verifica conclusão: todos os usuários concluíram, ou item tem finished_at/completed
-        const concluded=p.finished_at||p.completed||p.done||
-          (users.length>0&&users.every(u=>u.finished_at||u.completed||u.done||u.status==='done'||u.status==='completed'));
+        const concluded=p.finished_at!=null||p.completed!=null||p.done!=null||
+          (users.length>0&&users.every(u=>u.completed!=null));
         const deadlineHtml=deadline
           ?`<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24">Prazo: ${fmtDate(normDate(deadline))}</span>`
           :'';
