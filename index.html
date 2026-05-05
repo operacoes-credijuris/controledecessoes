@@ -1512,10 +1512,6 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       <div id="gs-dd" class="gs-dd"></div>
     </div>
     <button id="sync-btn" class="btn btn-blue btn-sm" onclick="syncAdvbox()">↺ Sincronizar</button>
-    <span id="nlm-pill" title="NotebookLM Bridge desconectado — rode: python notebooklm_bridge.py" onclick="_nlmReload()" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:var(--bg3);border:1px solid var(--brd);color:var(--txt3);user-select:none;transition:all .2s">
-      <span id="nlm-dot" style="width:7px;height:7px;border-radius:50%;background:var(--txt3);flex-shrink:0;transition:background .3s"></span>
-      <span id="nlm-label">NotebookLM</span>
-    </span>
     <button id="logout-btn" class="btn btn-blue btn-sm" onclick="doLogout()" style="display:none">↩ Sair</button>
   </div>
 </header>
@@ -1771,9 +1767,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
             <th style="width:1%;white-space:nowrap;text-align:center">Contato</th>
             <th style="min-width:60px"><div class="col-hdr"><span>Prazo F.</span><button class="col-sbtn" data-field="prazoFatal" onclick="toggleSort('requerimentos','prazoFatal',this)">↕</button></div></th>
             <th style="min-width:95px"><div class="col-hdr"><span>Protocolo</span><button class="col-sbtn" data-field="protocolo" onclick="toggleSort('requerimentos','protocolo',this)">↕</button></div></th>
-            <th style="width:1%;white-space:nowrap;text-align:center">Senha</th>
-            <th style="width:1%;white-space:nowrap;text-align:center">NLM</th>
-            <th style="min-width:120px">Natureza</th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Senha</th><th style="min-width:120px">Natureza</th>
             <th style="min-width:120px">Matéria</th><th style="min-width:110px">Tribunal</th><th style="min-width:160px">Órgão Julgador</th>
           </tr></thead>
           <tbody id="tb-requerimentos"></tbody>
@@ -2169,7 +2163,6 @@ async function _onAuthenticated(session){
   document.getElementById('logout-btn').style.display='';
   _setupRealtime();
   updateDash();
-  _nlmInit(); // conecta à ponte NotebookLM em background
 }
 
 async function _initApp(){
@@ -3300,7 +3293,6 @@ function reqRow(r,allData,isChild){
     <td>${fatalCell('requerimentos',r.id,r.prazoFatal)}</td>
     <td>${fmtDate(r.protocolo)}</td>
     <td class="td-icon"><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha" style="opacity:${r.senhaAcesso?1:.35}"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="2" y="5" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M3.5 5V3.5a2 2 0 014 0V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="5.5" cy="7.5" r=".8" fill="currentColor"/></svg></button></td>
-    <td class="td-icon"><button class="btn btn-blue btn-xs nlm-row-btn" id="nlm-btn-${r.id}" onclick="_nlmOpen('${esc(r.numeroProcesso||'')}')" title="Abrir no NotebookLM" style="opacity:.3"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 9V2.5A.5.5 0 012.5 2h6a.5.5 0 01.5.5V9L5.5 7 2 9z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></button></td>
     <td title="${esc(r.natureza||'')}">${esc(r.natureza)||'—'}</td>
     <td title="${esc(r.materia||'')}">${esc(r.materia)||'—'}</td>
     <td>${esc(r.tribunal)||'—'}</td>
@@ -3323,7 +3315,6 @@ function renderReq(){
     tb.innerHTML=rows.map(r=>reqRow(r,allData,false)).join('');
   }
   renderPgn('pg-requerimentos',sorted.length,'requerimentos');
-  setTimeout(_nlmHighlight,0); // ilumina botões NLM após render
 }
 
 /* ======================================================
