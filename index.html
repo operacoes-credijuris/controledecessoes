@@ -1956,7 +1956,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       <div style="display:flex;gap:0;border-bottom:1px solid #1e2433;margin-bottom:16px">
         <button id="hist-tab-hist" onclick="switchHistTab('historico')"
           style="padding:8px 16px;font-size:12px;font-weight:600;border:none;background:transparent;cursor:pointer;color:#0077ff;border-bottom:2px solid #0077ff">
-          Histórico
+          Movimentações
         </button>
         <button id="hist-tab-dil" onclick="switchHistTab('diligencias')"
           style="padding:8px 16px;font-size:12px;font-weight:600;border:none;background:transparent;cursor:pointer;color:#6b7280;border-bottom:2px solid transparent">
@@ -4081,6 +4081,8 @@ function switchHistTab(tab){
     btn.style.color=t===tab?'#0077ff':'#6b7280';
     btn.style.borderBottom=t===tab?'2px solid #0077ff':'2px solid transparent';
   });
+  const histAdd=document.getElementById('hist-add');
+  if(histAdd)histAdd.style.display=tab==='historico'?'':'none';
   if(tab==='diligencias')loadDiligencias();
 }
 
