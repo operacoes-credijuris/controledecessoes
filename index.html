@@ -4122,6 +4122,10 @@ async function loadDiligencias(){
         return;
       }
 
+      // DEBUG temporário: mostrar chaves do primeiro item para identificar campo de conclusão
+      const _keys=Object.keys(all[0]);
+      console.log('[Diligências] Chaves do item:', _keys, all[0]);
+
       const sorted=all.slice().sort((a,b)=>new Date(b.date||b.created_at)-new Date(a.date||a.created_at));
 
       el.innerHTML='<div class="tl">'+sorted.map(p=>{
