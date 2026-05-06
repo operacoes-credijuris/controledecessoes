@@ -4050,10 +4050,10 @@ async function loadDiligencias(){
             ${checkHtml}
           </div>
           <div class="tl-desc" style="font-weight:600;color:#e2e8f0">${esc(task)}</div>
-          ${notes?`<div class="tl-desc" style="margin-top:4px">
+          ${notes?`<div class="tl-desc" style="margin-top:4px;position:relative">
             <div id="${nid}" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(notes)}</div>
-            <span id="${nid}-btn" style="display:none;font-size:11px;color:var(--blue2);cursor:pointer;margin-top:2px"
-              onclick="(function(el,btn){var exp=el.style.webkitLineClamp==='unset';el.style.webkitLineClamp=exp?'3':'unset';btn.textContent=exp?'… ler mais':'ler menos'})(document.getElementById('${nid}'),this)">… ler mais</span>
+            <span id="${nid}-btn" style="display:none;position:absolute;bottom:0;right:0;padding-left:28px;background:linear-gradient(to right,transparent,#111317 40%);font-size:11px;color:var(--blue2);cursor:pointer"
+              onclick="(function(el,btn,wr){var exp=el.style.webkitLineClamp==='unset';el.style.webkitLineClamp=exp?'3':'unset';btn.style.position=exp?'absolute':'static';btn.style.background=exp?'linear-gradient(to right,transparent,#111317 40%)':'none';btn.style.paddingLeft=exp?'28px':'0';btn.textContent=exp?'… ler mais':'ler menos'})(document.getElementById('${nid}'),this)</span>
           </div>`:''}
           ${responsible?`<div class="tl-desc" style="margin-top:2px;font-size:10px;color:#6b7280">${esc(responsible)}</div>`:''}
         </div>`;
