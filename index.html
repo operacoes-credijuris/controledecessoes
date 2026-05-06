@@ -1780,21 +1780,52 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       <div class="srch-wrap"><input id="fct-q" placeholder="Buscar na aba" oninput="render('contatos')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="document.getElementById('fct-q').value='';PG['contatos']=1;render('contatos')">Limpar</button>
     </div>
-    <div class="tbl-wrap">
-      <div class="tbl-scroll">
-        <table>
-          <thead><tr>
-            <th style="min-width:160px">Órgão Julgador</th>
-            <th style="min-width:80px">Tribunal</th>
-            <th style="min-width:170px">WhatsApp</th>
-            <th style="min-width:150px">Telefone</th>
-            <th style="min-width:190px">E-mail</th>
-            <th style="min-width:60px">Editar</th>
-          </tr></thead>
-          <tbody id="tb-contatos"></tbody>
-        </table>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;min-height:0;overflow:hidden">
+      <!-- coluna esquerda: Órgãos Julgadores -->
+      <div style="display:flex;flex-direction:column;min-height:0">
+        <div class="sh">
+          <div class="sh-title">Órgãos Julgadores</div>
+        </div>
+        <div class="tbl-wrap">
+          <div class="tbl-scroll">
+            <table>
+              <thead><tr>
+                <th style="min-width:160px">Órgão Julgador</th>
+                <th style="min-width:80px">Tribunal</th>
+                <th style="min-width:170px">WhatsApp</th>
+                <th style="min-width:150px">Telefone</th>
+                <th style="min-width:190px">E-mail</th>
+                <th style="min-width:60px">Editar</th>
+              </tr></thead>
+              <tbody id="tb-contatos"></tbody>
+            </table>
+          </div>
+          <div id="pg-contatos" class="pgn"></div>
+        </div>
       </div>
-      <div id="pg-contatos" class="pgn"></div>
+      <!-- coluna direita: Órgãos Auxiliares -->
+      <div style="display:flex;flex-direction:column;min-height:0">
+        <div class="sh">
+          <div class="sh-title">Órgãos Auxiliares</div>
+          <button class="btn btn-gold btn-sm" onclick="openAuxModal()">+ Adicionar</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl" id="tbl-aux">
+            <thead>
+              <tr>
+                <th>Órgão</th>
+                <th>Tribunal</th>
+                <th>WhatsApp</th>
+                <th>Telefone</th>
+                <th>E-mail</th>
+                <th></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-aux"><tr><td colspan="7" class="empty">Nenhum órgão auxiliar cadastrado.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2024,6 +2055,21 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
   </div>
 </div>
 
+<!-- AUX MODAL -->
+<div id="aux-ov" class="ov" onclick="ovClick(event,'aux-ov')">
+  <div class="mdl">
+    <div class="mdl-hdr">
+      <div class="mdl-title" id="aux-title">Órgão Auxiliar</div>
+      <button class="mdl-x" onclick="closeModal('aux-ov')">✕</button>
+    </div>
+    <div class="mdl-body" id="aux-body"></div>
+    <div class="mdl-footer">
+      <button class="btn btn-blue" onclick="closeModal('aux-ov')">Cancelar</button>
+      <button class="btn btn-gold" onclick="saveAux()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
   onerror="(function(){var e=document.getElementById('lc-err');if(e){e.textContent='Falha ao carregar Supabase. Verifique sua conexão.';e.style.display='block';}})()"></script>
 <script>
@@ -2048,6 +2094,8 @@ let sb=null;
 const TABLES={cessoes:'cessoes_ativas',rpv:'rpv_complementar',requerimentos:'diversos',encerrados:'encerrados',contatos:'contatos'};
 const CACHE={cessoes:[],rpv:[],requerimentos:[],encerrados:[],contatos:[]};
 let _currentUserId=null;
+let CACHE_AUX=[];
+let curAuxId=null;
 
 /* ======================================================
    CORE DATA
@@ -2154,6 +2202,7 @@ async function _onAuthenticated(session){
   document.getElementById('logout-btn').style.display='';
   _setupRealtime();
   updateDash();
+  loadAuxiliares();
 }
 
 async function _initApp(){
@@ -3395,7 +3444,7 @@ function closeDashPanel(){
 }
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov'].forEach(closeModal);}
+  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov'].forEach(closeModal);}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
     const elId=mp[curTab];
@@ -4274,6 +4323,93 @@ function editContato(orgName){
     const el=document.getElementById('f-'+id);
     if(el&&el.value)maskPhone(el);
   });
+}
+
+/* ======================================================
+   ÓRGÃOS AUXILIARES
+====================================================== */
+function renderAuxiliares(){
+  const tbody=document.getElementById('tbody-aux');
+  if(!tbody)return;
+  if(!CACHE_AUX.length){
+    tbody.innerHTML='<tr><td colspan="7" class="empty">Nenhum órgão auxiliar cadastrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML=CACHE_AUX.map(c=>`
+    <tr>
+      <td style="font-size:12px">${esc(c.orgao||'')}</td>
+      <td style="font-size:11px;color:#94a3b8">${esc(c.tribunal||'')||'—'}</td>
+      <td style="font-size:11px;color:#94a3b8">${esc(c.whatsapp||'')||'—'}</td>
+      <td style="font-size:11px;color:#94a3b8">${esc(c.telefone||'')||'—'}</td>
+      <td style="font-size:11px;color:#94a3b8">${esc(c.email||'')||'—'}</td>
+      <td><button class="btn btn-blue btn-xs" onclick="editAux('${esc(c.id)}')">Editar</button></td>
+      <td><button class="btn btn-red btn-xs" onclick="deleteAux('${esc(c.id)}')">Excluir</button></td>
+    </tr>`).join('');
+}
+
+async function loadAuxiliares(){
+  const {data,error}=await sb.from('contatos_auxiliares').select('*');
+  CACHE_AUX=(!error&&data)?data:[];
+  renderAuxiliares();
+}
+
+function openAuxModal(c){
+  c=c||{};
+  curAuxId=c.id||null;
+  const title=document.getElementById('aux-title');
+  if(curAuxId){
+    title.innerHTML=`Órgão Auxiliar<div style="font-size:11px;font-weight:400;color:var(--txt3);margin-top:2px;letter-spacing:0;text-transform:none">${esc(c.orgao||'')}</div>`;
+  } else {
+    title.textContent='Novo Órgão Auxiliar';
+  }
+  document.getElementById('aux-body').innerHTML=`
+    <div class="fgrid">
+      ${fg('Órgão',fi('aux-orgao',c.orgao||''))}
+      ${fg('Tribunal',fi('aux-tribunal',c.tribunal||''))}
+      ${fg('WhatsApp',fi('aux-wa',c.whatsapp||'','tel','(00) 00000-0000'))}
+      ${fg('Telefone',fi('aux-tel',c.telefone||'','tel','(00) 0000-0000'))}
+      ${fg('E-mail',fi('aux-email',c.email||'','email'))}
+      ${fg('Horário de Atendimento',fi('aux-horario',c.horario||'','text','Ex: 08h às 17h'))}
+      ${fg('Contato Preferencial',fsel('aux-pref',c.contato_preferencial||'',['WhatsApp','Telefone','E-mail']))}
+    </div>`;
+  openModal('aux-ov');
+  ['aux-wa','aux-tel'].forEach(id=>{
+    const el=document.getElementById('f-'+id);
+    if(el&&el.value)maskPhone(el);
+    if(el)el.addEventListener('input',()=>maskPhone(el));
+  });
+}
+
+function editAux(id){
+  const c=CACHE_AUX.find(x=>x.id===id);
+  if(!c)return;
+  openAuxModal(c);
+}
+
+async function saveAux(){
+  const rec={
+    id:curAuxId||uid(),
+    orgao:gf('aux-orgao'),
+    tribunal:gf('aux-tribunal'),
+    whatsapp:gf('aux-wa'),
+    telefone:gf('aux-tel'),
+    email:gf('aux-email'),
+    horario:gf('aux-horario'),
+    contato_preferencial:gf('aux-pref'),
+    updated_at:new Date().toISOString()
+  };
+  if(!rec.orgao){alert('O nome do órgão é obrigatório.');return;}
+  const{error}=await sb.from('contatos_auxiliares').upsert(rec,{onConflict:'id'});
+  if(error){alert('Erro ao salvar: '+error.message);return;}
+  closeModal('aux-ov');
+  loadAuxiliares();
+}
+
+async function deleteAux(id){
+  if(!confirm('Excluir este órgão auxiliar?'))return;
+  const{error}=await sb.from('contatos_auxiliares').delete().eq('id',id);
+  if(error){alert('Erro ao excluir: '+error.message);return;}
+  loadAuxiliares();
 }
 
 /* ======================================================
