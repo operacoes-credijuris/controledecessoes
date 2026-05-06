@@ -33,6 +33,8 @@ serve(async (req) => {
       advboxUrl = `${ADVBOX_BASE}/movements/${lawsuitId}?origin=TRIBUNAL`;
     } else if (action === 'posts') {
       advboxUrl = `${ADVBOX_BASE}/posts?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
+    } else if (action === 'history') {
+      advboxUrl = `${ADVBOX_BASE}/history/${encodeURIComponent(lawsuitId)}`;
     } else if (action === 'activities') {
       advboxUrl = `${ADVBOX_BASE}/activities?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
     } else if (action === 'raw') {

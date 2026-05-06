@@ -4010,22 +4010,10 @@ async function loadDiligencias(){
       return;
     }
 
-    // 2. Buscar diligências via proxy — paginação completa com parâmetro correto (lawsuits_id)
+    // 2. Buscar histórico completo via /history/{lawsuit_id} (pending + completed)
     try{
-      let all=[];
-      let page=1;
-      const LIMIT=100;
-      const SAFETY=20;
-      while(page<=SAFETY){
-        const postsData=await _proxyGet(`${_PROXY}?action=posts&lawsuit_id=${lawsuit.id}&page=${page}&limit=${LIMIT}`);
-        const items=Array.isArray(postsData)?postsData:(postsData.results||postsData.data||[]);
-        all=all.concat(items);
-        const totalCount=!Array.isArray(postsData)&&postsData.totalCount;
-        if(totalCount&&all.length>=totalCount)break;
-        const hasNext=!Array.isArray(postsData)&&!!(postsData.next||postsData.next_page);
-        if(!hasNext||items.length<LIMIT)break;
-        page++;
-      }
+      const histData=await _proxyGet(`${_PROXY}?action=history&lawsuit_id=${lawsuit.id}`);
+      const all=Array.isArray(histData)?histData:(histData.data||histData.results||[]);
 
       if(!all.length){
         if(!document.getElementById('hist-ov').classList.contains('on')) return;
@@ -4035,20 +4023,19 @@ async function loadDiligencias(){
 
       window._lastDil=all[0];
       window._allDil=all;
-      console.log('[Diligências] completed de cada item:', all.map(p=>({task:p.task,users_completed:p.users?.map(u=>u.completed)})));
 
-      const sorted=all.slice().sort((a,b)=>new Date(b.date||b.created_at)-new Date(a.date||a.created_at));
+      // /history usa campos diferentes: start (data), comments (notas), author/responsible (usuários)
+      const sorted=all.slice().sort((a,b)=>new Date(b.start||b.created_at||0)-new Date(a.start||a.created_at||0));
 
       if(!document.getElementById('hist-ov').classList.contains('on')) return;
       el.innerHTML='<div class="tl">'+sorted.map(p=>{
-        const date=p.date||p.created_at||'';
+        const date=p.start||p.created_at||'';
         const task=p.task||'';
-        const notes=p.notes||'';
+        const notes=p.comments||p.notes||'';
         const deadline=p.date_deadline||'';
-        const users=Array.isArray(p.users)?p.users:[];
-        // Verifica conclusão: todos os usuários concluíram, ou item tem finished_at/completed
-        const concluded=p.finished_at!=null||p.completed!=null||p.done!=null||
-          (users.length>0&&users.every(u=>u.completed!=null));
+        const status=histData.status||'';
+        const concluded=status==='completed'||(p.completed!=null&&p.completed!==false);
+        const responsible=p.responsible||p.author||'';
         const deadlineHtml=deadline
           ?`<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24">Prazo: ${fmtDate(normDate(deadline))}</span>`
           :'';
@@ -4063,6 +4050,7 @@ async function loadDiligencias(){
           </div>
           <div class="tl-desc" style="font-weight:600;color:#e2e8f0">${esc(task)}</div>
           ${notes?`<div class="tl-desc" style="margin-top:4px">${esc(notes)}</div>`:''}
+          ${responsible?`<div class="tl-desc" style="margin-top:2px;font-size:10px;color:#6b7280">${esc(responsible)}</div>`:''}
         </div>`;
       }).join('')+'</div>';
     }catch(e){
