@@ -35,6 +35,11 @@ serve(async (req) => {
       advboxUrl = `${ADVBOX_BASE}/posts?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
     } else if (action === 'activities') {
       advboxUrl = `${ADVBOX_BASE}/activities?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
+    } else if (action === 'raw') {
+      // Passagem direta — para exploração de endpoints: ?action=raw&path=/posts%3Flawsuit_id%3D123%26concluded%3D1
+      const rawPath = url.searchParams.get('path') ?? '';
+      if (!rawPath) return new Response(JSON.stringify({ error: 'Parâmetro path obrigatório' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      advboxUrl = `${ADVBOX_BASE}${rawPath}`;
     } else {
       return new Response(JSON.stringify({ error: 'action inválida' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
