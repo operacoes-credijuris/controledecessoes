@@ -4213,7 +4213,7 @@ function renderContatos(){
       let content=esc(val);
       if(isWa){const d=val.replace(/\D/g,'');if(d)content=`<a href="https://wa.me/55${d}" target="_blank" rel="noopener" style="color:var(--grn2)">${esc(val)}</a>`;}
       else if(isLink)content=`<a href="mailto:${esc(val)}" style="color:var(--blue2)">${esc(val)}</a>`;
-      return`<div><span style="color:var(--txt3);font-size:10px">${label}:</span> ${content}</div>`;
+      return`<div><span style="color:var(--txt3)">${label}:</span> ${content}</div>`;
     }
     const l1=line('Serventia',v1),l2=line('Gabinete',v2);
     if(l1&&l2)return`<div style="font-size:11px;color:var(--txt2)">${l1}<div style="margin-top:2px">${l2}</div></div>`;
