@@ -3538,8 +3538,8 @@ function buildForm(mod,r){
 
   if(mod==='contatos') return`
     <div class="fgrid">
-      ${fg('Órgão Julgador',fi('cont-orgao',r.orgaoJulgador||r.orgao_julgador))}
-      ${fg('Tribunal',fi('cont-tribunal',r.tribunal))}
+      ${fg('Órgão Julgador',fi('cont-orgao',r.orgaoJulgador||r.orgao_julgador,'text','','readonly style="opacity:0.55;cursor:not-allowed;pointer-events:none"'))}
+      ${fg('Tribunal',fi('cont-tribunal',r.tribunal,'text','','readonly style="opacity:0.55;cursor:not-allowed;pointer-events:none"'))}
     </div>
     <div class="divider"></div>
     <div style="margin-bottom:14px">
