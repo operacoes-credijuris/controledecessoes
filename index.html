@@ -4010,34 +4010,22 @@ async function loadDiligencias(){
       return;
     }
 
-    // 2. Buscar diligências via proxy — abertas E concluídas em paralelo, com paginação
+    // 2. Buscar diligências via proxy — paginação completa com parâmetro correto (lawsuits_id)
     try{
-      async function fetchAllPages(extraParam){
-        let collected=[];
-        let page=1;
-        const LIMIT=100;
-        const SAFETY=20;
-        while(page<=SAFETY){
-          const postsData=await _proxyGet(`${_PROXY}?action=posts&lawsuit_id=${lawsuit.id}&page=${page}&limit=${LIMIT}${extraParam}`);
-          const items=Array.isArray(postsData)?postsData:(postsData.results||postsData.data||[]);
-          collected=collected.concat(items);
-          const hasNext=!Array.isArray(postsData)&&!!(postsData.next||postsData.next_page);
-          if(!hasNext||items.length<LIMIT)break;
-          page++;
-        }
-        return collected;
+      let all=[];
+      let page=1;
+      const LIMIT=100;
+      const SAFETY=20;
+      while(page<=SAFETY){
+        const postsData=await _proxyGet(`${_PROXY}?action=posts&lawsuit_id=${lawsuit.id}&page=${page}&limit=${LIMIT}`);
+        const items=Array.isArray(postsData)?postsData:(postsData.results||postsData.data||[]);
+        all=all.concat(items);
+        const totalCount=!Array.isArray(postsData)&&postsData.totalCount;
+        if(totalCount&&all.length>=totalCount)break;
+        const hasNext=!Array.isArray(postsData)&&!!(postsData.next||postsData.next_page);
+        if(!hasNext||items.length<LIMIT)break;
+        page++;
       }
-      // Busca simultânea: tarefas abertas + concluídas
-      const [open,finished]=await Promise.all([
-        fetchAllPages(''),
-        fetchAllPages('&finished=true'),
-      ]);
-      // Mescla sem duplicatas (pelo id)
-      const seen=new Set();
-      const all=[...open,...finished].filter(p=>{
-        if(seen.has(p.id))return false;
-        seen.add(p.id);return true;
-      });
 
       if(!all.length){
         if(!document.getElementById('hist-ov').classList.contains('on')) return;
