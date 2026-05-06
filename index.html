@@ -4224,7 +4224,9 @@ function openContatoModal(mod,id){
     const c1=cell(label1,val1);
     const c2=cell(label2,val2);
     if(!c1&&!c2)return'';
-    return(c1||'')+(c2?`<div style="margin-top:3px">${c2.slice(c2.indexOf('>')+1)}`:'');
+    let out=c1||'';
+    if(c2)out+=`<div style="margin-top:3px">${c2}</div>`;
+    return out;
   }
   function _emailRow(l1,v1,l2,v2){
     function ecell(label,val){
