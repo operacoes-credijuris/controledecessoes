@@ -4028,7 +4028,7 @@ async function loadDiligencias(){
       const sorted=all.slice().sort((a,b)=>new Date(b.start||b.created_at||0)-new Date(a.start||a.created_at||0));
 
       if(!document.getElementById('hist-ov').classList.contains('on')) return;
-      el.innerHTML='<div class="tl">'+sorted.map(p=>{
+      el.innerHTML='<div class="tl">'+sorted.map((p,i)=>{
         const date=p.start||p.created_at||'';
         const task=p.task||'';
         const notes=p.comments||p.notes||'';
@@ -4036,6 +4036,7 @@ async function loadDiligencias(){
         const status=histData.status||'';
         const concluded=status==='completed'||(p.completed!=null&&p.completed!==false);
         const responsible=p.responsible||p.author||'';
+        const nid=`dil-n-${i}`;
         const deadlineHtml=deadline
           ?`<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24">Prazo: ${fmtDate(normDate(deadline))}</span>`
           :'';
@@ -4049,10 +4050,24 @@ async function loadDiligencias(){
             ${checkHtml}
           </div>
           <div class="tl-desc" style="font-weight:600;color:#e2e8f0">${esc(task)}</div>
-          ${notes?(()=>{const nid='dil-n-'+Math.random().toString(36).slice(2);return`<div class="tl-desc" style="margin-top:4px"><div id="${nid}" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(notes)}</div><span id="${nid}-btn" style="display:none;font-size:11px;color:var(--blue2);cursor:pointer;margin-top:2px" onclick="(function(el,btn){const exp=el.style.webkitLineClamp==='unset';el.style.webkitLineClamp=exp?'3':'unset';btn.textContent=exp?'… ler mais':'ler menos'})(document.getElementById('${nid}'),this)">… ler mais</span><script>requestAnimationFrame(()=>{const el=document.getElementById('${nid}');if(el&&el.scrollHeight>el.clientHeight)document.getElementById('${nid}-btn').style.display='inline'});<\/script></div>`;})():''}
+          ${notes?`<div class="tl-desc" style="margin-top:4px">
+            <div id="${nid}" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(notes)}</div>
+            <span id="${nid}-btn" style="display:none;font-size:11px;color:var(--blue2);cursor:pointer;margin-top:2px"
+              onclick="(function(el,btn){var exp=el.style.webkitLineClamp==='unset';el.style.webkitLineClamp=exp?'3':'unset';btn.textContent=exp?'… ler mais':'ler menos'})(document.getElementById('${nid}'),this)">… ler mais</span>
+          </div>`:''}
           ${responsible?`<div class="tl-desc" style="margin-top:2px;font-size:10px;color:#6b7280">${esc(responsible)}</div>`:''}
         </div>`;
       }).join('')+'</div>';
+      // Após render: mostrar botão apenas onde o texto transborda 3 linhas
+      setTimeout(()=>{
+        sorted.forEach((_,i)=>{
+          const noteEl=document.getElementById(`dil-n-${i}`);
+          if(noteEl&&noteEl.scrollHeight>noteEl.clientHeight+2){
+            const btn=document.getElementById(`dil-n-${i}-btn`);
+            if(btn)btn.style.display='inline';
+          }
+        });
+      },0);
     }catch(e){
       if(!document.getElementById('hist-ov').classList.contains('on')) return;
       el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Erro ao carregar diligências: ${esc(e.message)}</div>`;
