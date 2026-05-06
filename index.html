@@ -3517,7 +3517,7 @@ function buildForm(mod,r){
     <div class="divider"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       ${fg('Horário de Atendimento',fi('cont-horario',r.horario,'text','Ex: 08h às 17h'))}
-      ${fg('Contato Preferencial',fsel('cont-pref',r.contato_preferencial||r.contatoPreferencial||'',['WhatsApp Serventia','WhatsApp Gabinete','Telefone Serventia','Telefone Gabinete','E-mail Serventia','E-mail Gabinete']))}
+      ${fg('Contato Preferencial',fsel('cont-pref',r.contato_preferencial||r.contatoPreferencial||'',['WhatsApp','Telefone','E-mail']))}
     </div>`;
   return'';
 }
@@ -4261,7 +4261,7 @@ function editContato(orgName){
   const existing=CACHE.contatos.find(c=>(c.orgaoJulgador||'').trim()===org.orgaoJulgador.trim());
   curMod='contatos';
   curId=existing?existing.id:null;
-  document.getElementById('form-title').textContent='Contato — '+org.orgaoJulgador;
+  document.getElementById('form-title').innerHTML=`Contato<div style="font-size:11px;font-weight:400;color:var(--txt3);margin-top:2px;letter-spacing:0;text-transform:none">${esc(org.orgaoJulgador)}</div>`;
   document.getElementById('form-body').innerHTML=buildForm('contatos',existing||{
     orgaoJulgador:org.orgaoJulgador,tribunal:org.tribunal,
     whatsapp_serventia:'',whatsapp_gabinete:'',
