@@ -4010,10 +4010,21 @@ async function loadDiligencias(){
       return;
     }
 
-    // 2. Buscar diligências via proxy (action=posts)
+    // 2. Buscar diligências via proxy (action=posts) — com paginação completa
     try{
-      const postsData=await _proxyGet(`${_PROXY}?action=posts&lawsuit_id=${lawsuit.id}`);
-      const all=Array.isArray(postsData)?postsData:(postsData.results||postsData.data||[]);
+      let all=[];
+      let page=1;
+      const LIMIT=100;
+      const SAFETY=20; // máximo de páginas para evitar loop infinito
+      while(page<=SAFETY){
+        const postsData=await _proxyGet(`${_PROXY}?action=posts&lawsuit_id=${lawsuit.id}&page=${page}&limit=${LIMIT}`);
+        const items=Array.isArray(postsData)?postsData:(postsData.results||postsData.data||[]);
+        all=all.concat(items);
+        // Para quando não há próxima página ou quando retorna menos que o limite
+        const hasNext=!Array.isArray(postsData)&&!!(postsData.next||postsData.next_page);
+        if(!hasNext||items.length<LIMIT)break;
+        page++;
+      }
 
       if(!all.length){
         if(!document.getElementById('hist-ov').classList.contains('on')) return;

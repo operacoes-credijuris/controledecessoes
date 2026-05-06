@@ -23,6 +23,8 @@ serve(async (req) => {
     const action = url.searchParams.get('action');
     const processNumber = url.searchParams.get('process_number') ?? '';
     const lawsuitId = url.searchParams.get('lawsuit_id') ?? '';
+    const page = url.searchParams.get('page') ?? '1';
+    const limit = url.searchParams.get('limit') ?? '100';
 
     let advboxUrl: string;
     if (action === 'lawsuits') {
@@ -30,7 +32,7 @@ serve(async (req) => {
     } else if (action === 'movements') {
       advboxUrl = `${ADVBOX_BASE}/movements/${lawsuitId}?origin=TRIBUNAL`;
     } else if (action === 'posts') {
-      advboxUrl = `${ADVBOX_BASE}/posts?lawsuit_id=${encodeURIComponent(lawsuitId)}`;
+      advboxUrl = `${ADVBOX_BASE}/posts?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
     } else {
       return new Response(JSON.stringify({ error: 'action inválida' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
