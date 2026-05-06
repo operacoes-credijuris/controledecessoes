@@ -4194,7 +4194,7 @@ function contatoBadge(mod,r){
     return`<button class="btn btn-blue btn-xs" style="opacity:.35;cursor:default" title="Sem órgão julgador" disabled><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 2.5c0-.3.2-.5.5-.5h1.8l.8 2-1.1.8c.5 1 1.2 1.8 2.2 2.2l.8-1.1 2 .8v1.8c0 .3-.2.5-.5.5C4.5 9.5 1.5 6.5 2 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>`;
   }
   const c=CACHE.contatos.find(x=>(x.orgaoJulgador||'').trim()===org);
-  const hasInfo=c&&(c.whatsapp_serventia||c.whatsapp_gabinete||c.telefone_serventia||c.telefone_gabinete||c.email_serventia||c.email_gabinete||c.whatsapp||c.telefone||c.email);
+  const hasInfo=c&&(c.whatsapp_serventia||c.whatsapp_gabinete||c.telefone_serventia||c.telefone_gabinete||c.email_serventia||c.email_gabinete);
   if(!hasInfo){
     return`<button class="btn btn-blue btn-xs" style="opacity:.35;cursor:default" title="Sem contato cadastrado" disabled><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 2.5c0-.3.2-.5.5-.5h1.8l.8 2-1.1.8c.5 1 1.2 1.8 2.2 2.2l.8-1.1 2 .8v1.8c0 .3-.2.5-.5.5C4.5 9.5 1.5 6.5 2 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>`;
   }
@@ -4213,13 +4213,13 @@ function openContatoModal(mod,id){
     return;
   }
 
-  function _lbl(t){return`<span style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">${t}</span>`;}
+  function _lbl(t){return`<span style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-body)">${t}</span>`;}
   function _row2(label1,val1,label2,val2,isWa=false){
     function cell(label,val){
       if(!val)return'';
       const digits=val.replace(/\D/g,'');
       const waBtn=isWa&&digits?` <a href="https://wa.me/55${digits}" target="_blank" rel="noopener" class="btn btn-grn btn-xs" style="text-decoration:none;margin-left:6px;font-size:10px">📲 Abrir</a>`:'';
-      return`<div style="font-size:12px;color:var(--txt);display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="color:var(--txt3);font-size:10px;margin-right:4px">${label}:</span>${esc(val)}${waBtn}</div>`;
+      return`<div style="font-size:13px;color:var(--txt);font-family:var(--font-body);display:flex;align-items:center;flex-wrap:wrap;gap:4px"><span style="color:var(--txt3);font-size:11px">${label}:</span>${esc(val)}${waBtn}</div>`;
     }
     const c1=cell(label1,val1);
     const c2=cell(label2,val2);
@@ -4229,7 +4229,7 @@ function openContatoModal(mod,id){
   function _emailRow(l1,v1,l2,v2){
     function ecell(label,val){
       if(!val)return'';
-      return`<div style="font-size:12px;color:var(--txt)"><span style="color:var(--txt3);font-size:10px;margin-right:4px">${label}:</span><a href="mailto:${esc(val)}" style="color:var(--blue2)">${esc(val)}</a></div>`;
+      return`<div style="font-size:13px;color:var(--txt);font-family:var(--font-body);display:flex;align-items:center;gap:4px"><span style="color:var(--txt3);font-size:11px">${label}:</span><a href="mailto:${esc(val)}" style="color:var(--blue2)">${esc(val)}</a></div>`;
     }
     const c1=ecell(l1,v1),c2=ecell(l2,v2);
     if(!c1&&!c2)return'';
