@@ -33,8 +33,8 @@ serve(async (req) => {
       advboxUrl = `${ADVBOX_BASE}/movements/${lawsuitId}?origin=TRIBUNAL`;
     } else if (action === 'posts') {
       advboxUrl = `${ADVBOX_BASE}/posts?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
-    } else if (action === 'tasks') {
-      advboxUrl = `${ADVBOX_BASE}/tasks?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
+    } else if (action === 'activities') {
+      advboxUrl = `${ADVBOX_BASE}/activities?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
     } else {
       return new Response(JSON.stringify({ error: 'action inválida' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
@@ -44,6 +44,14 @@ serve(async (req) => {
     if (res.status === 204) return new Response(null, { status: 204, headers: CORS });
 
     const body = await res.text();
+
+    // Rejeita respostas HTML mesmo com status 200 (ex: Advbox redireciona para login)
+    if (body.trimStart().startsWith('<')) {
+      return new Response(JSON.stringify({ error: 'Endpoint não encontrado ou token inválido (resposta HTML)', status: res.status }), {
+        status: 404,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!res.ok) {
       const s = res.status;
