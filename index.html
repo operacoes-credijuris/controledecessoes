@@ -4290,7 +4290,7 @@ function openContatoModal(mod,id){
   const waSec=_row2('Serventia',c.whatsapp_serventia||'','Gabinete',c.whatsapp_gabinete||'',true);
   const telSec=_row2('Serventia',c.telefone_serventia||'','Gabinete',c.telefone_gabinete||'',false);
   const emSec=_emailRow('Serventia',c.email_serventia||'','Gabinete',c.email_gabinete||'');
-  const pref=c.contato_preferencial||c.contatoPreferencial||'';
+  const pref=(c.contato_preferencial||c.contatoPreferencial||'').replace(/ Serventia| Gabinete/g,'');
 
   let html=`<div style="display:flex;flex-direction:column;gap:12px">`;
   html+=`<div>${_lbl('Tribunal')}<div style="font-size:13px;color:var(--txt);margin-top:4px">${esc(c.tribunal||rec.tribunal||'')||'—'}</div></div>`;
