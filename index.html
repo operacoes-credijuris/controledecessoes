@@ -4050,10 +4050,12 @@ async function loadDiligencias(){
             ${checkHtml}
           </div>
           <div class="tl-desc" style="font-weight:600;color:#e2e8f0">${esc(task)}</div>
-          ${notes?`<div class="tl-desc" style="margin-top:4px;position:relative">
-            <div id="${nid}" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(notes)}</div>
-            <span id="${nid}-btn" style="display:none;position:absolute;bottom:0;right:0;padding-left:28px;background:linear-gradient(to right,transparent,#111317 40%);font-size:11px;color:var(--blue2);cursor:pointer"
-              onclick="(function(el,btn,wr){var exp=el.style.webkitLineClamp==='unset';el.style.webkitLineClamp=exp?'3':'unset';btn.style.position=exp?'absolute':'static';btn.style.background=exp?'linear-gradient(to right,transparent,#111317 40%)':'none';btn.style.paddingLeft=exp?'28px':'0';btn.textContent=exp?'… ler mais':'ler menos'})(document.getElementById('${nid}'),this)</span>
+          ${notes?`<div class="tl-desc" style="margin-top:4px">
+            <div style="position:relative">
+              <div id="${nid}" style="overflow:hidden;line-height:1.55em;max-height:calc(1.55em * 3)">${esc(notes)}</div>
+              <span id="${nid}-btn" style="display:none;position:absolute;bottom:0;right:0;padding-left:36px;background:linear-gradient(to right,transparent,#111317 45%);font-size:11px;color:var(--blue2);cursor:pointer"
+                onclick="(function(el,btn){var exp=el.style.maxHeight==='none';el.style.maxHeight=exp?'calc(1.55em * 3)':'none';btn.style.position=exp?'absolute':'static';btn.style.background=exp?'linear-gradient(to right,transparent,#111317 45%)':'none';btn.style.paddingLeft=exp?'36px':'0';btn.textContent=exp?'… ler mais':'ler menos'})(document.getElementById('${nid}'),this)">… ler mais</span>
+            </div>
           </div>`:''}
           ${responsible?`<div class="tl-desc" style="margin-top:2px;font-size:10px;color:#6b7280">${esc(responsible)}</div>`:''}
         </div>`;
@@ -4062,12 +4064,12 @@ async function loadDiligencias(){
       setTimeout(()=>{
         sorted.forEach((_,i)=>{
           const noteEl=document.getElementById(`dil-n-${i}`);
-          if(noteEl&&noteEl.scrollHeight>noteEl.clientHeight+2){
+          if(noteEl&&noteEl.scrollHeight>noteEl.clientHeight+1){
             const btn=document.getElementById(`dil-n-${i}-btn`);
             if(btn)btn.style.display='inline';
           }
         });
-      },0);
+      },50);
     }catch(e){
       if(!document.getElementById('hist-ov').classList.contains('on')) return;
       el.innerHTML=`<div style="padding:20px;text-align:center;color:#f87171;font-size:13px">Erro ao carregar diligências: ${esc(e.message)}</div>`;
