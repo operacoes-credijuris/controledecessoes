@@ -4049,7 +4049,7 @@ async function loadDiligencias(){
             ${checkHtml}
           </div>
           <div class="tl-desc" style="font-weight:600;color:#e2e8f0">${esc(task)}</div>
-          ${notes?`<div class="tl-desc" style="margin-top:4px">${esc(notes)}</div>`:''}
+          ${notes?(()=>{const nid='dil-n-'+Math.random().toString(36).slice(2);return`<div class="tl-desc" style="margin-top:4px"><div id="${nid}" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(notes)}</div><span id="${nid}-btn" style="display:none;font-size:11px;color:var(--blue2);cursor:pointer;margin-top:2px" onclick="(function(el,btn){const exp=el.style.webkitLineClamp==='unset';el.style.webkitLineClamp=exp?'3':'unset';btn.textContent=exp?'… ler mais':'ler menos'})(document.getElementById('${nid}'),this)">… ler mais</span><script>requestAnimationFrame(()=>{const el=document.getElementById('${nid}');if(el&&el.scrollHeight>el.clientHeight)document.getElementById('${nid}-btn').style.display='inline'});<\/script></div>`;})():''}
           ${responsible?`<div class="tl-desc" style="margin-top:2px;font-size:10px;color:#6b7280">${esc(responsible)}</div>`:''}
         </div>`;
       }).join('')+'</div>';
