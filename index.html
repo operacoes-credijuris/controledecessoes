@@ -2748,7 +2748,10 @@ function _crtRenderOperacoes(investidor){
   const rows=[];
   (CACHE.cessoes||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'cessoes'});});
   (CACHE.rpv||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'rpv'});});
-  (CACHE.encerrados||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'encerrados'});});
+  (CACHE.encerrados||[]).forEach(r=>{
+    if(norm(r.cessionario)===inv && r.dataLiquidacao && r.dataAquisicao)
+      rows.push({...r,_aba:'encerrados'});
+  });
 
   if(!rows.length){
     tbody.innerHTML='<tr><td colspan="28" class="crt-tbl-empty">Nenhuma operação encontrada para este investidor</td></tr>';
