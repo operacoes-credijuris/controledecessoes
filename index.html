@@ -1204,6 +1204,11 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-ac-item{padding:9px 14px;font-size:13px;color:#c8d2df;cursor:pointer;transition:background .12s}
 .crt-ac-item:hover,.crt-ac-item.sel{background:rgba(0,119,255,.15);color:#fff}
 .crt-ac-empty{padding:10px 14px;font-size:12px;color:#4b5563;font-style:italic}
+.crt-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:32px}
+.crt-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:8px;transition:background .15s}
+.crt-card:hover{background:rgba(255,255,255,.07)}
+.crt-card-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4b5563}
+.crt-card-val{font-size:22px;font-weight:700;color:#e2e8f0;letter-spacing:-.02em;font-family:inherit}
 
 /* CONFIGURAÇÕES */
 #pane-config{
@@ -1971,6 +1976,34 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       <div class="fg">
         <label class="flbl">Mês de Referência</label>
         <input id="crt-mes-referencia" class="finp" type="month" readonly style="opacity:.7;cursor:default;pointer-events:none;width:160px">
+      </div>
+    </div>
+
+    <!-- Cards de resumo -->
+    <div class="crt-cards">
+      <div class="crt-card">
+        <div class="crt-card-lbl">Capital total</div>
+        <div class="crt-card-val" id="crt-card-capital">—</div>
+      </div>
+      <div class="crt-card">
+        <div class="crt-card-lbl">TIR média carteira</div>
+        <div class="crt-card-val" id="crt-card-tir">—</div>
+      </div>
+      <div class="crt-card">
+        <div class="crt-card-lbl">Retorno projetado</div>
+        <div class="crt-card-val" id="crt-card-retorno">—</div>
+      </div>
+      <div class="crt-card">
+        <div class="crt-card-lbl">Já recebido</div>
+        <div class="crt-card-val" id="crt-card-recebido">—</div>
+      </div>
+      <div class="crt-card">
+        <div class="crt-card-lbl">A receber estimado</div>
+        <div class="crt-card-val" id="crt-card-areceber">—</div>
+      </div>
+      <div class="crt-card">
+        <div class="crt-card-lbl">N.º operações</div>
+        <div class="crt-card-val" id="crt-card-operacoes">—</div>
       </div>
     </div>
   </div>
