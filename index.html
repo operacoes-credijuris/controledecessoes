@@ -1196,6 +1196,14 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-sep{color:#353b45;font-size:16px;padding:0 6px;user-select:none;pointer-events:none;line-height:1;flex-shrink:0}
 .crt-pane{display:none;flex:1;flex-direction:column;overflow-y:auto;padding:28px 32px;}
 .crt-pane.on{display:flex}
+/* AUTOCOMPLETE INVESTIDOR */
+.crt-ac-wrap{position:relative;width:320px}
+.crt-ac-wrap input{width:100%}
+.crt-ac-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1a1e25;border:1px solid rgba(255,255,255,.10);border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.4);z-index:999;max-height:220px;overflow-y:auto;display:none}
+.crt-ac-dd.on{display:block}
+.crt-ac-item{padding:9px 14px;font-size:13px;color:#c8d2df;cursor:pointer;transition:background .12s}
+.crt-ac-item:hover,.crt-ac-item.sel{background:rgba(0,119,255,.15);color:#fff}
+.crt-ac-empty{padding:10px 14px;font-size:12px;color:#4b5563;font-style:italic}
 
 /* CONFIGURAÇÕES */
 #pane-config{
@@ -1947,18 +1955,22 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
   </div>
   <div id="crt-pane-investidores" class="crt-pane">
     <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
-      <div class="fg" style="min-width:240px;flex:1">
+      <div class="fg">
         <label class="flbl" style="display:flex;align-items:center;gap:7px">
           Investidor
           <span id="crt-inv-count" style="font-size:10px;font-weight:600;color:#4b5563;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:1px 8px;letter-spacing:0;text-transform:none;font-family:inherit"></span>
         </label>
-        <select id="crt-select-investidor" class="fsel" style="cursor:pointer">
-          <option value="" disabled selected hidden>Selecionar...</option>
-        </select>
+        <div class="crt-ac-wrap">
+          <input id="crt-ac-input" class="finp" type="text" placeholder="Selecionar..." autocomplete="off"
+            oninput="_crtAcFilter(this.value)"
+            onfocus="_crtAcOpen()"
+            onkeydown="_crtAcKey(event)">
+          <div id="crt-ac-dd" class="crt-ac-dd"></div>
+        </div>
       </div>
-      <div class="fg" style="max-width:160px">
+      <div class="fg">
         <label class="flbl">Mês de Referência</label>
-        <input id="crt-mes-referencia" class="finp" type="month" readonly style="opacity:.7;cursor:default;pointer-events:none">
+        <input id="crt-mes-referencia" class="finp" type="month" readonly style="opacity:.7;cursor:default;pointer-events:none;width:160px">
       </div>
     </div>
   </div>
@@ -2548,36 +2560,58 @@ function crtNav(tab){
   if(tab==='investidores')_crtPopulateInvestidores();
 }
 
+let _crtInvestidores=[];
+let _crtAcSelected='';
+
 function _crtPopulateInvestidores(){
-  const sel=document.getElementById('crt-select-investidor');
-  if(!sel)return;
-  // Preenche mês de referência com mês/ano atual se ainda não preenchido
   const mesInp=document.getElementById('crt-mes-referencia');
   if(mesInp&&!mesInp.value){
     const hoje=new Date();
-    const ano=hoje.getFullYear();
-    const mes=String(hoje.getMonth()+1).padStart(2,'0');
-    mesInp.value=`${ano}-${mes}`;
+    mesInp.value=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
   }
-  // Coleta todos os cessionários únicos de cessões, rpv e encerrados
   const nomes=new Set();
   [...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])].forEach(r=>{
     const v=(r.cessionario||'').trim();
     if(v)nomes.add(v);
   });
-  const sorted=[...nomes].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
-  const current=sel.value;
-  sel.innerHTML='<option value="" disabled selected>Selecionar...</option>';
-  sorted.forEach(nome=>{
-    const opt=document.createElement('option');
-    opt.value=nome;
-    opt.textContent=nome;
-    sel.appendChild(opt);
-  });
-  if(current&&sorted.includes(current))sel.value=current;
+  _crtInvestidores=[...nomes].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
   const countEl=document.getElementById('crt-inv-count');
-  if(countEl)countEl.textContent=sorted.length;
+  if(countEl)countEl.textContent=_crtInvestidores.length;
 }
+
+function _crtAcRender(lista){
+  const dd=document.getElementById('crt-ac-dd');
+  if(!dd)return;
+  if(!lista.length){dd.innerHTML='<div class="crt-ac-empty">Nenhum resultado</div>';dd.classList.add('on');return;}
+  dd.innerHTML=lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">` +n+'</div>').join('');
+  dd.classList.add('on');
+}
+
+function _crtAcOpen(){_crtAcRender(_crtInvestidores);}
+function _crtAcFilter(q){
+  _crtAcSelected='';
+  const f=q.trim().toLowerCase();
+  const lista=f?_crtInvestidores.filter(n=>n.toLowerCase().includes(f)):_crtInvestidores;
+  _crtAcRender(lista);
+}
+function _crtAcPick(nome){
+  _crtAcSelected=nome;
+  const inp=document.getElementById('crt-ac-input');
+  if(inp)inp.value=nome;
+  _crtAcClose();
+}
+function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
+function _crtAcKey(e){
+  const dd=document.getElementById('crt-ac-dd');
+  if(!dd||!dd.classList.contains('on'))return;
+  const items=[...dd.querySelectorAll('.crt-ac-item')];
+  const cur=items.findIndex(i=>i.classList.contains('sel'));
+  if(e.key==='ArrowDown'){e.preventDefault();const nx=items[cur+1]||items[0];items.forEach(i=>i.classList.remove('sel'));nx?.classList.add('sel');_crtAcSelected=nx?.textContent||'';}
+  else if(e.key==='ArrowUp'){e.preventDefault();const pv=items[cur-1]||items[items.length-1];items.forEach(i=>i.classList.remove('sel'));pv?.classList.add('sel');_crtAcSelected=pv?.textContent||'';}
+  else if(e.key==='Enter'){e.preventDefault();if(_crtAcSelected)_crtAcPick(_crtAcSelected);}
+  else if(e.key==='Escape')_crtAcClose();
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.crt-ac-wrap'))_crtAcClose();});
 
 function sbNav(item){
   if(item==='config'){
