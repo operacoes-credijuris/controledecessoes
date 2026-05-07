@@ -1210,6 +1210,33 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-card-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4b5563}
 .crt-card-val{font-size:22px;font-weight:700;color:#e2e8f0;letter-spacing:-.02em;font-family:inherit}
 
+/* TABELA DADOS POR OPERAÇÃO */
+.crt-tbl-wrap{margin-top:32px}
+.crt-tbl-title{font-size:13px;font-weight:600;color:#8892a0;letter-spacing:.05em;text-transform:uppercase;margin-bottom:14px}
+.crt-tbl-scroll{overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
+.crt-tbl{border-collapse:collapse;width:100%;min-width:2200px;font-size:12px}
+/* group header row */
+.crt-th-group th{padding:8px 10px 6px;text-align:center;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.06);white-space:nowrap}
+.crt-th-group th:last-child{border-right:none}
+.crt-thg-id  {background:rgba(59,130,246,.10);color:#93c5fd}
+.crt-thg-tir {background:rgba(234,179,8,.10);color:#fde68a}
+.crt-thg-cred{background:rgba(16,185,129,.10);color:#6ee7b7}
+.crt-thg-atual{background:rgba(139,92,246,.10);color:#c4b5fd}
+.crt-thg-receb{background:rgba(239,68,68,.10);color:#fca5a5}
+.crt-thg-comp{background:rgba(249,115,22,.10);color:#fdba74}
+.crt-thg-vivos{background:rgba(14,165,233,.10);color:#7dd3fc}
+.crt-thg-calc{background:rgba(168,85,247,.10);color:#e879f9}
+.crt-thg-sub{font-weight:400;opacity:.65;letter-spacing:0;text-transform:none;font-size:9.5px}
+/* sub-header row */
+.crt-th-sub th{padding:7px 10px;text-align:left;font-size:10.5px;font-weight:600;color:#6b7280;white-space:nowrap;background:#181c23;border-bottom:2px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.04)}
+.crt-th-sub th:last-child{border-right:none}
+/* body */
+.crt-tbl tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .12s}
+.crt-tbl tbody tr:hover{background:rgba(255,255,255,.035)}
+.crt-tbl td{padding:9px 10px;font-size:12px;color:#c8d2df;vertical-align:middle;border-right:1px solid rgba(255,255,255,.04);white-space:nowrap}
+.crt-tbl td:last-child{border-right:none}
+.crt-tbl-empty{text-align:center;padding:40px 20px !important;color:#4b5563;font-size:13px;font-style:italic;white-space:normal !important}
+
 /* CONFIGURAÇÕES */
 #pane-config{
   background:
@@ -2004,6 +2031,70 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       <div class="crt-card">
         <div class="crt-card-lbl">N.º operações</div>
         <div class="crt-card-val" id="crt-card-operacoes">—</div>
+      </div>
+    </div>
+
+    <!-- Tabela Dados por operação -->
+    <div class="crt-tbl-wrap">
+      <div class="crt-tbl-title">Dados por operação</div>
+      <div class="crt-tbl-scroll">
+        <table class="crt-tbl" id="crt-tbl-operacoes">
+          <thead>
+            <tr class="crt-th-group">
+              <th colspan="5" class="crt-thg crt-thg-id">Identificação <span class="crt-thg-sub">· fixo na abertura</span></th>
+              <th colspan="2" class="crt-thg crt-thg-tir">TIR obrigatório</th>
+              <th colspan="3" class="crt-thg crt-thg-cred">Crédito <span class="crt-thg-sub">· fixo na abertura</span></th>
+              <th colspan="1" class="crt-thg crt-thg-atual">Valor atual.</th>
+              <th colspan="3" class="crt-thg crt-thg-receb">Recebimento principal</th>
+              <th colspan="2" class="crt-thg crt-thg-comp">Complementar</th>
+              <th colspan="4" class="crt-thg crt-thg-vivos">Dados vivos <span class="crt-thg-sub">· atualizar mensalmente</span></th>
+              <th colspan="8" class="crt-thg crt-thg-calc">Calculado automaticamente</th>
+            </tr>
+            <tr class="crt-th-sub">
+              <!-- Identificação -->
+              <th class="crt-th">Nº processo</th>
+              <th class="crt-th">Cedente</th>
+              <th class="crt-th">Advogado cedente</th>
+              <th class="crt-th">Tipo de crédito</th>
+              <th class="crt-th">Tribunal / UF</th>
+              <!-- TIR obrigatório -->
+              <th class="crt-th">Capital investido</th>
+              <th class="crt-th">Data da cessão</th>
+              <!-- Crédito -->
+              <th class="crt-th">Valor de face</th>
+              <th class="crt-th">Data ref. do face</th>
+              <th class="crt-th">Índice de atualização</th>
+              <!-- Valor atual. -->
+              <th class="crt-th">Valor atualizado manual</th>
+              <!-- Recebimento principal -->
+              <th class="crt-th">Data est. recebimento</th>
+              <th class="crt-th">Já recebido</th>
+              <th class="crt-th">Data receb. efetivo</th>
+              <!-- Complementar -->
+              <th class="crt-th">Data est. complementar</th>
+              <th class="crt-th">Valor est. complementar</th>
+              <!-- Dados vivos -->
+              <th class="crt-th">Status</th>
+              <th class="crt-th">Estágio processual</th>
+              <th class="crt-th">Providências / prox. passos</th>
+              <th class="crt-th">Últ. atualização</th>
+              <!-- Calculado automaticamente -->
+              <th class="crt-th">Valor projetado</th>
+              <th class="crt-th">Status TIR</th>
+              <th class="crt-th">TIR a.a.</th>
+              <th class="crt-th">TIR mensal</th>
+              <th class="crt-th">TIR label completo</th>
+              <th class="crt-th">Dias em carteira</th>
+              <th class="crt-th">Ganho projetado</th>
+              <th class="crt-th">Retorno</th>
+            </tr>
+          </thead>
+          <tbody id="crt-tbl-body">
+            <tr>
+              <td colspan="28" class="crt-tbl-empty">Selecione um investidor para visualizar as operações</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
