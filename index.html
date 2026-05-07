@@ -1237,6 +1237,13 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-tbl td:last-child{border-right:none}
 .crt-tbl-empty{text-align:center;padding:40px 20px !important;color:#4b5563;font-size:13px;font-style:italic;white-space:normal !important}
 .crt-tbl tbody tr:has(.crt-tbl-empty){border-bottom:none}
+.crt-proc{font-size:11.5px;font-weight:500;color:var(--txt)}
+.crt-aba-badge{display:inline-block;font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;vertical-align:middle;margin-left:4px;letter-spacing:.03em}
+.crt-aba-ativa{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.25)}
+.crt-aba-rpv{background:rgba(59,130,246,.15);color:#93c5fd;border:1px solid rgba(59,130,246,.25)}
+.crt-aba-enc{background:rgba(107,114,128,.15);color:#9ca3af;border:1px solid rgba(107,114,128,.25)}
+.crt-td-num{text-align:right;font-variant-numeric:tabular-nums;color:var(--txt)}
+.crt-td-wrap{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* CONFIGURAÇÕES */
 #pane-config{
@@ -2724,6 +2731,81 @@ function _crtAcPick(nome){
   const inp=document.getElementById('crt-ac-input');
   if(inp)inp.value=nome;
   _crtAcClose();
+  _crtRenderOperacoes(nome);
+}
+
+function _crtRenderOperacoes(investidor){
+  const tbody=document.getElementById('crt-tbl-body');
+  if(!tbody)return;
+  if(!investidor){
+    tbody.innerHTML='<tr><td colspan="28" class="crt-tbl-empty">Selecione um investidor para visualizar as operações</td></tr>';
+    return;
+  }
+  const norm=s=>(s||'').trim().toLowerCase();
+  const inv=norm(investidor);
+
+  // Coleta registros das 3 abas marcando origem
+  const rows=[];
+  (CACHE.cessoes||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'cessoes'});});
+  (CACHE.rpv||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'rpv'});});
+  (CACHE.encerrados||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'encerrados'});});
+
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="28" class="crt-tbl-empty">Nenhuma operação encontrada para este investidor</td></tr>';
+    _crtAtualizaCards([]);
+    return;
+  }
+
+  const _e=v=>(!v&&v!==0)?'—':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const _d=v=>v?v.split('-').reverse().join('/'):'—'; // yyyy-mm-dd → dd/mm/yyyy
+
+  const abaBadge={
+    cessoes:'<span class="crt-aba-badge crt-aba-ativa">Ativa</span>',
+    rpv:'<span class="crt-aba-badge crt-aba-rpv">RPV</span>',
+    encerrados:'<span class="crt-aba-badge crt-aba-enc">Encerrado</span>'
+  };
+
+  tbody.innerHTML=rows.map(r=>`
+    <tr>
+      <td style="min-width:180px"><span class="crt-proc">${_e(r.numeroProcesso)}</span> ${abaBadge[r._aba]||''}</td>
+      <td style="min-width:140px" title="${_e(r.cedente)}">${_e(r.cedente)}</td>
+      <td style="min-width:140px" title="${_e(r.advogado)}">${_e(r.advogado)}</td>
+      <td style="min-width:120px">${_e(r.objeto)}</td>
+      <td style="min-width:80px">${_e(r.tribunal)}</td>
+      <td style="min-width:120px" class="crt-td-num">${_e(r.capitalInvestido)}</td>
+      <td style="min-width:110px">${_d(r.dataAquisicao)}</td>
+      <td style="min-width:120px" class="crt-td-num">${_e(r.valorFace)}</td>
+      <td style="min-width:110px">${_d(r.dataRefFace)}</td>
+      <td style="min-width:110px">${_e(r.indiceAtualizacao)}</td>
+      <td style="min-width:130px" class="crt-td-num">${_e(r.valorAtualizadoManual)}</td>
+      <td style="min-width:110px">${_d(r.expectativaLiquidacao)}</td>
+      <td style="min-width:110px" class="crt-td-num">${_e(r.jaRecebido)}</td>
+      <td style="min-width:110px">${_d(r.dataLiquidacao)}</td>
+      <td style="min-width:110px">${_d(r.dataEstComplementar)}</td>
+      <td style="min-width:120px" class="crt-td-num">${_e(r.valorEstComplementar)}</td>
+      <td style="min-width:100px">${_e(r.status)}</td>
+      <td style="min-width:140px">${_e(r.estagioProcessual)}</td>
+      <td style="min-width:200px" class="crt-td-wrap" title="${_e(r.providencias)}">${_e(r.providencias)}</td>
+      <td style="min-width:100px">${_d(r.ultAtualizacao)}</td>
+      <td style="min-width:120px" class="crt-td-num">—</td>
+      <td style="min-width:100px">—</td>
+      <td style="min-width:80px" class="crt-td-num">—</td>
+      <td style="min-width:80px" class="crt-td-num">—</td>
+      <td style="min-width:130px">—</td>
+      <td style="min-width:90px" class="crt-td-num">—</td>
+      <td style="min-width:120px" class="crt-td-num">—</td>
+      <td style="min-width:90px" class="crt-td-num">—</td>
+    </tr>`).join('');
+
+  _crtAtualizaCards(rows);
+}
+
+function _crtAtualizaCards(rows){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('crt-card-operacoes', rows.length||'—');
+  // Os demais cards aguardam campos de cálculo futuros
+  ['crt-card-capital','crt-card-tir','crt-card-retorno','crt-card-recebido','crt-card-areceber']
+    .forEach(id=>set(id,'—'));
 }
 function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
 function _crtAcKey(e){
