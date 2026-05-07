@@ -2466,6 +2466,9 @@ function _sbShowCarteiras(){
   document.querySelector('.main').style.display='none';
   document.getElementById('sb-item-carteiras').classList.add('active');
   localStorage.setItem('cj-sidebar-active','carteiras');
+  // Se a aba ativa for Investidores, popula o select
+  const activeTab=document.querySelector('.crt-tab.on');
+  if(activeTab?.dataset?.crt==='investidores')_crtPopulateInvestidores();
 }
 
 function _sbShowCredito(){
@@ -2533,6 +2536,28 @@ async function cfgSaveAdvboxToken(){
 function crtNav(tab){
   document.querySelectorAll('.crt-tab').forEach(t=>t.classList.toggle('on',t.dataset.crt===tab));
   document.querySelectorAll('.crt-pane').forEach(p=>p.classList.toggle('on',p.id==='crt-pane-'+tab));
+  if(tab==='investidores')_crtPopulateInvestidores();
+}
+
+function _crtPopulateInvestidores(){
+  const sel=document.getElementById('crt-select-investidor');
+  if(!sel)return;
+  // Coleta todos os cessionários únicos de cessões, rpv e encerrados
+  const nomes=new Set();
+  [...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])].forEach(r=>{
+    const v=(r.cessionario||'').trim();
+    if(v)nomes.add(v);
+  });
+  const sorted=[...nomes].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+  const current=sel.value;
+  sel.innerHTML='<option value="" disabled selected>Selecionar...</option>';
+  sorted.forEach(nome=>{
+    const opt=document.createElement('option');
+    opt.value=nome;
+    opt.textContent=nome;
+    sel.appendChild(opt);
+  });
+  if(current&&sorted.includes(current))sel.value=current;
 }
 
 function sbNav(item){
