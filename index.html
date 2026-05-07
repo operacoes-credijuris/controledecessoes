@@ -1172,6 +1172,15 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   color:var(--txt3)!important;
 }
 
+/* CARTEIRAS */
+#pane-carteiras{
+  background:
+    radial-gradient(circle at 20% 0%,rgba(0,119,255,.09),transparent 34%),
+    #171a1f;
+  flex:1;overflow-y:auto;padding:28px 32px;display:none;flex-direction:column;gap:24px
+}
+#pane-carteiras.on{display:flex}
+
 /* CONFIGURAÇÕES */
 #pane-config{
   background:
@@ -1523,9 +1532,9 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
   </button>
   <div class="sidebar-inner">
   <div class="sb-section"><div class="sb-section-lbl">Comercial</div></div>
-  <div class="sb-item disabled">
-    <span class="sb-item-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2.5" y="5.5" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
-    <span class="sb-item-lbl">Em breve</span>
+  <div class="sb-item" id="sb-item-carteiras" onclick="sbNav('carteiras')">
+    <span class="sb-item-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="3.5" width="10" height="7.5" rx="1.2" stroke="currentColor" stroke-width="1.2"/><path d="M4 3.5V2.5a2 2 0 0 1 4 0v1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M1 6.5h10" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="6.5" r="1" fill="currentColor"/></svg></span>
+    <span class="sb-item-lbl">Carteiras</span>
   </div>
   <div class="sb-section"><div class="sb-section-lbl">Operacional</div></div>
   <div class="sb-item" id="sb-item-credito" onclick="sbNav('credito')">
@@ -1905,6 +1914,21 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
         <button class="cfg-save-btn" style="background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.35);color:#fca5a5" onclick="doLogout()">Sair</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- PAINEL CARTEIRAS -->
+<div id="pane-carteiras">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-shrink:0">
+    <div>
+      <div style="font-size:10px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:#6e9fce">Comercial</div>
+      <div style="font-size:22px;font-weight:700;color:#f7fbff;margin-top:4px;font-family:var(--font-head)">Carteiras</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:12px;opacity:.45">
+    <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="3" y="13" width="38" height="28" rx="3.5" stroke="#6b7280" stroke-width="1.8"/><path d="M14 13V10a8 8 0 0 1 16 0v3" stroke="#6b7280" stroke-width="1.8" stroke-linecap="round"/><path d="M3 22h38" stroke="#6b7280" stroke-width="1.8"/><circle cx="22" cy="22" r="3" fill="#6b7280"/></svg>
+    <div style="font-size:15px;font-weight:600;color:#6b7280">Em construção</div>
+    <div style="font-size:12px;color:#4b5563">Esta seção está sendo desenvolvida</div>
   </div>
 </div>
 
@@ -2344,7 +2368,8 @@ let lastExecTab=localStorage.getItem('cj-sidebar-lasttab')||'dashboard';
   const saved=localStorage.getItem('cj-sidebar-state'); const collapsed=saved?saved!=='expanded':false;
   if(collapsed)_sbSetCollapsed(true);
   const active=localStorage.getItem('cj-sidebar-active')||'exec';
-  if(active==='credito')_sbShowCredito();
+  if(active==='carteiras')_sbShowCarteiras();
+  else if(active==='credito')_sbShowCredito();
   else if(active==='config')_sbShowConfig();
 })();
 
@@ -2395,11 +2420,21 @@ function toggleSidebar(){
 function _sbHideAll(){
   document.getElementById('pane-credito').style.display='none';
   document.getElementById('pane-config').style.display='none';
+  document.getElementById('pane-carteiras').classList.remove('on');
   document.querySelector('.nav').style.display='';
   document.querySelector('.main').style.display='';
-  ['sb-item-exec','sb-item-credito','sb-item-config'].forEach(id=>{
+  ['sb-item-exec','sb-item-credito','sb-item-config','sb-item-carteiras'].forEach(id=>{
     document.getElementById(id)?.classList.remove('active');
   });
+}
+
+function _sbShowCarteiras(){
+  _sbHideAll();
+  document.getElementById('pane-carteiras').classList.add('on');
+  document.querySelector('.nav').style.display='none';
+  document.querySelector('.main').style.display='none';
+  document.getElementById('sb-item-carteiras').classList.add('active');
+  localStorage.setItem('cj-sidebar-active','carteiras');
 }
 
 function _sbShowCredito(){
@@ -2478,6 +2513,8 @@ function sbNav(item){
     if(curTab==='dashboard')updateDash();else render(curTab);
   }else if(item==='credito'){
     _sbShowCredito();
+  }else if(item==='carteiras'){
+    _sbShowCarteiras();
   }
 }
 
