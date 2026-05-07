@@ -1946,9 +1946,12 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
     <!-- conteúdo Parâmetros -->
   </div>
   <div id="crt-pane-investidores" class="crt-pane">
-    <div style="max-width:340px;display:flex;flex-direction:column;gap:6px">
-      <label style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#8892a0;text-transform:uppercase;display:flex;align-items:center;gap:6px">Investidor<span id="crt-inv-count" style="font-size:10px;font-weight:600;color:#4b5563;background:#1c2030;border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:1px 7px;letter-spacing:0;text-transform:none"></span></label>
-      <select id="crt-select-investidor" style="background:#1c2030;border:1px solid rgba(255,255,255,.10);border-radius:8px;color:#e2e8f0;font-size:13px;font-family:inherit;padding:10px 14px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;transition:border-color .2s" onfocus="this.style.borderColor='rgba(88,183,255,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.10)'">
+    <div class="fg" style="max-width:360px">
+      <label class="flbl" style="display:flex;align-items:center;gap:7px">
+        Investidor
+        <span id="crt-inv-count" style="font-size:10px;font-weight:600;color:#4b5563;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:1px 8px;letter-spacing:0;text-transform:none;font-family:inherit"></span>
+      </label>
+      <select id="crt-select-investidor" class="fsel" style="cursor:pointer">
         <option value="" disabled selected>Selecionar...</option>
       </select>
     </div>
