@@ -783,14 +783,9 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 /* DASHBOARD REFINEMENT */
 #pane-dashboard.on{
   gap:16px;
-  overflow-y:auto;
   background:
     radial-gradient(circle at 18% 0%,rgba(0,119,255,.10),transparent 34%),
     #171a1f;
-}
-#pane-dashboard .db-grid{
-  flex:none;
-  align-items:start;
 }
 .dash-topline{
   display:flex;
@@ -865,7 +860,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   grid-template-columns:minmax(320px,430px) minmax(0,1fr);
   gap:16px;
   margin:0;
-  align-items:start;
+  align-items:stretch;
 }
 #pane-dashboard .db-grid.urgency-open{
   grid-template-columns:minmax(320px,430px) minmax(460px,1fr) minmax(0,1fr);
