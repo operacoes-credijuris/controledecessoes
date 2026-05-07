@@ -11,6 +11,22 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
+    // Validar JWT do usuário antes de qualquer acesso
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Não autenticado' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+    const userJwt = authHeader.slice(7);
+    const sbUser = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: 'Bearer ' + userJwt } } }
+    );
+    const { data: { user }, error: authErr } = await sbUser.auth.getUser();
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: 'Sessão inválida ou expirada' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!

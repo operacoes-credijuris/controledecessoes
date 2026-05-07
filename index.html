@@ -18,7 +18,7 @@ body{font-family:var(--font-body);background:var(--bg0);color:var(--txt);height:
 /* MODO CLARO */
 body.light{filter:invert(1) hue-rotate(180deg);background:#fff;-webkit-font-smoothing:antialiased;font-weight:300}
 body.light img{filter:invert(1) hue-rotate(180deg)}
-body.light .sh-title{font-weight:300}
+body.light .sh-title{font-weight:700}
 body.light .dash-panel-title{font-weight:500}
 body.light .mdl-title{font-weight:500}
 body.light .sc-val{font-weight:500}
@@ -28,7 +28,7 @@ body.light .urg-main span:last-child{font-weight:300}
 body.light .al-text,body.light .cfg-section-title{font-weight:400}
 body.light .flbl{font-weight:600}
 body.light .btn{font-weight:400}
-body.light .tab{font-weight:400}
+body.light .tab{font-weight:700}
 body.light .tl-date{font-weight:500}
 body.light .gs-badge,.gs-group-hdr{font-weight:600}
 body.light .sb-item{font-weight:300}
@@ -783,9 +783,14 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 /* DASHBOARD REFINEMENT */
 #pane-dashboard.on{
   gap:16px;
+  overflow-y:auto;
   background:
     radial-gradient(circle at 18% 0%,rgba(0,119,255,.10),transparent 34%),
     #171a1f;
+}
+#pane-dashboard .db-grid{
+  flex:none;
+  align-items:start;
 }
 .dash-topline{
   display:flex;
@@ -860,7 +865,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   grid-template-columns:minmax(320px,430px) minmax(0,1fr);
   gap:16px;
   margin:0;
-  align-items:stretch;
+  align-items:start;
 }
 #pane-dashboard .db-grid.urgency-open{
   grid-template-columns:minmax(320px,430px) minmax(460px,1fr) minmax(0,1fr);
@@ -882,8 +887,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   min-height:0;
 }
 .dash-col-stack .dash-agenda{
-  flex:1;
-  min-height:0;
+  flex:none;
 }
 .dash-agenda,
 .dash-movements,
@@ -928,7 +932,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   padding:4px 9px;
 }
 .dash-calendar{
-  padding:14px 16px 0;
+  padding:14px 16px 14px;
 }
 .cal-head{
   display:flex;
@@ -1790,7 +1794,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
           <div class="tbl-scroll">
             <table>
               <thead><tr>
-                <th style="min-width:130px">Órgão Julgador</th>
+                <th style="min-width:130px">Nome</th>
                 <th style="min-width:52px">Tribunal</th>
                 <th style="min-width:120px">WhatsApp</th>
                 <th style="min-width:110px">Telefone</th>
@@ -1810,20 +1814,22 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
           <button class="btn btn-gold btn-sm" onclick="openAuxModal()">+ Adicionar</button>
         </div>
         <div class="tbl-wrap">
-          <table class="tbl" id="tbl-aux">
-            <thead>
-              <tr>
-                <th>Órgão</th>
-                <th>Tribunal</th>
-                <th>WhatsApp</th>
-                <th>Telefone</th>
-                <th>E-mail</th>
-                <th></th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="tbody-aux"><tr><td colspan="7" class="empty">Nenhum órgão auxiliar cadastrado.</td></tr></tbody>
-          </table>
+          <div class="tbl-scroll">
+            <table id="tbl-aux">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Tribunal</th>
+                  <th>WhatsApp</th>
+                  <th>Telefone</th>
+                  <th>E-mail</th>
+                  <th></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-aux"><tr><td colspan="7" style="padding:40px 20px;text-align:center;color:var(--txt3)">Nenhum órgão auxiliar cadastrado.</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -1945,7 +1951,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
         </button>
         <button id="hist-tab-dil" onclick="switchHistTab('diligencias')"
           style="padding:6px 16px;font-size:12px;font-weight:600;border:none;background:transparent;cursor:pointer;color:#6b7280;border-bottom:2px solid transparent">
-          Diligências
+          Providências
         </button>
       </div>
       <div id="hist-tab-content-historico"></div>
@@ -2113,9 +2119,14 @@ async function _sbSync(k,d,prev){
     const newIds=new Set(d.map(r=>r.id));
     const delIds=(prev||[]).filter(r=>!newIds.has(r.id)).map(r=>r.id);
     if(delIds.length){const{error}=await sb.from(tbl).delete().in('id',delIds);if(error)throw error;}
-    if(d.length){
-      const isShared=(tbl==='contatos');
-      const rows=d.map(r=>{const o={id:r.id,data:r,updated_at:new Date().toISOString()};if(!isShared)o.user_id=_currentUserId;return o;});
+    // Upsert apenas registros novos ou alterados (compara sem _advboxMovCount)
+    const prevMap=new Map((prev||[]).map(r=>{const{_advboxMovCount,...clean}=r;return[r.id,JSON.stringify(clean)];}));
+    const changed=d.filter(r=>{const{_advboxMovCount,...clean}=r;return prevMap.get(r.id)!==JSON.stringify(clean);});
+    if(changed.length){
+      const rows=changed.map(r=>{
+        const{_advboxMovCount,...clean}=r; // nunca persiste campo interno no banco
+        return{id:r.id,data:clean,updated_at:new Date().toISOString(),user_id:_currentUserId};
+      });
       const{error}=await sb.from(tbl).upsert(rows,{onConflict:'id'});
       if(error)throw error;
     }
@@ -2147,6 +2158,10 @@ function _setupRealtime(){
         if(curTab===mod)render(curTab);
       });
     }
+    // Realtime para Órgãos Auxiliares
+    ch.on('postgres_changes',{event:'*',schema:'public',table:'contatos_auxiliares'},async()=>{
+      await loadAuxiliares();
+    });
     ch.subscribe();
   }catch(e){console.error('[Credijuris] realtime setup error',e);}
 }
@@ -3350,7 +3365,7 @@ function renderReq(){
   const rows=paginate(sorted,'requerimentos');
   const tb=document.getElementById('tb-requerimentos');
   if(!sorted.length){
-    tb.innerHTML=`<tr><td colspan="13"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">Nenhum registro em Diversos</div></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="12"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">Nenhum registro em Diversos</div></div></td></tr>`;
   } else {
     tb.innerHTML=rows.map(r=>reqRow(r,allData,false)).join('');
   }
@@ -3629,7 +3644,8 @@ function saveRecord(){
     if(!rec.orgaoJulgador){alert('Órgão julgador é obrigatório.');return;}
     if(curId){
       const idx=data.findIndex(r=>r.id===curId);
-      if(idx!==-1){rec.id=curId;data[idx]=rec;}
+      rec.id=curId;
+      if(idx!==-1){data[idx]=rec;}else{data.push(rec);}
     } else {
       rec.id=uid();
       data.push(rec);
@@ -3721,6 +3737,11 @@ function _pfSave(mod,id,valor){
   const data=load(mod);
   const idx=data.findIndex(r=>r.id===id);
   if(idx<0){render(mod);return;}
+  const anterior=normDate(data[idx].prazoFatal||'');
+  // Confirmação ao apagar uma data existente
+  if(!valor&&anterior){
+    if(!confirm('Remover o prazo fatal deste processo?')){render(mod);return;}
+  }
   data[idx].prazoFatal=valor||'';
   save(mod,data);
   render(mod);
@@ -3855,7 +3876,7 @@ function openVinculo(mod,paiId){
   document.getElementById('vinculo-body').innerHTML=`
     <div style="margin-bottom:14px">
       <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Processo pai: <strong style="color:var(--gold2)">${esc(pai.numeroProcesso)}</strong></div>
-      <input id="vinculo-search" class="finp" placeholder="🔍 Filtrar por número do processo…" oninput="filterVinculo()" style="margin-bottom:12px">
+      <input id="vinculo-search" class="finp" placeholder="🔍 Filtrar por número, cedente ou cessionário…" oninput="filterVinculo()" style="margin-bottom:12px">
     </div>
     <div id="vinculo-list">${renderVinculoList(data.filter(r=>r.id!==paiId&&!r.vinculoPai))}</div>`;
   openModal('vinculo-ov');
@@ -3863,7 +3884,11 @@ function openVinculo(mod,paiId){
 
 function filterVinculo(){
   const q=document.getElementById('vinculo-search').value.toLowerCase();
-  const data=load(vMod).filter(r=>r.id!==vPaiId&&!r.vinculoPai&&(r.numeroProcesso||'').toLowerCase().includes(q));
+  const data=load(vMod).filter(r=>r.id!==vPaiId&&!r.vinculoPai&&(
+    (r.numeroProcesso||'').toLowerCase().includes(q)||
+    (r.cedente||'').toLowerCase().includes(q)||
+    (r.cessionario||'').toLowerCase().includes(q)
+  ));
   document.getElementById('vinculo-list').innerHTML=renderVinculoList(data);
 }
 
@@ -4033,8 +4058,7 @@ async function loadDiligencias(){
         const task=p.task||'';
         const notes=p.comments||p.notes||'';
         const deadline=p.date_deadline||'';
-        const status=histData.status||'';
-        const concluded=status==='completed'||(p.completed!=null&&p.completed!==false);
+        const concluded=(p.status==='completed')||(p.completed!=null&&p.completed!==false);
         const responsible=p.responsible||p.author||'';
         const nid=`dil-n-${i}`;
         const deadlineHtml=deadline
@@ -4051,11 +4075,9 @@ async function loadDiligencias(){
           </div>
           <div class="tl-desc" style="font-weight:600;color:#e2e8f0">${esc(task)}</div>
           ${notes?`<div class="tl-desc" style="margin-top:4px">
-            <div style="position:relative">
               <div id="${nid}" style="overflow:hidden;line-height:1.55em;max-height:calc(1.55em * 3)">${esc(notes)}</div>
-              <span id="${nid}-btn" style="display:none;position:absolute;bottom:0;right:0;padding-left:36px;background:linear-gradient(to right,transparent,#111317 45%);font-size:11px;color:var(--blue2);cursor:pointer"
-                onclick="(function(el,btn){var exp=el.style.maxHeight==='none';el.style.maxHeight=exp?'calc(1.55em * 3)':'none';btn.style.position=exp?'absolute':'static';btn.style.background=exp?'linear-gradient(to right,transparent,#111317 45%)':'none';btn.style.paddingLeft=exp?'36px':'0';btn.textContent=exp?'… ler mais':'ler menos'})(document.getElementById('${nid}'),this)">… ler mais</span>
-            </div>
+              <span id="${nid}-btn" style="display:none;font-size:11px;color:var(--blue2);cursor:pointer;margin-top:3px"
+                onclick="(function(el,btn){var exp=el.dataset.exp==='1';el.style.maxHeight=exp?'calc(1.55em * 3)':'none';el.dataset.exp=exp?'':'1';btn.textContent=exp?'ler mais ▾':'ler menos ▴'})(document.getElementById('${nid}'),this)">ler mais ▾</span>
           </div>`:''}
           ${responsible?`<div class="tl-desc" style="margin-top:2px;font-size:10px;color:#6b7280">${esc(responsible)}</div>`:''}
         </div>`;
@@ -4066,7 +4088,7 @@ async function loadDiligencias(){
           const noteEl=document.getElementById(`dil-n-${i}`);
           if(noteEl&&noteEl.scrollHeight>noteEl.clientHeight+1){
             const btn=document.getElementById(`dil-n-${i}-btn`);
-            if(btn)btn.style.display='inline';
+            if(btn)btn.style.display='block';
           }
         });
       },50);
@@ -4207,8 +4229,7 @@ function renderContatos(){
     const c=CACHE.contatos.find(x=>(x.orgaoJulgador||'').trim()===o.orgaoJulgador);
     return o.orgaoJulgador.toLowerCase().includes(ctQ)||
       (o.tribunal||'').toLowerCase().includes(ctQ)||
-      (c?.whatsapp_serventia||c?.whatsapp_gabinete||'').toLowerCase().includes(ctQ)||
-      (c?.email_serventia||c?.email_gabinete||'').toLowerCase().includes(ctQ);
+      [c?.whatsapp_serventia,c?.whatsapp_gabinete,c?.telefone_serventia,c?.telefone_gabinete,c?.email_serventia,c?.email_gabinete].some(v=>v&&v.toLowerCase().includes(ctQ));
   }):allRows;
   _contatosRows=rows;
 
@@ -4257,12 +4278,12 @@ function renderContatos(){
 function contatoBadge(mod,r){
   const org=(r.orgaoJulgador||'').trim();
   if(!org){
-    return`<button class="btn btn-blue btn-xs" style="opacity:.35;cursor:default" title="Sem órgão julgador" disabled><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 2.5c0-.3.2-.5.5-.5h1.8l.8 2-1.1.8c.5 1 1.2 1.8 2.2 2.2l.8-1.1 2 .8v1.8c0 .3-.2.5-.5.5C4.5 9.5 1.5 6.5 2 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>`;
+    return`<button class="btn btn-blue btn-xs" style="opacity:.35;cursor:not-allowed" title="Sem órgão julgador" disabled><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 2.5c0-.3.2-.5.5-.5h1.8l.8 2-1.1.8c.5 1 1.2 1.8 2.2 2.2l.8-1.1 2 .8v1.8c0 .3-.2.5-.5.5C4.5 9.5 1.5 6.5 2 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>`;
   }
   const c=CACHE.contatos.find(x=>(x.orgaoJulgador||'').trim()===org);
   const hasInfo=c&&(c.whatsapp_serventia||c.whatsapp_gabinete||c.telefone_serventia||c.telefone_gabinete||c.email_serventia||c.email_gabinete);
   if(!hasInfo){
-    return`<button class="btn btn-blue btn-xs" style="opacity:.35;cursor:default" title="Sem contato cadastrado" disabled><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 2.5c0-.3.2-.5.5-.5h1.8l.8 2-1.1.8c.5 1 1.2 1.8 2.2 2.2l.8-1.1 2 .8v1.8c0 .3-.2.5-.5.5C4.5 9.5 1.5 6.5 2 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>`;
+    return`<button class="btn btn-blue btn-xs" style="opacity:.35;cursor:not-allowed" title="Sem contato cadastrado" disabled><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 2.5c0-.3.2-.5.5-.5h1.8l.8 2-1.1.8c.5 1 1.2 1.8 2.2 2.2l.8-1.1 2 .8v1.8c0 .3-.2.5-.5.5C4.5 9.5 1.5 6.5 2 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>`;
   }
   return`<button class="btn btn-grn btn-xs" onclick="openContatoModal('${mod}','${r.id}')" title="Ver contato"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 2.5c0-.3.2-.5.5-.5h1.8l.8 2-1.1.8c.5 1 1.2 1.8 2.2 2.2l.8-1.1 2 .8v1.8c0 .3-.2.5-.5.5C4.5 9.5 1.5 6.5 2 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>`;
 }
