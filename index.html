@@ -2417,6 +2417,11 @@ function _sbHideAll(){
   document.getElementById('pane-carteiras').classList.remove('on');
   document.querySelector('.nav').style.display='';
   document.querySelector('.main').style.display='';
+  // Oculta busca e sincronizar — só visíveis em Execução Processual
+  const hdrSearch=document.querySelector('.hdr-search');
+  const syncBtn=document.getElementById('sync-btn');
+  if(hdrSearch)hdrSearch.style.display='none';
+  if(syncBtn)syncBtn.style.display='none';
   ['sb-item-exec','sb-item-credito','sb-item-config','sb-item-carteiras'].forEach(id=>{
     document.getElementById(id)?.classList.remove('active');
   });
@@ -2461,6 +2466,11 @@ function _sbShowConfig(){
 
 function _sbShowExec(){
   _sbHideAll();
+  // Restaura busca e sincronizar ao entrar em Execução Processual
+  const hdrSearch=document.querySelector('.hdr-search');
+  const syncBtn=document.getElementById('sync-btn');
+  if(hdrSearch)hdrSearch.style.display='';
+  if(syncBtn)syncBtn.style.display='';
   document.getElementById('sb-item-exec').classList.add('active');
   localStorage.setItem('cj-sidebar-active','exec');
 }
