@@ -1177,9 +1177,25 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   background:
     radial-gradient(circle at 20% 0%,rgba(0,119,255,.09),transparent 34%),
     #171a1f;
-  flex:1;overflow-y:auto;padding:28px 32px;display:none;flex-direction:column;gap:24px
+  flex:1;display:none;flex-direction:column;overflow:hidden;
 }
 #pane-carteiras.on{display:flex}
+.crt-nav{
+  display:flex;align-items:center;gap:0;flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  background:#171a1f;
+  padding:0 24px;
+}
+.crt-tab{
+  padding:17px 14px 15px;cursor:pointer;font-size:13px;font-weight:500;
+  color:#8892a0;border-bottom:3px solid transparent;white-space:nowrap;
+  transition:color .2s,border-color .2s;user-select:none;
+}
+.crt-tab:hover{color:#d7deea}
+.crt-tab.on{color:#fff;border-bottom-color:var(--gold)}
+.crt-sep{color:#353b45;font-size:16px;padding:0 6px;user-select:none;pointer-events:none;line-height:1;flex-shrink:0}
+.crt-pane{display:none;flex:1;flex-direction:column;overflow-y:auto;padding:28px 32px;}
+.crt-pane.on{display:flex}
 
 /* CONFIGURAÇÕES */
 #pane-config{
@@ -1919,10 +1935,21 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
 
 <!-- PAINEL CARTEIRAS -->
 <div id="pane-carteiras">
-  <div style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:12px;opacity:.45">
-    <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="3" y="13" width="38" height="28" rx="3.5" stroke="#6b7280" stroke-width="1.8"/><path d="M14 13V10a8 8 0 0 1 16 0v3" stroke="#6b7280" stroke-width="1.8" stroke-linecap="round"/><path d="M3 22h38" stroke="#6b7280" stroke-width="1.8"/><circle cx="22" cy="22" r="3" fill="#6b7280"/></svg>
-    <div style="font-size:15px;font-weight:600;color:#6b7280">Em construção</div>
-    <div style="font-size:12px;color:#4b5563">Esta seção está sendo desenvolvida</div>
+  <nav class="crt-nav">
+    <div class="crt-tab on" data-crt="parametros" onclick="crtNav('parametros')">Parâmetros</div>
+    <span class="crt-sep">|</span>
+    <div class="crt-tab" data-crt="investidores" onclick="crtNav('investidores')">Investidores</div>
+    <span class="crt-sep">|</span>
+    <div class="crt-tab" data-crt="consolidado" onclick="crtNav('consolidado')">Consolidado</div>
+  </nav>
+  <div id="crt-pane-parametros" class="crt-pane on">
+    <!-- conteúdo Parâmetros -->
+  </div>
+  <div id="crt-pane-investidores" class="crt-pane">
+    <!-- conteúdo Investidores -->
+  </div>
+  <div id="crt-pane-consolidado" class="crt-pane">
+    <!-- conteúdo Consolidado -->
   </div>
 </div>
 
@@ -2496,6 +2523,11 @@ async function cfgSaveAdvboxToken(){
   }finally{
     if(saveBtn)saveBtn.disabled=false;
   }
+}
+
+function crtNav(tab){
+  document.querySelectorAll('.crt-tab').forEach(t=>t.classList.toggle('on',t.dataset.crt===tab));
+  document.querySelectorAll('.crt-pane').forEach(p=>p.classList.toggle('on',p.id==='crt-pane-'+tab));
 }
 
 function sbNav(item){
