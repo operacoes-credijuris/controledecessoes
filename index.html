@@ -1946,14 +1946,20 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
     <!-- conteúdo Parâmetros -->
   </div>
   <div id="crt-pane-investidores" class="crt-pane">
-    <div class="fg" style="max-width:360px">
-      <label class="flbl" style="display:flex;align-items:center;gap:7px">
-        Investidor
-        <span id="crt-inv-count" style="font-size:10px;font-weight:600;color:#4b5563;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:1px 8px;letter-spacing:0;text-transform:none;font-family:inherit"></span>
-      </label>
-      <select id="crt-select-investidor" class="fsel" style="cursor:pointer">
-        <option value="" disabled selected>Selecionar...</option>
-      </select>
+    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+      <div class="fg" style="min-width:240px;flex:1">
+        <label class="flbl" style="display:flex;align-items:center;gap:7px">
+          Investidor
+          <span id="crt-inv-count" style="font-size:10px;font-weight:600;color:#4b5563;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:1px 8px;letter-spacing:0;text-transform:none;font-family:inherit"></span>
+        </label>
+        <select id="crt-select-investidor" class="fsel" style="cursor:pointer">
+          <option value="" disabled selected>Selecionar...</option>
+        </select>
+      </div>
+      <div class="fg" style="max-width:160px">
+        <label class="flbl">Mês de Referência</label>
+        <input id="crt-mes-referencia" class="finp" type="month" style="cursor:pointer">
+      </div>
     </div>
   </div>
   <div id="crt-pane-consolidado" class="crt-pane">
@@ -2545,6 +2551,14 @@ function crtNav(tab){
 function _crtPopulateInvestidores(){
   const sel=document.getElementById('crt-select-investidor');
   if(!sel)return;
+  // Preenche mês de referência com mês/ano atual se ainda não preenchido
+  const mesInp=document.getElementById('crt-mes-referencia');
+  if(mesInp&&!mesInp.value){
+    const hoje=new Date();
+    const ano=hoje.getFullYear();
+    const mes=String(hoje.getMonth()+1).padStart(2,'0');
+    mesInp.value=`${ano}-${mes}`;
+  }
   // Coleta todos os cessionários únicos de cessões, rpv e encerrados
   const nomes=new Set();
   [...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])].forEach(r=>{
