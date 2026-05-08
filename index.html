@@ -2254,7 +2254,27 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
     </div>
   </div>
   <div id="crt-pane-consolidado" class="crt-pane">
-    <!-- conteúdo Consolidado -->
+    <div class="crt-tbl-wrap" style="margin-top:0">
+      <div class="crt-tbl-title" style="margin-bottom:12px">Consolidado por investidor</div>
+      <div class="crt-tbl-scroll">
+        <table class="crt-tbl" style="min-width:700px">
+          <thead>
+            <tr class="crt-th-sub">
+              <th>Investidor</th>
+              <th>Capital inv. (R$)</th>
+              <th>A receber est. (R$)</th>
+              <th>Já recebido (R$)</th>
+              <th>Retorno (%)</th>
+              <th>TIR a.a.</th>
+              <th>Qtd. operações</th>
+            </tr>
+          </thead>
+          <tbody id="crt-cons-tbody">
+            <tr><td colspan="7" class="crt-tbl-empty">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2859,6 +2879,7 @@ function crtNav(tab){
   document.querySelectorAll('.crt-pane').forEach(p=>p.classList.toggle('on',p.id==='crt-pane-'+tab));
   if(tab==='investidores')_crtPopulateInvestidores();
   if(tab==='parametros')_prmInit();
+  if(tab==='consolidado')_crtRenderConsolidado();
 }
 
 let _crtInvestidores=[];
@@ -4347,6 +4368,134 @@ function _crtSave(aba,id,field,val){
 }
 function _crtRefresh(){
   if(_crtAcSelected)_crtRenderOperacoes(_crtAcSelected);
+}
+
+/* ======================================================
+   CONSOLIDADO
+====================================================== */
+function _parseNumCrt(v){
+  if(!v&&v!==0)return 0;
+  const raw=String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.');
+  const n=parseFloat(raw);
+  return isNaN(n)?0:n;
+}
+function _parseISODate(s){return s?new Date(s+'T12:00:00'):null;}
+
+/* XIRR — Newton-Raphson */
+function _xirr(cashFlows){
+  // cashFlows: [{amount, date}]
+  if(!cashFlows||cashFlows.length<2)return null;
+  const hasPos=cashFlows.some(f=>f.amount>0);
+  const hasNeg=cashFlows.some(f=>f.amount<0);
+  if(!hasPos||!hasNeg)return null;
+  const base=cashFlows.reduce((m,f)=>f.date<m?f.date:m,cashFlows[0].date);
+  const yrs=cashFlows.map(f=>(f.date-base)/(365.25*86400*1000));
+  const npv=r=>cashFlows.reduce((s,f,i)=>s+f.amount/Math.pow(1+r,yrs[i]),0);
+  const dnpv=r=>cashFlows.reduce((s,f,i)=>s-yrs[i]*f.amount/Math.pow(1+r,yrs[i]+1),0);
+  let rate=0.15;
+  for(let i=0;i<200;i++){
+    const n=npv(rate),d=dnpv(rate);
+    if(Math.abs(d)<1e-12)break;
+    const nr=rate-n/d;
+    if(Math.abs(nr-rate)<1e-8){rate=nr;break;}
+    rate=Math.max(-0.999,nr);
+  }
+  if(Math.abs(npv(rate))>0.01*cashFlows.reduce((s,f)=>s+Math.abs(f.amount),0))return null;
+  return rate;
+}
+
+function _crtConsolidadoFlows(ops){
+  const flows=[];
+  const today=new Date();
+  ops.forEach(r=>{
+    const cap=_parseNumCrt(r.capitalInvestido);
+    const dateIn=_parseISODate(r.dataAquisicao);
+    if(!dateIn||cap<=0)return;
+    flows.push({amount:-cap,date:dateIn});
+    const recv=_parseNumCrt(r.jaRecebido);
+    const estTotal=_parseNumCrt(r.valorAtualizadoManual)||_parseNumCrt(r.valorFace);
+    const remaining=Math.max(0,estTotal-recv);
+    const dateLiq=_parseISODate(r.dataLiquidacao);
+    const dateEst=_parseISODate(r.dataEstRecebimento);
+    if(recv>0){
+      flows.push({amount:recv,date:dateLiq||dateEst||today});
+    }
+    if(remaining>0){
+      const futDate=dateLiq||dateEst;
+      if(futDate&&futDate>today)flows.push({amount:remaining,date:futDate});
+      else if(!futDate){}// sem data estimada, ignorar restante para TIR
+    }
+  });
+  return flows;
+}
+
+function _crtRenderConsolidado(){
+  const tbody=document.getElementById('crt-cons-tbody');
+  if(!tbody)return;
+  const norm=s=>(s||'').trim().toLowerCase();
+
+  /* mapa: nome normalizado → nome exibível */
+  const investMap=new Map();
+  [...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])].forEach(r=>{
+    const v=(r.cessionario||'').trim();
+    if(v)investMap.set(norm(v),v);
+  });
+
+  if(!investMap.size){
+    tbody.innerHTML='<tr><td colspan="7" class="crt-tbl-empty">Nenhum investidor encontrado</td></tr>';
+    return;
+  }
+
+  const fmtPct=v=>v==null?'—':(v*100).toFixed(2).replace('.',',')+'%';
+  const fmtNum=v=>v>0?fmtBRL(v):'—';
+
+  const tableRows=[];
+  let totCap=0,totReceber=0,totRecebido=0,totOps=0;
+
+  for(const[normName,displayName]of investMap){
+    const ops=[];
+    (CACHE.cessoes||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName)ops.push({...r,_aba:'cessoes'});});
+    (CACHE.rpv||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName)ops.push({...r,_aba:'rpv'});});
+    (CACHE.encerrados||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName)ops.push({...r,_aba:'encerrados'});});
+
+    const capital=ops.reduce((s,r)=>s+_parseNumCrt(r.capitalInvestido),0);
+    const recebido=ops.reduce((s,r)=>s+_parseNumCrt(r.jaRecebido),0);
+    const aReceberEst=ops.filter(r=>r._aba!=='encerrados').reduce((s,r)=>{
+      const est=_parseNumCrt(r.valorAtualizadoManual)||_parseNumCrt(r.valorFace);
+      return s+Math.max(0,est-_parseNumCrt(r.jaRecebido));
+    },0);
+    const retorno=capital>0?((recebido+aReceberEst)/capital-1):null;
+    const flows=_crtConsolidadoFlows(ops);
+    const tir=_xirr(flows);
+
+    totCap+=capital;totReceber+=aReceberEst;totRecebido+=recebido;totOps+=ops.length;
+
+    tableRows.push({displayName,capital,aReceberEst,recebido,retorno,tir,count:ops.length});
+  }
+
+  tableRows.sort((a,b)=>b.capital-a.capital);
+
+  const totRetorno=totCap>0?((totRecebido+totReceber)/totCap-1):null;
+
+  tbody.innerHTML=tableRows.map(r=>`
+    <tr>
+      <td style="font-weight:500;color:#e2e8f0">${esc(r.displayName)}</td>
+      <td class="crt-td-num">${fmtNum(r.capital)}</td>
+      <td class="crt-td-num">${fmtNum(r.aReceberEst)}</td>
+      <td class="crt-td-num">${fmtNum(r.recebido)}</td>
+      <td class="crt-td-num" style="${r.retorno!=null&&r.retorno>0?'color:#4ade80':r.retorno!=null&&r.retorno<0?'color:#f87171':''}">${fmtPct(r.retorno)}</td>
+      <td class="crt-td-num" style="${r.tir!=null&&r.tir>0?'color:#4ade80':r.tir!=null&&r.tir<0?'color:#f87171':''}">${r.tir!=null?fmtPct(r.tir):'—'}</td>
+      <td class="crt-td-num">${r.count}</td>
+    </tr>`).join('')+`
+    <tr style="border-top:1px solid rgba(255,255,255,.12);background:#15181e">
+      <td style="font-size:9px;font-weight:700;color:#7f8a99;text-transform:uppercase;letter-spacing:.5px">Total</td>
+      <td class="crt-td-num" style="font-weight:700;color:#dce3ee">${fmtNum(totCap)}</td>
+      <td class="crt-td-num" style="font-weight:700;color:#dce3ee">${fmtNum(totReceber)}</td>
+      <td class="crt-td-num" style="font-weight:700;color:#dce3ee">${fmtNum(totRecebido)}</td>
+      <td class="crt-td-num" style="font-weight:700;${totRetorno!=null&&totRetorno>0?'color:#4ade80':totRetorno!=null&&totRetorno<0?'color:#f87171':'color:#dce3ee'}">${fmtPct(totRetorno)}</td>
+      <td class="crt-td-num" style="font-weight:700;color:#4b5563">—</td>
+      <td class="crt-td-num" style="font-weight:700;color:#dce3ee">${totOps}</td>
+    </tr>`;
 }
 
 /* ======================================================
