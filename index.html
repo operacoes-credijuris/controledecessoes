@@ -2839,7 +2839,7 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:110px">${_d(r.dataLiquidacao)}</td>
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstComplementar',r.dataEstComplementar,'date')}</td>
       <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
-      <td style="min-width:100px">${crtSelectCell(r._aba,r.id,'status',r.status,['Verde','Azul','Âmbar','Vermelho'],{'Verde':'#4ade80','Azul':'#60a5fa','Âmbar':'#fbbf24','Vermelho':'#f87171'})}</td>
+      <td style="min-width:100px">${crtSelectCell(r._aba,r.id,'status',r.status,['','Verde','Azul','Âmbar','Vermelho'],{'Verde':'#4ade80','Azul':'#60a5fa','Âmbar':'#fbbf24','Vermelho':'#f87171'})}</td>
       <td style="min-width:140px">${_e(r.estagioProcessual)}</td>
       <td style="min-width:200px" class="crt-td-wrap" title="${_e(r.providencias)}">${_e(r.providencias)}</td>
       <td style="min-width:100px">${_d(r.ultAtualizacao)}</td>
@@ -4238,7 +4238,9 @@ function crtSelectCell(aba,id,field,val,opts,colors){
   const display=val||'—';
   const options=opts.map(o=>{
     const c=colors?colors[o]:'';
-    return`<div class="crt-sel-opt${val===o?' selected':''}" style="${c?`color:${c}`:''}" onclick="_crtSelPick('${key}',this,'${esc(o)}','${aba}','${id}','${field}')">${esc(o)}</div>`;
+    const label=o===''?'—':esc(o);
+    const muted=o===''?'color:#4b5563;font-style:italic':'';
+    return`<div class="crt-sel-opt${val===o?' selected':''}" style="${c?`color:${c}`:muted}" onclick="_crtSelPick('${key}',this,'${esc(o)}','${aba}','${id}','${field}')">${label}</div>`;
   }).join('');
   return`<div class="crt-sel-wrap"><span class="crt-sel-val" data-crtsel="${key}" style="${col?`color:${col}`:''}" onclick="_crtSelToggle(event,'${key}')">${display}</span><div class="crt-sel-dd" id="crtdd-${key}">${options}</div></div>`;
 }
