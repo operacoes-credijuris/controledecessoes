@@ -3949,9 +3949,9 @@ function buildForm(mod,r){
   </div>`;
 
   if(mod==='encerrados') return`<div class="fgrid">
-    <input type="hidden" id="f-enc-tribunal" value="${esc(r.tribunal||'')}">
     <input type="hidden" id="f-enc-orgaojulgador" value="${esc(r.orgaoJulgador||'')}">
     ${fg('Número do Processo',fi('numeroProcesso',r.numeroProcesso,'text','Ex: 0001234-56.2020.8.09.0001'))}
+    ${fg('Tribunal',fi('tribunal',r.tribunal,'text','Ex: TJGO'))}
     ${fg('Data da Aquisição',fi('dataAquisicao',r.dataAquisicao,'date'))}
     ${fg('Data da Liquidação',fi('dataLiquidacao',r.dataLiquidacao,'date'))}
     ${fg('Objeto',fi('objeto',r.objeto,'text','Objeto do processo'))}
@@ -4034,7 +4034,7 @@ function saveRecord(){
     dataLiquidacao:gf('dataLiquidacao'),objeto:gf('objeto'),advogado:gf('advogado'),
     cedente:gf('cedente'),cessionario:gf('cessionario'),devedor:gf('devedor'),
     motivo:gf('motivo'),
-    tribunal:gf('enc-tribunal')||'',
+    tribunal:gf('tribunal')||'',
     orgaoJulgador:gf('enc-orgaojulgador')||''
   };
   else if(curMod==='contatos'){
