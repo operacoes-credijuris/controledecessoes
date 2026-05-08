@@ -2811,17 +2811,15 @@ function toggleSidebar(){
 }
 
 function _sbHideAll(){
+  /* Oculta TUDO — cada função show() revela apenas o que precisa */
+  const navEl=document.querySelector('.nav');
+  const mainEl=document.querySelector('.main');
+  if(navEl)navEl.style.display='none';
+  if(mainEl)mainEl.style.display='none';
   document.getElementById('pane-credito').style.display='none';
   document.getElementById('pane-config').style.display='none';
   document.getElementById('pane-carteiras').classList.remove('on');
-  // Restaurar exec mode: remover classe e setar display explícito (nunca dependemos de style='')
-  const appContent=document.querySelector('.app-content');
-  if(appContent)appContent.classList.remove('mode-nonexec');
-  const navEl=document.querySelector('.nav');
-  const mainEl=document.querySelector('.main');
-  if(navEl){navEl.style.display='flex';}
-  if(mainEl){mainEl.style.display='block';}
-  // Oculta busca e sincronizar — só visíveis em Execução Processual
+  document.querySelector('.app-content')?.classList.remove('mode-nonexec');
   const hdrSearch=document.querySelector('.hdr-search');
   const syncBtn=document.getElementById('sync-btn');
   if(hdrSearch)hdrSearch.style.display='none';
@@ -2834,11 +2832,9 @@ function _sbHideAll(){
 function _sbShowCarteiras(){
   _sbHideAll();
   _execWasActive=false;
-  document.querySelector('.app-content').classList.add('mode-nonexec');
   document.getElementById('pane-carteiras').classList.add('on');
   document.getElementById('sb-item-carteiras').classList.add('active');
   localStorage.setItem('cj-sidebar-active','carteiras');
-  // Se a aba ativa for Investidores, popula o select
   const activeTab=document.querySelector('.crt-tab.on');
   if(activeTab?.dataset?.crt==='investidores')_crtPopulateInvestidores();
 }
@@ -2846,7 +2842,6 @@ function _sbShowCarteiras(){
 function _sbShowCredito(){
   _sbHideAll();
   _execWasActive=false;
-  document.querySelector('.app-content').classList.add('mode-nonexec');
   document.getElementById('pane-credito').style.display='flex';
   document.getElementById('sb-item-credito').classList.add('active');
   localStorage.setItem('cj-sidebar-active','credito');
@@ -2855,25 +2850,26 @@ function _sbShowCredito(){
 function _sbShowConfig(){
   _sbHideAll();
   _execWasActive=false;
-  document.querySelector('.app-content').classList.add('mode-nonexec');
   document.getElementById('pane-config').style.display='flex';
   document.getElementById('sb-item-config').classList.add('active');
   localStorage.setItem('cj-sidebar-active','config');
-  // preencher email do usuário
   const emailEl=document.getElementById('cfg-user-email');
   if(emailEl&&sb){
     sb.auth.getUser().then(({data})=>{
       if(data?.user?.email)emailEl.textContent=data.user.email;
     });
   }
-  // preencher token existente (mascarado)
   const inp=document.getElementById('cfg-advbox-token');
   if(inp&&_secrets.advbox())inp.placeholder='Token já configurado — cole para substituir';
 }
 
 function _sbShowExec(){
   _sbHideAll();
-  // Restaura busca e sincronizar ao entrar em Execução Processual
+  /* Revela nav/main e itens de cabeçalho — exec é o único modo que usa esses elementos */
+  const navEl=document.querySelector('.nav');
+  const mainEl=document.querySelector('.main');
+  if(navEl)navEl.style.display='flex';
+  if(mainEl)mainEl.style.display='block';
   const hdrSearch=document.querySelector('.hdr-search');
   const syncBtn=document.getElementById('sync-btn');
   if(hdrSearch)hdrSearch.style.display='';
