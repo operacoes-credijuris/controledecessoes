@@ -2776,7 +2776,7 @@ function _crtRenderOperacoes(investidor){
   (CACHE.cessoes||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'cessoes'});});
   (CACHE.rpv||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'rpv'});});
   (CACHE.encerrados||[]).forEach(r=>{
-    if(norm(r.cessionario)===inv && r.dataLiquidacao && r.dataAquisicao)
+    if(norm(r.cessionario)===inv)
       rows.push({...r,_aba:'encerrados'});
   });
 
