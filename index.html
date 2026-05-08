@@ -2782,10 +2782,10 @@ function _crtRenderOperacoes(investidor){
 
   // Coleta registros das 3 abas marcando origem
   const rows=[];
-  (CACHE.cessoes||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'cessoes'});});
-  (CACHE.rpv||[]).forEach(r=>{if(norm(r.cessionario)===inv)rows.push({...r,_aba:'rpv'});});
+  (CACHE.cessoes||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'cessoes'});});
+  (CACHE.rpv||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'rpv'});});
   (CACHE.encerrados||[]).forEach(r=>{
-    if(norm(r.cessionario)===inv)
+    if(!r.vinculoPai&&norm(r.cessionario)===inv)
       rows.push({...r,_aba:'encerrados'});
   });
 
