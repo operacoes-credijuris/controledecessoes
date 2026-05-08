@@ -3036,8 +3036,12 @@ function _crtAtualizaCards(rows){
   },0);
   set('crt-card-capital', totalCapital>0 ? fmtBRL(totalCapital) : '—');
 
+  // Já recebido = soma de jaRecebido de todas as linhas
+  const totalRecebido=rows.reduce((sum,r)=>sum+_parseNumCrt(r.jaRecebido),0);
+  set('crt-card-recebido', totalRecebido>0 ? fmtBRL(totalRecebido) : '—');
+
   // Os demais cards aguardam campos de cálculo futuros
-  ['crt-card-tir','crt-card-retorno','crt-card-recebido','crt-card-areceber']
+  ['crt-card-tir','crt-card-retorno','crt-card-areceber']
     .forEach(id=>set(id,'—'));
 }
 function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
