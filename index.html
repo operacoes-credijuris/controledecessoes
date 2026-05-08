@@ -2258,7 +2258,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
   </div>
   <div id="crt-pane-consolidado" class="crt-pane">
     <div class="crt-tbl-wrap" style="margin-top:0">
-      <div class="crt-tbl-title" style="margin-bottom:12px">Consolidado por investidor</div>
+      <div class="crt-tbl-title" style="margin-bottom:12px">Credijuris · Consolidado de Carteiras</div>
       <div class="crt-tbl-scroll">
         <table class="crt-tbl" style="min-width:700px">
           <thead>
@@ -4476,7 +4476,7 @@ function _crtRenderConsolidado(){
     tableRows.push({displayName,capital,aReceberEst,recebido,retorno,tir,count:ops.length});
   }
 
-  tableRows.sort((a,b)=>b.capital-a.capital);
+  tableRows.sort((a,b)=>a.displayName.localeCompare(b.displayName,'pt-BR',{sensitivity:'base'}));
 
   const totRetorno=totCap>0?((totRecebido+totReceber)/totCap-1):null;
 
