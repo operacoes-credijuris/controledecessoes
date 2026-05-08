@@ -2631,6 +2631,10 @@ async function _onAuthenticated(session){
   _fLoad();
   _setupRealtime();
   updateDash();
+  /* Se a seção ativa for carteiras, _initSidebar() rodou antes dos dados chegarem
+     e não pôde popular o autocomplete. Agora o CACHE está cheio — popula. */
+  if((localStorage.getItem('cj-sidebar-active')||'exec')==='carteiras')
+    _crtPopulateInvestidores();
   loadAuxiliares();
   _prmInit();
 }
@@ -2835,6 +2839,10 @@ function _sbShowCarteiras(){
   document.getElementById('pane-carteiras').classList.add('on');
   document.getElementById('sb-item-carteiras').classList.add('active');
   localStorage.setItem('cj-sidebar-active','carteiras');
+  /* Só popula se os dados já foram carregados — evita chamar com CACHE vazio
+     durante _initSidebar(). Na inicialização, _onAuthenticated() re-chama depois. */
+  if(CACHE.cessoes.length||CACHE.rpv.length||CACHE.encerrados.length)
+    _crtPopulateInvestidores();
 }
 
 function _sbShowCredito(){
