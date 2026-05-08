@@ -1284,10 +1284,18 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-aba-enc{background:rgba(107,114,128,.15);color:#9ca3af;border:1px solid rgba(107,114,128,.25)}
 .crt-td-num{text-align:left;font-variant-numeric:tabular-nums;color:#f2f6fb}
 .crt-td-wrap{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.crt-sel{background:transparent;border:none;border-bottom:1px solid transparent;border-radius:0;color:#dce3ee;font-size:10px;font-family:inherit;padding:1px 2px;outline:none;cursor:pointer;width:100%;max-width:130px;-webkit-appearance:none;appearance:none;color-scheme:dark}
-.crt-sel:not(:focus):not(:hover){color:#dce3ee}
-.crt-tbl tr:hover .crt-sel{border-bottom-color:rgba(255,255,255,.15)}
-.crt-sel:focus{border-bottom-color:#0077ff;background:rgba(0,119,255,.06)}
+.crt-sel-wrap{position:relative;display:inline-block;width:100%;max-width:140px}
+.crt-sel-val{font-size:10px;color:#dce3ee;cursor:pointer;padding:2px 16px 2px 2px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;position:relative;border-bottom:1px solid transparent;transition:border-color .12s}
+.crt-sel-val:after{content:'›';position:absolute;right:2px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:10px;color:#4b5563;opacity:0;transition:opacity .12s}
+.crt-tbl tr:hover .crt-sel-val:after{opacity:1}
+.crt-tbl tr:hover .crt-sel-val{border-bottom-color:rgba(255,255,255,.12)}
+.crt-sel-val.open{border-bottom-color:#0077ff}
+.crt-sel-dd{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:120px;background:linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.008)),#111317;border:1px solid rgba(255,255,255,.1);border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:9999;overflow:hidden}
+.crt-sel-dd.on{display:block}
+.crt-sel-opt{padding:6px 12px;font-size:10px;color:#c8d2df;cursor:pointer;white-space:nowrap;transition:background .1s}
+.crt-sel-opt:hover{background:rgba(0,119,255,.15);color:#fff}
+.crt-sel-opt.selected{color:#60a5fa}
+.crt-sel-empty{padding:6px 12px;font-size:10px;color:#4b5563;font-style:italic}
 
 /* CONFIGURAÇÕES */
 #pane-config{
@@ -4223,9 +4231,45 @@ function _crtRefresh(){
   if(_crtAcSelected)_crtRenderOperacoes(_crtAcSelected);
 }
 function crtSelectCell(aba,id,field,val,opts){
-  const options=opts.map(o=>`<option value="${esc(o)}"${val===o?' selected':''}>${esc(o)}</option>`).join('');
-  return`<select class="crt-sel" onchange="_crtSave('${aba}','${id}','${field}',this.value)"><option value=""></option>${options}</select>`;
+  const key=`${aba}:${id}:${field}`;
+  const display=val||'—';
+  const options=opts.map(o=>`<div class="crt-sel-opt${val===o?' selected':''}" onclick="_crtSelPick('${key}',this,'${esc(o)}','${aba}','${id}','${field}')">${esc(o)}</div>`).join('');
+  return`<div class="crt-sel-wrap"><span class="crt-sel-val" data-crtsel="${key}" onclick="_crtSelToggle(event,'${key}')">${display}</span><div class="crt-sel-dd" id="crtdd-${key}">${options}</div></div>`;
 }
+let _crtSelOpen=null;
+function _crtSelToggle(e,key){
+  e.stopPropagation();
+  const dd=document.getElementById('crtdd-'+key);
+  const val=document.querySelector(`[data-crtsel="${key}"]`);
+  if(!dd)return;
+  if(_crtSelOpen&&_crtSelOpen!==key){
+    const prev=document.getElementById('crtdd-'+_crtSelOpen);
+    const prevVal=document.querySelector(`[data-crtsel="${_crtSelOpen}"]`);
+    if(prev){prev.classList.remove('on');}
+    if(prevVal){prevVal.classList.remove('open');}
+  }
+  const isOpen=dd.classList.toggle('on');
+  val&&val.classList.toggle('open',isOpen);
+  _crtSelOpen=isOpen?key:null;
+}
+function _crtSelPick(key,el,val,aba,id,field){
+  el.closest('.crt-sel-dd').querySelectorAll('.crt-sel-opt').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  const span=document.querySelector(`[data-crtsel="${key}"]`);
+  if(span){span.textContent=val||'—';span.classList.remove('open');}
+  el.closest('.crt-sel-dd').classList.remove('on');
+  _crtSelOpen=null;
+  _crtSave(aba,id,field,val);
+}
+document.addEventListener('click',()=>{
+  if(_crtSelOpen){
+    const dd=document.getElementById('crtdd-'+_crtSelOpen);
+    const val=document.querySelector(`[data-crtsel="${_crtSelOpen}"]`);
+    if(dd)dd.classList.remove('on');
+    if(val)val.classList.remove('open');
+    _crtSelOpen=null;
+  }
+});
 
 function cpyNum(e){
   e.stopPropagation();
