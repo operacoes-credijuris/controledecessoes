@@ -3020,7 +3020,7 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:200px;max-width:200px;overflow:hidden">${crtTextCell(r._aba,r.id,'providencias',r.providencias,r.numeroProcesso)}</td>
       <td style="min-width:100px">${_d(SORT_COMPUTED.ultimaMovimentacao(r))}</td>
       <td style="min-width:120px" class="crt-td-num crt-sub-grp-start">—</td>
-      <td style="min-width:100px">—</td>
+      <td style="min-width:100px">${(()=>{const jr=_parseNumCrt(r.jaRecebido);return jr>0?'<span style="color:#4ade80;font-weight:600;font-size:11px">Efetivada</span>':'<span style="color:#94a3b8;font-size:11px">Estimada</span>';})()}</td>
       <td style="min-width:80px" class="crt-td-num">—</td>
       <td style="min-width:80px" class="crt-td-num">—</td>
       <td style="min-width:130px">—</td>
