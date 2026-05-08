@@ -4427,7 +4427,7 @@ function _pfSave(mod,id,valor){
   if(!valor&&anterior){
     if(!confirm('Remover o prazo fatal deste processo?')){render(mod);return;}
   }
-  data[idx].prazoFatal=valor||'';
+  data[idx]={...data[idx],prazoFatal:valor||''};  // novo objeto: evita mutar CACHE antes do _sbSync capturar prev
   save(mod,data);
   render(mod);
   updateDash();
@@ -4468,7 +4468,7 @@ function _crtSave(aba,id,field,val){
   const data=load(aba);
   const idx=data.findIndex(r=>r.id===id);
   if(idx<0){_crtRefresh();return;}
-  data[idx][field]=val||'';
+  data[idx]={...data[idx],[field]:val||''};  // novo objeto: evita mutar CACHE antes do _sbSync capturar prev
   save(aba,data);
   _crtRefresh();
 }
