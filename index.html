@@ -2631,16 +2631,6 @@ async function _onAuthenticated(session){
   _fLoad();
   _setupRealtime();
   updateDash();
-  /* Re-inicializa a seção ativa com dados reais — _initSidebar() rodou antes
-     dos dados chegarem, então carteiras/credito/config precisam ser rebatidos */
-  const _activeNow=localStorage.getItem('cj-sidebar-active')||'exec';
-  if(_activeNow==='carteiras'){
-    /* repopula investidores com CACHE real (antes estava vazio) */
-    _crtPopulateInvestidores();
-    /* se a aba consolidado está aberta, re-renderiza */
-    if(document.getElementById('crt-pane-consolidado')?.classList.contains('on'))
-      _crtRenderConsolidado();
-  }
   loadAuxiliares();
   _prmInit();
 }
@@ -2845,8 +2835,6 @@ function _sbShowCarteiras(){
   document.getElementById('pane-carteiras').classList.add('on');
   document.getElementById('sb-item-carteiras').classList.add('active');
   localStorage.setItem('cj-sidebar-active','carteiras');
-  const activeTab=document.querySelector('.crt-tab.on');
-  if(activeTab?.dataset?.crt==='investidores')_crtPopulateInvestidores();
 }
 
 function _sbShowCredito(){
