@@ -1284,6 +1284,17 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-aba-enc{background:rgba(107,114,128,.15);color:#9ca3af;border:1px solid rgba(107,114,128,.25)}
 .crt-td-num{text-align:left;font-variant-numeric:tabular-nums;color:#f2f6fb}
 .crt-td-wrap{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* CARTEIRAS — célula de texto longo com fade */
+.crt-txt-cell{display:flex;align-items:center;gap:3px;min-width:0}
+.crt-txt-preview{flex:1;min-width:0;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(to right,#000 65%,transparent 100%);mask-image:linear-gradient(to right,#000 65%,transparent 100%)}
+/* CARTEIRAS — modal de edição de texto longo */
+.crt-txt-ov{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center}
+.crt-txt-ov.on{display:flex}
+.crt-txt-mdl{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)),#13161c;border:1px solid rgba(255,255,255,.09);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,.45);padding:24px;width:480px;max-width:90vw;display:flex;flex-direction:column;gap:14px}
+.crt-txt-mdl-lbl{font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
+.crt-txt-mdl textarea{background:#0d1117;border:1px solid rgba(255,255,255,.09);border-radius:8px;color:#dce3ee;font-size:12px;font-family:inherit;padding:10px 12px;resize:vertical;min-height:100px;outline:none;line-height:1.55;width:100%;box-sizing:border-box}
+.crt-txt-mdl textarea:focus{border-color:#0077ff}
+.crt-txt-mdl-foot{display:flex;justify-content:flex-end;gap:8px}
 .crt-sel-wrap{position:relative;display:inline-block;width:100%;max-width:140px}
 .crt-sel-val{font-size:10px;color:#dce3ee;cursor:pointer;padding:2px 16px 2px 2px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;position:relative;border-bottom:1px solid transparent;transition:border-color .12s}
 .crt-sel-val:after{content:'›';position:absolute;right:2px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:10px;color:#4b5563;opacity:0;transition:opacity .12s}
@@ -2234,6 +2245,18 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
   </div>
 </div>
 
+<!-- CARTEIRAS TEXT EDIT MODAL -->
+<div id="crt-txt-ov" class="crt-txt-ov" onclick="if(event.target===this)_crtTxtClose()">
+  <div class="crt-txt-mdl">
+    <div class="crt-txt-mdl-lbl" id="crt-txt-lbl"></div>
+    <textarea id="crt-txt-area" rows="5" placeholder="Digite aqui…"></textarea>
+    <div class="crt-txt-mdl-foot">
+      <button class="btn" onclick="_crtTxtClose()">Cancelar</button>
+      <button class="btn btn-blue" onclick="_crtTxtConfirm()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ACTIONS DROPDOWN -->
 <div id="actions-dd" style="display:none;position:fixed;z-index:9999;min-width:168px;padding:4px 0"></div>
 
@@ -2840,9 +2863,9 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstComplementar',r.dataEstComplementar,'date')}</td>
       <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
       <td style="min-width:100px">${crtSelectCell(r._aba,r.id,'status',r.status,['','Verde','Azul','Âmbar','Vermelho'],{'Verde':'#4ade80','Azul':'#60a5fa','Âmbar':'#fbbf24','Vermelho':'#f87171'})}</td>
-      <td style="min-width:140px">${_e(r.estagioProcessual)}</td>
-      <td style="min-width:200px" class="crt-td-wrap" title="${_e(r.providencias)}">${_e(r.providencias)}</td>
-      <td style="min-width:100px">${_d(r.ultAtualizacao)}</td>
+      <td style="min-width:140px">${crtTextCell(r._aba,r.id,'estagioProcessual',r.estagioProcessual)}</td>
+      <td style="min-width:200px">${crtTextCell(r._aba,r.id,'providencias',r.providencias)}</td>
+      <td style="min-width:100px">${_d(SORT_COMPUTED.ultimaMovimentacao(r))}</td>
       <td style="min-width:120px" class="crt-td-num">—</td>
       <td style="min-width:100px">—</td>
       <td style="min-width:80px" class="crt-td-num">—</td>
@@ -3906,7 +3929,7 @@ function closeDashPanel(){
 }
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov'].forEach(closeModal);}
+  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov'].forEach(closeModal);_crtTxtClose();}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
     const elId=mp[curTab];
@@ -4229,6 +4252,31 @@ function _crtSave(aba,id,field,val){
 }
 function _crtRefresh(){
   if(_crtAcSelected)_crtRenderOperacoes(_crtAcSelected);
+}
+/* Célula de texto longo com fade e lápis */
+function crtTextCell(aba,id,field,val){
+  const preview=val?String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'—';
+  const btn=`<button class="crt-eb" onclick="crtTextEdit('${aba}','${id}','${field}')" title="Editar">${_PF_SVG}</button>`;
+  return`<div class="crt-txt-cell"><span class="crt-txt-preview">${preview}</span>${btn}</div>`;
+}
+let _crtTxtCtx={aba:'',id:'',field:''};
+const _CRT_TXT_LABELS={estagioProcessual:'Estágio Processual',providencias:'Providências / Próx. Passos'};
+function crtTextEdit(aba,id,field){
+  const rec=load(aba).find(r=>r.id===id);
+  _crtTxtCtx={aba,id,field};
+  document.getElementById('crt-txt-lbl').textContent=_CRT_TXT_LABELS[field]||field;
+  document.getElementById('crt-txt-area').value=rec?rec[field]||'':'';
+  document.getElementById('crt-txt-ov').classList.add('on');
+  setTimeout(()=>document.getElementById('crt-txt-area').focus(),80);
+}
+function _crtTxtConfirm(){
+  const val=document.getElementById('crt-txt-area').value.trim();
+  const{aba,id,field}=_crtTxtCtx;
+  _crtSave(aba,id,field,val);
+  _crtTxtClose();
+}
+function _crtTxtClose(){
+  document.getElementById('crt-txt-ov').classList.remove('on');
 }
 const _CRT_SEL_COLORS={};
 function crtSelectCell(aba,id,field,val,opts,colors){
