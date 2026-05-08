@@ -2849,6 +2849,9 @@ function _sbShowCarteiras(){
      durante _initSidebar(). Na inicialização, _onAuthenticated() re-chama depois. */
   if(CACHE.cessoes.length||CACHE.rpv.length||CACHE.encerrados.length)
     _crtPopulateInvestidores();
+  /* recalcula visibilidade da tabela — guard evita TDZ se chamado antes da declaração */
+  if(typeof _crtAcSelected!=='undefined')
+    _crtRenderOperacoes(_crtAcSelected||null);
 }
 
 function _sbShowCredito(){
@@ -2916,7 +2919,7 @@ async function cfgSaveAdvboxToken(){
 function crtNav(tab){
   document.querySelectorAll('.crt-tab').forEach(t=>t.classList.toggle('on',t.dataset.crt===tab));
   document.querySelectorAll('.crt-pane').forEach(p=>p.classList.toggle('on',p.id==='crt-pane-'+tab));
-  if(tab==='investidores')_crtPopulateInvestidores();
+  if(tab==='investidores'){_crtPopulateInvestidores();_crtRenderOperacoes(_crtAcSelected||null);}
   if(tab==='parametros')_prmInit();
   if(tab==='consolidado')_crtRenderConsolidado();
 }
