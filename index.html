@@ -1279,6 +1279,13 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-tbl td:nth-child(15),.crt-tbl td:nth-child(17),
 .crt-tbl td:nth-child(21){border-left:1px solid rgba(255,255,255,.06)}
 #crt-cons-tbody td{border-left:none!important}
+/* Consolidado — cabeçalhos ordenáveis */
+.cons-th{cursor:pointer;user-select:none;white-space:nowrap}
+.cons-th:hover{color:#c8d3de}
+.cons-th.cons-th-active{color:#dce3ee}
+.cons-sort-arrow{display:inline-block;margin-left:4px;font-size:8px;opacity:.35;vertical-align:middle;transition:opacity .12s}
+.cons-th:hover .cons-sort-arrow{opacity:.6}
+.cons-th.cons-th-active .cons-sort-arrow{opacity:1;color:#60a5fa}
 .crt-tbl-empty{text-align:center;padding:40px 20px !important;color:#4b5563;font-size:13px;font-style:italic;white-space:normal !important}
 .crt-tbl tbody tr:has(.crt-tbl-empty){border-bottom:none}
 .crt-proc{font-size:10px;font-weight:600;color:#f2f6fb;font-family:var(--font-head)}
@@ -2264,15 +2271,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
       <div class="crt-tbl-scroll">
         <table class="crt-tbl" style="min-width:700px">
           <thead>
-            <tr class="crt-th-sub">
-              <th>Investidor</th>
-              <th>Capital inv. (R$)</th>
-              <th>A receber est. (R$)</th>
-              <th>Já recebido (R$)</th>
-              <th>Retorno (%)</th>
-              <th>TIR a.a.</th>
-              <th>Qtd. operações</th>
-            </tr>
+            <tr class="crt-th-sub" id="crt-cons-thead"></tr>
           </thead>
           <tbody id="crt-cons-tbody">
             <tr><td colspan="7" class="crt-tbl-empty">Carregando…</td></tr>
@@ -4437,10 +4436,40 @@ function _crtConsolidadoFlows(ops){
   return flows;
 }
 
+/* estado de ordenação do Consolidado */
+let _consSortCol='displayName';
+let _consSortDir=1; // 1=asc, -1=desc
+
+const _CONS_COLS=[
+  {key:'displayName', label:'Investidor',         num:false},
+  {key:'capital',     label:'Capital inv. (R$)',   num:true},
+  {key:'aReceberEst', label:'A receber est. (R$)', num:true},
+  {key:'recebido',    label:'Já recebido (R$)',    num:true},
+  {key:'retorno',     label:'Retorno (%)',         num:true},
+  {key:'tir',         label:'TIR a.a.',            num:true},
+  {key:'count',       label:'Qtd. operações',      num:true},
+];
+
+function _consSort(key){
+  if(_consSortCol===key)_consSortDir*=-1;
+  else{_consSortCol=key;_consSortDir=key==='displayName'?1:-1;}
+  _crtRenderConsolidado();
+}
+
 function _crtRenderConsolidado(){
   const tbody=document.getElementById('crt-cons-tbody');
+  const thead=document.getElementById('crt-cons-thead');
   if(!tbody)return;
   const norm=s=>(s||'').trim().toLowerCase();
+
+  /* cabeçalho dinâmico com setas de ordenação */
+  if(thead){
+    thead.innerHTML=_CONS_COLS.map(c=>{
+      const active=_consSortCol===c.key;
+      const arrow=active?(_consSortDir===1?'↑':'↓'):'↕';
+      return`<th class="cons-th${active?' cons-th-active':''}" onclick="_consSort('${c.key}')">${c.label}<span class="cons-sort-arrow">${arrow}</span></th>`;
+    }).join('');
+  }
 
   /* mapa: nome normalizado → nome exibível (apenas registros pai) */
   const investMap=new Map();
@@ -4478,11 +4507,18 @@ function _crtRenderConsolidado(){
     const tir=_xirr(flows);
 
     totCap+=capital;totReceber+=aReceberEst;totRecebido+=recebido;totOps+=ops.length;
-
     tableRows.push({displayName,capital,aReceberEst,recebido,retorno,tir,count:ops.length});
   }
 
-  tableRows.sort((a,b)=>a.displayName.localeCompare(b.displayName,'pt-BR',{sensitivity:'base'}));
+  /* ordenação */
+  tableRows.sort((a,b)=>{
+    const va=a[_consSortCol],vb=b[_consSortCol];
+    if(va==null&&vb==null)return 0;
+    if(va==null)return 1;
+    if(vb==null)return -1;
+    if(typeof va==='string')return va.localeCompare(vb,'pt-BR',{sensitivity:'base'})*_consSortDir;
+    return(va-vb)*_consSortDir;
+  });
 
   const totRetorno=totCap>0?((totRecebido+totReceber)/totCap-1):null;
 
