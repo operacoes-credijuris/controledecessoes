@@ -2547,12 +2547,7 @@ async function _sbSync(k,d,prev){
 async function _loadAllFromSupabase(){
   for(const[mod,tbl]of Object.entries(TABLES)){
     try{
-      /* Defense-in-depth: filtro user_id explícito além do RLS.
-         Garante isolamento mesmo se RLS for desabilitado por engano. */
-      const q=_currentUserId
-        ?sb.from(tbl).select('data').eq('user_id',_currentUserId)
-        :sb.from(tbl).select('data');
-      const{data,error}=await q;
+      const{data,error}=await sb.from(tbl).select('data');
       CACHE[mod]=(!error&&data)?data.map(r=>r.data).filter(Boolean):[];
     }catch(e){
       console.error('[Credijuris] load error',tbl,e);
@@ -2573,9 +2568,7 @@ function _rtSchedule(mod){
     for(const m of mods){
       const tbl=TABLES[m];if(!tbl)continue;
       try{
-        const{data,error}=_currentUserId
-          ?await sb.from(tbl).select('data').eq('user_id',_currentUserId)
-          :await sb.from(tbl).select('data');
+        const{data,error}=await sb.from(tbl).select('data');
         if(!error&&data)CACHE[m]=data.map(r=>r.data).filter(Boolean);
       }catch(e){console.error('[Credijuris] realtime reload error',tbl,e);}
     }
@@ -2702,11 +2695,6 @@ async function _initApp(){
       if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
       document.getElementById('logout-btn').style.display='none';
       ls.style.display='flex';
-    } else if(event==='SIGNED_IN'&&session){
-      /* Idempotência: se já estamos autenticados pelo mesmo user, ignora.
-         Cobre caso de SIGNED_IN duplicado entre getSession() e listener. */
-      if(_currentUserId===session.user.id)return;
-      await _onAuthenticated(session);
     } else if(event==='TOKEN_REFRESHED'&&session){
       _currentUserId=session.user.id;
       /* Token novo → realtime channel pode ter sido invalidado. Recria. */
