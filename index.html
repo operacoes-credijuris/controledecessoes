@@ -1293,11 +1293,9 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 /* CARTEIRAS — modal de edição de texto longo */
 .crt-txt-ov{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center}
 .crt-txt-ov.on{display:flex}
-.crt-txt-mdl{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)),#13161c;border:1px solid rgba(255,255,255,.09);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,.45);padding:24px;width:480px;max-width:90vw;display:flex;flex-direction:column;gap:14px}
-.crt-txt-mdl-lbl{font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
-.crt-txt-mdl textarea{background:#0d1117;border:1px solid rgba(255,255,255,.09);border-radius:8px;color:#dce3ee;font-size:12px;font-family:inherit;padding:10px 12px;resize:vertical;min-height:100px;outline:none;line-height:1.55;width:100%;box-sizing:border-box}
+.crt-txt-mdl{background:linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.008)),#111317;border:1px solid rgba(255,255,255,.075);border-radius:12px;box-shadow:0 22px 52px rgba(0,0,0,.22);width:480px;max-width:90vw;display:flex;flex-direction:column;overflow:hidden}
+.crt-txt-mdl textarea{background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:8px;color:#dce3ee;font-size:12px;font-family:inherit;padding:10px 12px;resize:vertical;min-height:110px;outline:none;line-height:1.55;width:100%;box-sizing:border-box}
 .crt-txt-mdl textarea:focus{border-color:#0077ff}
-.crt-txt-mdl-foot{display:flex;justify-content:flex-end;gap:8px}
 .crt-sel-wrap{position:relative;display:inline-block;width:100%;max-width:140px}
 .crt-sel-val{font-size:10px;color:#dce3ee;cursor:pointer;padding:2px 16px 2px 2px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;position:relative;border-bottom:1px solid transparent;transition:border-color .12s}
 .crt-sel-val:after{content:'›';position:absolute;right:2px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:10px;color:#4b5563;opacity:0;transition:opacity .12s}
@@ -2257,12 +2255,17 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
 <!-- CARTEIRAS TEXT EDIT MODAL -->
 <div id="crt-txt-ov" class="crt-txt-ov" onclick="if(event.target===this)_crtTxtClose()">
   <div class="crt-txt-mdl">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
-      <div class="crt-txt-mdl-lbl" id="crt-txt-lbl"></div>
-      <div id="crt-txt-proc" style="font-size:10px;color:#4b5563;font-family:var(--font-head);white-space:nowrap"></div>
+    <div class="mdl-hdr">
+      <div>
+        <div class="mdl-title" id="crt-txt-lbl"></div>
+        <div class="mdl-sub" id="crt-txt-proc"></div>
+      </div>
+      <button class="mdl-x" onclick="_crtTxtClose()">✕</button>
     </div>
-    <textarea id="crt-txt-area" rows="5" placeholder="Digite aqui…"></textarea>
-    <div class="crt-txt-mdl-foot">
+    <div class="mdl-body">
+      <textarea id="crt-txt-area" rows="5" placeholder="Digite aqui…"></textarea>
+    </div>
+    <div class="mdl-footer">
       <button class="btn" onclick="_crtTxtClose()">Cancelar</button>
       <button class="btn btn-blue" onclick="_crtTxtConfirm()">Salvar</button>
     </div>
