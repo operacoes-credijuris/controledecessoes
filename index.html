@@ -1217,14 +1217,14 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   padding:14px 16px 13px;display:flex;flex-direction:column;gap:7px;
   box-shadow:0 8px 24px rgba(0,0,0,.18);transition:border-color .15s,background .15s}
 .crt-card:hover{border-color:rgba(255,255,255,.13)}
-.crt-card-lbl{font-size:11px;font-weight:500;color:#6e9fce;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-body);letter-spacing:.1px}
+.crt-card-lbl{font-size:10px;font-weight:500;color:#6b7280;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-body);letter-spacing:.5px;text-transform:uppercase}
 .crt-card-val{font-size:18px;font-weight:700;color:#f2f6fb;letter-spacing:-.02em;font-family:var(--font-head);line-height:1.1}
 
 /* TABELA DADOS POR OPERAÇÃO */
 .crt-tbl-wrap{margin-top:28px;flex:1;min-height:0;display:flex;flex-direction:column}
 .crt-tbl-title{
-  font-size:12px;font-weight:600;color:#6e9fce;
+  font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;
   margin-bottom:12px;flex-shrink:0;font-family:var(--font-body)}
 .crt-tbl-scroll{
   overflow:auto;border-radius:10px;flex:1;min-height:0;
@@ -1233,31 +1233,33 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   box-shadow:0 22px 52px rgba(0,0,0,.22)}
 .crt-tbl{border-collapse:collapse;width:100%;min-width:2200px;font-size:12px}
 
-/* group header row — fundo unificado, cor por grupo apenas no texto */
+/* group header row — linha discreta, diferenciada só pela borda superior colorida */
 .crt-th-group th{
-  padding:7px 10px 6px;text-align:center;font-size:11px;font-weight:600;
-  letter-spacing:.1px;
-  background:#15181e;border-bottom:1px solid rgba(255,255,255,.055);
-  border-right:1px solid rgba(255,255,255,.05);white-space:nowrap;
-  font-family:var(--font-body)}
+  padding:4px 10px 3px;text-align:center;font-size:9px;font-weight:500;
+  color:rgba(127,138,153,.55);letter-spacing:.4px;text-transform:uppercase;
+  background:#15181e;
+  border-bottom:1px solid rgba(255,255,255,.04);
+  border-right:1px solid rgba(255,255,255,.04);
+  border-top:2px solid transparent;
+  white-space:nowrap;font-family:var(--font-body)}
 .crt-th-group th:last-child{border-right:none}
-.crt-thg-id   {color:#7bafd4}
-.crt-thg-tir  {color:#c9a84c}
-.crt-thg-cred {color:#52a87a}
-.crt-thg-atual{color:#9b8fca}
-.crt-thg-receb{color:#c47a7a}
-.crt-thg-comp {color:#b8834a}
-.crt-thg-vivos{color:#5ba8c8}
-.crt-thg-calc {color:#a87ac4}
-.crt-thg-sub{font-weight:400;opacity:.6;letter-spacing:0;font-size:9px;font-family:var(--font-body)}
+.crt-thg-id   {border-top-color:#4a7fa8}
+.crt-thg-tir  {border-top-color:#a07d2a}
+.crt-thg-cred {border-top-color:#2e7a50}
+.crt-thg-atual{border-top-color:#6b5fa0}
+.crt-thg-receb{border-top-color:#8f4a4a}
+.crt-thg-comp {border-top-color:#7a5220}
+.crt-thg-vivos{border-top-color:#2e6e8a}
+.crt-thg-calc {border-top-color:#6a4a8a}
+.crt-thg-sub{font-weight:400;opacity:.7;letter-spacing:0;text-transform:none;font-size:8.5px}
 
-/* sub-header row */
+/* sub-header row — idêntico ao thead th do site */
 .crt-th-sub th{
-  padding:7px 10px;text-align:left;font-size:10px;font-weight:500;color:#7f8a99;
+  padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:#7f8a99;
   white-space:nowrap;background:#15181e;
   border-bottom:1px solid rgba(255,255,255,.07);
   border-right:1px solid rgba(255,255,255,.04);
-  letter-spacing:.1px;font-family:var(--font-body)}
+  text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-body)}
 .crt-th-sub th:last-child{border-right:none}
 
 /* body */
