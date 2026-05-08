@@ -1284,9 +1284,10 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-aba-enc{background:rgba(107,114,128,.15);color:#9ca3af;border:1px solid rgba(107,114,128,.25)}
 .crt-td-num{text-align:left;font-variant-numeric:tabular-nums;color:#f2f6fb}
 .crt-td-wrap{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.crt-sel{background:#111317;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#dce3ee;font-size:10px;font-family:inherit;padding:2px 4px;outline:none;cursor:pointer;width:100%;max-width:130px}
-.crt-sel:hover{border-color:rgba(255,255,255,.18)}
-.crt-sel:focus{border-color:#0077ff}
+.crt-sel{background:transparent;border:none;border-bottom:1px solid transparent;border-radius:0;color:#dce3ee;font-size:10px;font-family:inherit;padding:1px 2px;outline:none;cursor:pointer;width:100%;max-width:130px;-webkit-appearance:none;appearance:none;color-scheme:dark}
+.crt-sel:not(:focus):not(:hover){color:#dce3ee}
+.crt-tbl tr:hover .crt-sel{border-bottom-color:rgba(255,255,255,.15)}
+.crt-sel:focus{border-bottom-color:#0077ff;background:rgba(0,119,255,.06)}
 
 /* CONFIGURAÇÕES */
 #pane-config{
