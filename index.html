@@ -2635,10 +2635,10 @@ async function _onAuthenticated(session){
   _fLoad();
   _setupRealtime();
   updateDash();
-  /* Se a seção ativa for carteiras, _initSidebar() rodou antes dos dados chegarem
-     e não pôde popular o autocomplete. Agora o CACHE está cheio — popula. */
+  /* Se a seção ativa for carteiras, _initSidebar() rodou antes dos dados chegarem.
+     Agora o CACHE está cheio — reinicializa o tab de investidores completamente. */
   if((localStorage.getItem('cj-sidebar-active')||'exec')==='carteiras')
-    _crtPopulateInvestidores();
+    crtNav('investidores');
   loadAuxiliares();
   _prmInit();
 }
@@ -2765,6 +2765,12 @@ let curTab='dashboard';
 let lastExecTab=localStorage.getItem('cj-sidebar-lasttab')||'dashboard';
 let _execWasActive=false; // true quando exec já foi visitado nesta sessão
 
+/* CRT state — declarado ANTES de _initSidebar() para evitar TDZ.
+   Usar var (hoisted) garante que _sbShowCarteiras() chamado pelo IIFE não
+   crashe ao acessar/atribuir essas variáveis durante a inicialização. */
+var _crtInvestidores=[];
+var _crtAcSelected='';
+
 // SIDEBAR
 (function _initSidebar(){
   const saved=localStorage.getItem('cj-sidebar-state'); const collapsed=saved?saved!=='expanded':false;
@@ -2845,13 +2851,10 @@ function _sbShowCarteiras(){
   document.getElementById('pane-carteiras').classList.add('on');
   document.getElementById('sb-item-carteiras').classList.add('active');
   localStorage.setItem('cj-sidebar-active','carteiras');
-  /* Só popula se os dados já foram carregados — evita chamar com CACHE vazio
-     durante _initSidebar(). Na inicialização, _onAuthenticated() re-chama depois. */
-  if(CACHE.cessoes.length||CACHE.rpv.length||CACHE.encerrados.length)
-    _crtPopulateInvestidores();
-  /* recalcula visibilidade da tabela — guard evita TDZ se chamado antes da declaração */
-  if(typeof _crtAcSelected!=='undefined')
-    _crtRenderOperacoes(_crtAcSelected||null);
+  /* Popula sempre — _crtPopulateInvestidores() trata CACHE vazio com segurança.
+     Se chamado durante _initSidebar() (sem auth), _onAuthenticated() re-chama depois. */
+  _crtPopulateInvestidores();
+  _crtRenderOperacoes(_crtAcSelected||null);
 }
 
 function _sbShowCredito(){
@@ -2923,9 +2926,6 @@ function crtNav(tab){
   if(tab==='parametros')_prmInit();
   if(tab==='consolidado')_crtRenderConsolidado();
 }
-
-let _crtInvestidores=[];
-let _crtAcSelected='';
 
 function _crtPopulateInvestidores(){
   const mesInp=document.getElementById('crt-mes-referencia');
@@ -4505,8 +4505,8 @@ function _parseNumCrt(v){
 function _parseISODate(s){return s?new Date(s+'T12:00:00'):null;}
 
 function _crtAutoStatus(r){
-  // Verde: liquidado (tem data de liquidação efetiva)
-  if(r.dataLiquidacao){return{label:'Verde',color:'#4ade80'};}
+  // Verde: encerrado (aba encerrados implica liquidado) OU tem data de liquidação efetiva
+  if(r._aba==='encerrados'||r.dataLiquidacao){return{label:'Verde',color:'#4ade80'};}
   // Usa expectativaLiquidacao das abas de execução processual
   const estDate=_parseISODate(r.expectativaLiquidacao);
   if(!estDate){return{label:'—',color:'#4b5563'};}
