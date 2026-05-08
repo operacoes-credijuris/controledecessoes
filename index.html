@@ -1288,8 +1288,8 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-td-num{text-align:left;font-variant-numeric:tabular-nums;color:#f2f6fb}
 .crt-td-wrap{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* CARTEIRAS — célula de texto longo com fade */
-.crt-txt-cell{display:flex;align-items:center;gap:3px;min-width:0}
-.crt-txt-preview{flex:1;min-width:0;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(to right,#000 65%,transparent 100%);mask-image:linear-gradient(to right,#000 65%,transparent 100%)}
+.crt-txt-cell{display:flex;align-items:center;gap:3px;min-width:0;width:100%}
+.crt-txt-preview{flex:1;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(to right,#000 65%,transparent 100%);mask-image:linear-gradient(to right,#000 65%,transparent 100%)}
 /* CARTEIRAS — modal de edição de texto longo */
 .crt-txt-ov{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center}
 .crt-txt-ov.on{display:flex}
@@ -2257,7 +2257,10 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
 <!-- CARTEIRAS TEXT EDIT MODAL -->
 <div id="crt-txt-ov" class="crt-txt-ov" onclick="if(event.target===this)_crtTxtClose()">
   <div class="crt-txt-mdl">
-    <div class="crt-txt-mdl-lbl" id="crt-txt-lbl"></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+      <div class="crt-txt-mdl-lbl" id="crt-txt-lbl"></div>
+      <div id="crt-txt-proc" style="font-size:10px;color:#4b5563;font-family:var(--font-head);white-space:nowrap"></div>
+    </div>
     <textarea id="crt-txt-area" rows="5" placeholder="Digite aqui…"></textarea>
     <div class="crt-txt-mdl-foot">
       <button class="btn" onclick="_crtTxtClose()">Cancelar</button>
@@ -2873,8 +2876,8 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstComplementar',r.dataEstComplementar,'date')}</td>
       <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
       <td style="min-width:100px">${crtSelectCell(r._aba,r.id,'status',r.status,['','Verde','Azul','Âmbar','Vermelho'],{'Verde':'#4ade80','Azul':'#60a5fa','Âmbar':'#fbbf24','Vermelho':'#f87171'})}</td>
-      <td style="min-width:140px">${crtTextCell(r._aba,r.id,'estagioProcessual',r.estagioProcessual)}</td>
-      <td style="min-width:200px">${crtTextCell(r._aba,r.id,'providencias',r.providencias)}</td>
+      <td style="min-width:140px;max-width:140px;overflow:hidden">${crtTextCell(r._aba,r.id,'estagioProcessual',r.estagioProcessual,r.numeroProcesso)}</td>
+      <td style="min-width:200px;max-width:200px;overflow:hidden">${crtTextCell(r._aba,r.id,'providencias',r.providencias,r.numeroProcesso)}</td>
       <td style="min-width:100px">${_d(SORT_COMPUTED.ultimaMovimentacao(r))}</td>
       <td style="min-width:120px" class="crt-td-num">—</td>
       <td style="min-width:100px">—</td>
@@ -4264,17 +4267,20 @@ function _crtRefresh(){
   if(_crtAcSelected)_crtRenderOperacoes(_crtAcSelected);
 }
 /* Célula de texto longo com fade e lápis */
-function crtTextCell(aba,id,field,val){
+function crtTextCell(aba,id,field,val,proc){
   const preview=val?String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'—';
-  const btn=`<button class="crt-eb" onclick="crtTextEdit('${aba}','${id}','${field}')" title="Editar">${_PF_SVG}</button>`;
+  const procArg=proc?`,'${esc(proc)}'`:'';
+  const btn=`<button class="crt-eb" onclick="crtTextEdit('${aba}','${id}','${field}'${procArg})" title="Editar">${_PF_SVG}</button>`;
   return`<div class="crt-txt-cell"><span class="crt-txt-preview">${preview}</span>${btn}</div>`;
 }
 let _crtTxtCtx={aba:'',id:'',field:''};
 const _CRT_TXT_LABELS={estagioProcessual:'Estágio Processual',providencias:'Providências / Próx. Passos'};
-function crtTextEdit(aba,id,field){
+function crtTextEdit(aba,id,field,proc){
   const rec=load(aba).find(r=>r.id===id);
   _crtTxtCtx={aba,id,field};
   document.getElementById('crt-txt-lbl').textContent=_CRT_TXT_LABELS[field]||field;
+  const procEl=document.getElementById('crt-txt-proc');
+  if(procEl)procEl.textContent=proc||'';
   document.getElementById('crt-txt-area').value=rec?rec[field]||'':'';
   document.getElementById('crt-txt-ov').classList.add('on');
   setTimeout(()=>document.getElementById('crt-txt-area').focus(),80);
