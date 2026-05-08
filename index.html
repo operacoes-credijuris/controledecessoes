@@ -2551,6 +2551,10 @@ function _setupRealtime(){
         }catch(e){console.error('[Credijuris] realtime reload error',tbl,e);}
         updateDash();
         if(curTab===mod)render(curTab);
+        /* atualiza Consolidado se estiver visível */
+        const consPaneVisible=document.getElementById('crt-pane-consolidado')?.classList.contains('on')
+          &&document.getElementById('pane-carteiras')?.classList.contains('on');
+        if(consPaneVisible)_crtRenderConsolidado();
       });
     }
     // Realtime para Órgãos Auxiliares
@@ -4427,8 +4431,7 @@ function _crtConsolidadoFlows(ops){
     }
     if(remaining>0){
       const futDate=dateLiq||dateEst;
-      if(futDate&&futDate>today)flows.push({amount:remaining,date:futDate});
-      else if(!futDate){}// sem data estimada, ignorar restante para TIR
+      if(futDate)flows.push({amount:remaining,date:futDate}); // inclui passado (encerrados com saldo residual)
     }
   });
   return flows;
@@ -4439,9 +4442,10 @@ function _crtRenderConsolidado(){
   if(!tbody)return;
   const norm=s=>(s||'').trim().toLowerCase();
 
-  /* mapa: nome normalizado → nome exibível */
+  /* mapa: nome normalizado → nome exibível (apenas registros pai) */
   const investMap=new Map();
   [...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])].forEach(r=>{
+    if(r.vinculoPai)return;
     const v=(r.cessionario||'').trim();
     if(v)investMap.set(norm(v),v);
   });
