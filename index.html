@@ -2547,7 +2547,12 @@ async function _sbSync(k,d,prev){
 async function _loadAllFromSupabase(){
   for(const[mod,tbl]of Object.entries(TABLES)){
     try{
-      const{data,error}=await sb.from(tbl).select('data');
+      /* Defense-in-depth: filtro user_id explícito além do RLS.
+         Garante isolamento mesmo se RLS for desabilitado por engano. */
+      const q=_currentUserId
+        ?sb.from(tbl).select('data').eq('user_id',_currentUserId)
+        :sb.from(tbl).select('data');
+      const{data,error}=await q;
       CACHE[mod]=(!error&&data)?data.map(r=>r.data).filter(Boolean):[];
     }catch(e){
       console.error('[Credijuris] load error',tbl,e);
@@ -2556,29 +2561,56 @@ async function _loadAllFromSupabase(){
   }
 }
 
+/* Coalesce de eventos realtime — agrupa múltiplos eventos no mesmo módulo
+   numa janela curta antes de fazer reload+render, reduzindo custo. */
+const _rtPending=new Set();
+let _rtTimer=null;
+function _rtSchedule(mod){
+  _rtPending.add(mod);
+  if(_rtTimer)return;
+  _rtTimer=setTimeout(async()=>{
+    const mods=[..._rtPending];_rtPending.clear();_rtTimer=null;
+    for(const m of mods){
+      const tbl=TABLES[m];if(!tbl)continue;
+      try{
+        const{data,error}=_currentUserId
+          ?await sb.from(tbl).select('data').eq('user_id',_currentUserId)
+          :await sb.from(tbl).select('data');
+        if(!error&&data)CACHE[m]=data.map(r=>r.data).filter(Boolean);
+      }catch(e){console.error('[Credijuris] realtime reload error',tbl,e);}
+    }
+    updateDash();
+    /* Não interrompe edição inline ativa */
+    const editing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+    if(!editing&&mods.includes(curTab))render(curTab);
+    const consPaneVisible=document.getElementById('crt-pane-consolidado')?.classList.contains('on')
+      &&document.getElementById('pane-carteiras')?.classList.contains('on');
+    if(consPaneVisible&&!editing)_crtRenderConsolidado();
+    /* Re-render de carteiras/investidores se estiver visível */
+    const invPaneVisible=document.getElementById('crt-pane-investidores')?.classList.contains('on')
+      &&document.getElementById('pane-carteiras')?.classList.contains('on');
+    if(invPaneVisible&&!editing){_crtPopulateInvestidores();_crtRenderOperacoes(_crtAcSelected||null);}
+  },350);
+}
 function _setupRealtime(){
   try{
     if(_realtimeChannel){try{sb.removeChannel(_realtimeChannel);}catch(e){}}
-    const ch=sb.channel('cj-realtime');
+    /* Channel name único por sessão evita conflito com canais residuais. */
+    const ch=sb.channel('cj-realtime-'+(_currentUserId||'anon')+'-'+Date.now());
     for(const[mod,tbl]of Object.entries(TABLES)){
-      ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},async()=>{
-        try{
-          const{data,error}=await sb.from(tbl).select('data');
-          if(!error&&data)CACHE[mod]=data.map(r=>r.data).filter(Boolean);
-        }catch(e){console.error('[Credijuris] realtime reload error',tbl,e);}
-        updateDash();
-        if(curTab===mod)render(curTab);
-        /* atualiza Consolidado se estiver visível */
-        const consPaneVisible=document.getElementById('crt-pane-consolidado')?.classList.contains('on')
-          &&document.getElementById('pane-carteiras')?.classList.contains('on');
-        if(consPaneVisible)_crtRenderConsolidado();
-      });
+      ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},()=>_rtSchedule(mod));
     }
-    // Realtime para Órgãos Auxiliares
-    ch.on('postgres_changes',{event:'*',schema:'public',table:'contatos_auxiliares'},async()=>{
-      await loadAuxiliares();
+    // Realtime para Órgãos Auxiliares (debounced)
+    let _auxTimer=null;
+    ch.on('postgres_changes',{event:'*',schema:'public',table:'contatos_auxiliares'},()=>{
+      if(_auxTimer)return;
+      _auxTimer=setTimeout(async()=>{_auxTimer=null;await loadAuxiliares();},350);
     });
-    ch.subscribe();
+    ch.subscribe(status=>{
+      if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+        console.warn('[Credijuris] realtime status:',status);
+      }
+    });
     _realtimeChannel=ch;
   }catch(e){console.error('[Credijuris] realtime setup error',e);}
 }
@@ -2613,7 +2645,14 @@ async function doLogin(){
 }
 
 async function doLogout(){
-  if(sb)await sb.auth.signOut();
+  /* Cleanup defensivo: garante reset de estado mesmo se signOut falhar (rede). */
+  try{if(sb)await sb.auth.signOut();}
+  catch(e){console.warn('[Credijuris] signOut error:',e);}
+  finally{
+    _currentUserId=null;
+    Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+    if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
+  }
 }
 
 async function _loadAdvboxToken(){
@@ -2656,12 +2695,26 @@ async function _initApp(){
     if(event==='SIGNED_OUT'||event==='USER_DELETED'){
       _currentUserId=null;
       Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
-      ['cj-user-filters','cj-sidebar-lasttab','cj-sidebar-active','cj-parametros'].forEach(k=>localStorage.removeItem(k));
-      if(_realtimeChannel){try{sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
+      /* Limpa todas as chaves cj-* per-session, exceto preferências persistentes
+         (cj-theme, cj-sidebar-state que devem sobreviver ao logout). */
+      ['cj-user-filters','cj-sidebar-lasttab','cj-sidebar-active','cj-parametros']
+        .forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+      if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
       document.getElementById('logout-btn').style.display='none';
       ls.style.display='flex';
+    } else if(event==='SIGNED_IN'&&session){
+      /* Idempotência: se já estamos autenticados pelo mesmo user, ignora.
+         Cobre caso de SIGNED_IN duplicado entre getSession() e listener. */
+      if(_currentUserId===session.user.id)return;
+      await _onAuthenticated(session);
     } else if(event==='TOKEN_REFRESHED'&&session){
       _currentUserId=session.user.id;
+      /* Token novo → realtime channel pode ter sido invalidado. Recria. */
+      if(_realtimeChannel){
+        try{await sb.removeChannel(_realtimeChannel);}catch(e){}
+        _realtimeChannel=null;
+        _setupRealtime();
+      }
     }
   });
   try{
@@ -2675,7 +2728,18 @@ async function _initApp(){
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
-function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+/* localStorage seguro: try/catch + namespace por user_id quando disponível.
+   Fallback transparente se localStorage estiver bloqueado (Safari privado). */
+function _lsKey(k){return _currentUserId?`${k}::${_currentUserId}`:k;}
+function _lsGet(k){try{return localStorage.getItem(_lsKey(k));}catch(e){return null;}}
+function _lsSet(k,v){try{localStorage.setItem(_lsKey(k),v);}catch(e){}}
+function _lsDel(k){try{localStorage.removeItem(_lsKey(k));}catch(e){}}
+function esc(s){if(s==null||s==='')return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* escJs: escapa string para uso DENTRO de JS string literal em atributos HTML
+   (ex: onclick="fn('${escJs(x)}')"). Faz dupla escape: HTML entity para os
+   caracteres especiais HTML (browser decodifica antes do JS parser ver) e
+   barras invertidas para a JS string. */
+function escJs(s){if(s==null)return'';return String(s).replace(/\\/g,'\\\\').replace(/'/g,'\\x27').replace(/"/g,'\\x22').replace(/&/g,'\\x26').replace(/</g,'\\x3c').replace(/>/g,'\\x3e').replace(/\r?\n/g,'\\n');}
 
 /* ======================================================
    DATE HELPERS
@@ -2947,7 +3011,7 @@ function _crtAcRender(lista){
   const dd=document.getElementById('crt-ac-dd');
   if(!dd)return;
   if(!lista.length){dd.innerHTML='<div class="crt-ac-empty">Nenhum resultado</div>';dd.classList.add('on');return;}
-  dd.innerHTML=lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">` +n+'</div>').join('');
+  dd.innerHTML=lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${esc(n)}</div>`).join('');
   dd.classList.add('on');
 }
 
@@ -2994,7 +3058,7 @@ function _crtRenderOperacoes(investidor){
   }
   _showTable(true);
 
-  const _e=v=>(!v&&v!==0)?'—':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const _e=v=>(!v&&v!==0)?'—':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const _d=v=>v?v.split('-').reverse().join('/'):'—'; // yyyy-mm-dd → dd/mm/yyyy
 
   const abaBadge={
@@ -3043,11 +3107,7 @@ function _crtAtualizaCards(rows){
   set('crt-card-operacoes', rows.length||'—');
 
   // Capital total = soma de capitalInvestido de todas as linhas
-  const totalCapital=rows.reduce((sum,r)=>{
-    const raw=String(r.capitalInvestido??'').replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.');
-    const n=parseFloat(raw);
-    return sum+(isNaN(n)?0:n);
-  },0);
+  const totalCapital=rows.reduce((sum,r)=>sum+_parseNumCrt(r.capitalInvestido),0);
   set('crt-card-capital', totalCapital>0 ? fmtBRL(totalCapital) : '—');
 
   // Já recebido = soma de jaRecebido de todas as linhas
@@ -3178,7 +3238,9 @@ function updateDash(){
   document.getElementById('ds-cess').textContent=cePai;
   document.getElementById('ds-rpv').textContent=rpPai;
   document.getElementById('ds-enc').textContent=enPai;
-  const withFatal=[...ce,...rp,...re].filter(r=>r.prazoFatal&&normDate(r.prazoFatal)).length;
+  /* "Com Prazo Fatal" — apenas registros pais (não filhos vinculados),
+     consistente com o critério de contagem dos demais cards. */
+  const withFatal=[...ce,...rp,...re].filter(r=>!r.vinculoPai&&r.prazoFatal&&normDate(r.prazoFatal)).length;
   document.getElementById('ds-fatal').textContent=withFatal;
 
   const today=new Date(); today.setHours(0,0,0,0);
@@ -3303,7 +3365,7 @@ function updateDash(){
     }).join('');
   }
 
-  // ÚLTIMAS MOVIMENTAÇÕES — últimas 30 dias, agrupadas por processo
+  // ÚLTIMAS MOVIMENTAÇÕES — últimos 20 dias, agrupadas por processo
   const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-20);
   const modLabel={cessoes:'Cessões Ativas',rpv:'RPV Complementar',requerimentos:'Diversos'};
   const modBdg={cessoes:'bdg-blue',rpv:'bdg-grn',requerimentos:'bdg-ylw'};
@@ -3334,7 +3396,7 @@ function updateDash(){
   document.getElementById('ds-cnt-mov').textContent=totalMovs?`${totalMovs}`:'';
   const mb=document.getElementById('ds-mov-body');
   if(!gruposArr.length){
-    mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 30 dias</div>';
+    mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 20 dias</div>';
   } else {
     mb.innerHTML=gruposArr.map(({mod,r,movs})=>{
       const partes=(r.cedente||r.cessionario)
@@ -3500,8 +3562,9 @@ function sortRecs(recs,mod){
   const getter=SORT_COMPUTED[s.field]||(r=>String(r[s.field]||''));
   return[...recs].sort((a,b)=>{
     const va=getter(a),vb=getter(b);
-    if(typeof va==='number')return(va-vb)*dir;
-    return va.localeCompare(vb,'pt-BR',{sensitivity:'base'})*dir;
+    if(typeof va==='number'&&typeof vb==='number')return(va-vb)*dir;
+    /* null-safe comparison: força strings, evita TypeError em null/undefined */
+    return String(va==null?'':va).localeCompare(String(vb==null?'':vb),'pt-BR',{sensitivity:'base'})*dir;
   });
 }
 
@@ -3668,7 +3731,11 @@ function clearF(mod){
 
 function paginate(all,mod){
   const ps=PS[mod];
-  if(ps===0)return all;
+  if(ps===0)return all.slice(); // sempre retorna cópia (evita mutação compartilhada)
+  /* Clamp da página: se total mudou (realtime), página atual pode exceder.
+     Ajusta PG[mod] para a última válida. */
+  const tp=Math.max(1,Math.ceil(all.length/ps));
+  if(PG[mod]>tp)PG[mod]=tp;
   return all.slice((PG[mod]-1)*ps,PG[mod]*ps);
 }
 
@@ -3697,7 +3764,14 @@ function setPS(mod,n){PS[mod]=n;PG[mod]=1;render(mod);}
 function goP(mod,p){
   let len;
   if(mod==='contatos'){len=_contatosRows.length;}
-  else{len=filterRecs(load(mod),mod).length;}
+  else{
+    const all=load(mod);
+    /* Inclui forcedIds (matches em filhos) para casar com o cálculo de render */
+    const procId={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
+    const q=procId?gv(procId):'';
+    const forced=q?_expandChildMatches(mod,all,q):new Set();
+    len=filterRecs(all.filter(r=>!r.vinculoPai),mod,forced).length;
+  }
   const ps=PS[mod];
   const tp=ps===0?1:Math.ceil(len/ps)||1;
   PG[mod]=Math.max(1,Math.min(p,tp));
@@ -3745,7 +3819,7 @@ function _fSave(){
     for(const[mod,state]of Object.entries(SORT_STATE)){
       ss[mod]={field:state.field||null,dir:state.dir||null};
     }
-    localStorage.setItem(_F_LS_KEY,JSON.stringify({
+    _lsSet(_F_LS_KEY,JSON.stringify({
       colFilters:cf,sortState:ss,
       consSortCol:_consSortCol,consSortDir:_consSortDir
     }));
@@ -3754,14 +3828,18 @@ function _fSave(){
 
 function _fLoad(){
   try{
-    const raw=localStorage.getItem(_F_LS_KEY);
+    const raw=_lsGet(_F_LS_KEY);
     if(!raw)return;
     const data=JSON.parse(raw);
     if(data.colFilters){
       for(const[mod,fields]of Object.entries(data.colFilters)){
         if(!COL_FILTERS[mod])continue;
         for(const[field,arr]of Object.entries(fields)){
-          if(Array.isArray(arr)&&arr.length)COL_FILTERS[mod][field]=new Set(arr);
+          if(Array.isArray(arr)&&arr.length){
+            /* Filtra valores não-string (null/undefined) que poderiam corromper o filtro */
+            const clean=arr.filter(v=>typeof v==='string');
+            if(clean.length)COL_FILTERS[mod][field]=new Set(clean);
+          }
         }
       }
     }
@@ -3965,9 +4043,8 @@ function renderCartorioBody(cessaoId,editId){
         ${fg('Resolvido',fck('dil-resolvido',!!editDil.resolvido,'Sim'))}
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-        <button class="btn btn-blue btn-sm" onclick="openCartorioAnexo()">📎 Adicionar Anexo</button>
-        ${isEdit?`<button class="btn btn-blue btn-sm" onclick="cancelEditDiligencia('${cessaoId}')">Cancelar</button>`:''}
-        <button class="btn btn-gold btn-sm" onclick="saveDiligencia('${cessaoId}')">${isEdit?'Atualizar':'Salvar Diligência'}</button>
+        ${isEdit?`<button class="btn btn-blue btn-sm" onclick="cancelEditDiligencia('${escJs(cessaoId)}')">Cancelar</button>`:''}
+        <button class="btn btn-gold btn-sm" onclick="saveDiligencia('${escJs(cessaoId)}')">${isEdit?'Atualizar':'Salvar Diligência'}</button>
       </div>
     </div>`;
 
@@ -3978,44 +4055,61 @@ function renderCartorioBody(cessaoId,editId){
   }
 }
 
+/* Localiza módulo+índice de uma cessão por id em qualquer aba relevante.
+   Retorna {mod, data, idx, rec} ou null. */
+function _findRecCrossMod(id){
+  for(const mod of ['cessoes','rpv','requerimentos','encerrados']){
+    const data=load(mod);
+    const idx=data.findIndex(r=>r.id===id);
+    if(idx!==-1)return{mod,data,idx,rec:data[idx]};
+  }
+  return null;
+}
+
 function saveDiligencia(cessaoId){
-  const cessoes=load('cessoes');
-  const cess=cessoes.find(r=>r.id===cessaoId);
-  if(!cess)return;
+  const found=_findRecCrossMod(cessaoId);
+  if(!found){showToast('Registro não encontrado.');return;}
+  const{mod,data,idx,rec:cess}=found;
   const _objetoVal=(document.getElementById('f-dil-objeto')?.value||'').trim();
   if(!_objetoVal){alert('Preencha o campo Objeto.');return;}
   const dil={
     id:curDilId||uid(),
-    objeto:document.getElementById('f-dil-objeto')?.value.trim()||'',
+    objeto:_objetoVal,
     instrumento:document.getElementById('f-dil-instrumento')?.value.trim()||'',
     protocoloRTDPJ:document.getElementById('f-dil-protocoloRTDPJ')?.value.trim()||'',
     orcamento:parseFloat(document.getElementById('f-dil-orcamento')?.value||0)||0,
     status:document.getElementById('f-dil-status')?.value||'',
     pago:document.getElementById('f-dil-pago')?.checked||false,
     resolvido:document.getElementById('f-dil-resolvido')?.checked||false,
+    updatedAt:new Date().toISOString(),
   };
-  if(!cess.diligencias)cess.diligencias=[];
+  /* Imutável: clona registro, atualiza diligencias array e substitui slot.
+     Evita mutar referências do CACHE diretamente. */
+  const dils=Array.isArray(cess.diligencias)?cess.diligencias.slice():[];
   if(curDilId){
-    const idx=cess.diligencias.findIndex(d=>d.id===curDilId);
-    if(idx!==-1)cess.diligencias[idx]=dil;
+    const dilIdx=dils.findIndex(d=>d.id===curDilId);
+    if(dilIdx!==-1)dils[dilIdx]=dil; else dils.push(dil);
   } else {
-    cess.diligencias.push(dil);
+    dil.createdAt=dil.updatedAt;
+    dils.push(dil);
   }
+  data[idx]={...cess,diligencias:dils};
   curDilId=null;
-  save('cessoes',cessoes);
+  save(mod,data);
   renderCartorioBody(cessaoId,null);
-  renderCessoes();
+  render(mod);
 }
 
 function delDiligencia(cessaoId,dilId){
   if(!confirm('Confirma a exclusão desta diligência?'))return;
-  const cessoes=load('cessoes');
-  const cess=cessoes.find(r=>r.id===cessaoId);
-  if(!cess||!cess.diligencias)return;
-  cess.diligencias=cess.diligencias.filter(d=>d.id!==dilId);
-  save('cessoes',cessoes);
+  const found=_findRecCrossMod(cessaoId);
+  if(!found)return;
+  const{mod,data,idx,rec:cess}=found;
+  if(!cess.diligencias)return;
+  data[idx]={...cess,diligencias:cess.diligencias.filter(d=>d.id!==dilId)};
+  save(mod,data);
   renderCartorioBody(cessaoId,null);
-  renderCessoes();
+  render(mod);
 }
 
 function editDiligencia(cessaoId,dilId){
@@ -4026,10 +4120,6 @@ function editDiligencia(cessaoId,dilId){
 function cancelEditDiligencia(cessaoId){
   curDilId=null;
   renderCartorioBody(cessaoId,null);
-}
-
-function openCartorioAnexo(){
-  alert('📎 Funcionalidade de anexos em breve.');
 }
 
 /* ======================================================
@@ -4189,11 +4279,11 @@ function openForm(mod,id=null){
 }
 
 function fi(id,val,type='text',ph='',extra=''){
-  return`<input type="${type}" id="f-${id}" class="finp" value="${esc(val||'')}" placeholder="${ph}"${extra?' '+extra:''}>`;
+  return`<input type="${esc(type)}" id="f-${esc(id)}" class="finp" value="${esc(val||'')}" placeholder="${esc(ph)}"${extra?' '+extra:''}>`;
 }
 function fsel(id,val,opts){
-  const o=opts.map(x=>`<option value="${x}" ${val===x?'selected':''}>${x}</option>`).join('');
-  return`<select id="f-${id}" class="fsel"><option value="">Selecione…</option>${o}</select>`;
+  const o=opts.map(x=>`<option value="${esc(x)}" ${val===x?'selected':''}>${esc(x)}</option>`).join('');
+  return`<select id="f-${esc(id)}" class="fsel"><option value="">Selecione…</option>${o}</select>`;
 }
 function fta(id,val,ph=''){
   return`<textarea id="f-${id}" class="fta" placeholder="${ph}">${esc(val||'')}</textarea>`;
@@ -4391,14 +4481,27 @@ function del(mod,id){
   const data=load(mod);
   const rec=data.find(r=>r.id===id);
   const num=rec?(rec.numeroProcesso||'processo'):'processo';
-  document.getElementById('del-msg').textContent=`Esta ação não pode ser desfeita. O processo ${num} será removido permanentemente.`;
+  const numFilhos=rec&&rec.vinculosFilhos?rec.vinculosFilhos.length:0;
+  let msg=`Esta ação não pode ser desfeita. O processo ${num} será removido permanentemente.`;
+  if(numFilhos)msg+=` ⚠️ Este processo possui ${numFilhos} processo(s) vinculado(s) que ficarão sem pai.`;
+  document.getElementById('del-msg').textContent=msg;
   document.getElementById('del-confirm-btn').onclick=()=>{
     closeModal('del-ov');
-    let d=load(mod);
+    const d=load(mod);
     const r=d.find(x=>x.id===id);
     if(r){
-      (r.vinculosFilhos||[]).forEach(cid=>{const c=d.find(x=>x.id===cid);if(c)delete c.vinculoPai;});
-      if(r.vinculoPai){const pai=d.find(x=>x.id===r.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==id);}
+      /* Imutável: substitui registros afetados por cópias modificadas */
+      (r.vinculosFilhos||[]).forEach(cid=>{
+        const cIdx=d.findIndex(x=>x.id===cid);
+        if(cIdx!==-1){const{vinculoPai,...rest}=d[cIdx];d[cIdx]=rest;}
+      });
+      if(r.vinculoPai){
+        const paiIdx=d.findIndex(x=>x.id===r.vinculoPai);
+        if(paiIdx!==-1){
+          const pai=d[paiIdx];
+          d[paiIdx]={...pai,vinculosFilhos:(pai.vinculosFilhos||[]).filter(x=>x!==id)};
+        }
+      }
     }
     save(mod,d.filter(x=>x.id!==id));
     render(mod);updateDash();
@@ -4455,20 +4558,21 @@ function _pfSave(mod,id,valor){
 function crtCell(aba,id,field,val,type){
   const display=type==='date'?(val?val.split('-').reverse().join('/'):'—'):(val||'—');
   const key=`${aba}:${id}:${field}`;
-  const btn=`<button class="crt-eb" onclick="crtEdit('${aba}','${id}','${field}','${type}')" title="Editar">${_PF_SVG}</button>`;
-  return`<span data-crte="${key}">${display}${btn}</span>`;
+  const btn=`<button class="crt-eb" onclick="crtEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}','${escJs(type)}')" title="Editar">${_PF_SVG}</button>`;
+  return`<span data-crte="${esc(key)}">${esc(display)}${btn}</span>`;
 }
 function crtCellBRL(aba,id,field,val,type){
   const n=_parseNumCrt(val);
   const display=n?fmtBRL(n):(val||'—');
   const key=`${aba}:${id}:${field}`;
-  const btn=`<button class="crt-eb" onclick="crtEdit('${aba}','${id}','${field}','${type}')" title="Editar">${_PF_SVG}</button>`;
-  return`<span data-crte="${key}">${display}${btn}</span>`;
+  const btn=`<button class="crt-eb" onclick="crtEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}','${escJs(type)}')" title="Editar">${_PF_SVG}</button>`;
+  return`<span data-crte="${esc(key)}">${esc(display)}${btn}</span>`;
 }
 let _crtEsc=false;
 function crtEdit(aba,id,field,type){
   const key=`${aba}:${id}:${field}`;
-  const span=document.querySelector(`[data-crte="${key}"]`);
+  /* Escape do CSS attr selector — IDs com aspas/colchetes quebrariam a query */
+  const span=document.querySelector(`[data-crte="${CSS.escape?CSS.escape(key):key}"]`);
   if(!span)return;
   const td=span.closest('td');
   if(!td)return;
@@ -4477,7 +4581,7 @@ function crtEdit(aba,id,field,type){
   _crtEsc=false;
   const w=type==='date'?'130px':'110px';
   const extra=type==='date'?'color-scheme:dark':'';
-  td.innerHTML=`<input type="${type}" value="${esc(cur)}" style="background:#1a1f2e;border:1px solid #0077ff;border-radius:5px;color:#e2e8f0;padding:2px 5px;font-size:10px;font-family:inherit;outline:none;width:${w};${extra}" onblur="if(!_crtEsc)_crtSave('${aba}','${id}','${field}',this.value)" onkeydown="if(event.key==='Enter'){_crtEsc=false;this.blur()}else if(event.key==='Escape'){_crtEsc=true;event.preventDefault();_crtRefresh()}">`;
+  td.innerHTML=`<input type="${esc(type)}" value="${esc(cur)}" style="background:#1a1f2e;border:1px solid #0077ff;border-radius:5px;color:#e2e8f0;padding:2px 5px;font-size:10px;font-family:inherit;outline:none;width:${w};${extra}" onblur="if(!_crtEsc)_crtSave('${escJs(aba)}','${escJs(id)}','${escJs(field)}',this.value)" onkeydown="if(event.key==='Enter'){_crtEsc=false;this.blur()}else if(event.key==='Escape'){_crtEsc=true;event.preventDefault();_crtRefresh()}">`;
   const inp=td.querySelector('input');
   if(inp){inp.focus();if(type!=='date')inp.select();}
 }
@@ -4485,6 +4589,7 @@ function _crtSave(aba,id,field,val){
   const data=load(aba);
   const idx=data.findIndex(r=>r.id===id);
   if(idx<0){_crtRefresh();return;}
+  /* Snapshot anterior para feedback de erro (rollback é tratado no _sbSync via showToast). */
   data[idx]={...data[idx],[field]:val||''};  // novo objeto: evita mutar CACHE antes do _sbSync capturar prev
   save(aba,data);
   _crtRefresh();
@@ -4496,11 +4601,34 @@ function _crtRefresh(){
 /* ======================================================
    CONSOLIDADO
 ====================================================== */
+/* Parser robusto de número BRL/JS:
+   - Aceita "R$ 1.234,56", "1.234,56", "1234,56", "1234.56", número JS puro.
+   - Detecta automaticamente se é formato BR (vírgula como decimal) ou US (ponto).
+   - Trata negativos com sinal e parênteses contábeis: (1.234,56) → -1234.56. */
 function _parseNumCrt(v){
-  if(!v&&v!==0)return 0;
-  const raw=String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.');
-  const n=parseFloat(raw);
-  return isNaN(n)?0:n;
+  if(v==null||v==='')return 0;
+  if(typeof v==='number')return isFinite(v)?v:0;
+  let s=String(v).trim().replace(/[R$\s]/g,'');
+  if(!s)return 0;
+  /* Parênteses contábeis indicam negativo */
+  let neg=false;
+  if(/^\(.*\)$/.test(s)){neg=true;s=s.slice(1,-1);}
+  if(s.startsWith('-')){neg=!neg;s=s.slice(1);}
+  /* Detecta o último separador como decimal */
+  const lastComma=s.lastIndexOf(',');
+  const lastDot=s.lastIndexOf('.');
+  if(lastComma>lastDot){
+    /* Formato BR: 1.234,56 — pontos são milhares, vírgula é decimal */
+    s=s.replace(/\./g,'').replace(',','.');
+  } else if(lastDot>lastComma){
+    /* Formato US ou número JS puro: 1,234.56 ou 1234.56 — vírgulas são milhares */
+    s=s.replace(/,/g,'');
+  } else {
+    /* Sem separador decimal — apenas dígitos com possíveis milhares */
+    s=s.replace(/[.,]/g,'');
+  }
+  const n=parseFloat(s);
+  return isNaN(n)?0:(neg?-n:n);
 }
 function _parseISODate(s){return s?new Date(s+'T12:00:00'):null;}
 
@@ -4698,7 +4826,7 @@ function _crtRenderConsolidado(){
 ====================================================== */
 const _PRM_KEY='cj-parametros';
 function _prmLoad(){
-  try{return JSON.parse(localStorage.getItem(_PRM_KEY)||'{}');}catch(e){return{};}
+  try{return JSON.parse(_lsGet(_PRM_KEY)||'{}');}catch(e){return{};}
 }
 async function _prmSave(){
   if(!sb)return;
@@ -4708,7 +4836,7 @@ async function _prmSave(){
     tr:document.getElementById('prm-tr').value,
     cdi:document.getElementById('prm-cdi').value
   };
-  localStorage.setItem(_PRM_KEY,JSON.stringify(obj));
+  _lsSet(_PRM_KEY,JSON.stringify(obj));
   try{
     await sb.from('configuracoes').upsert({chave:'parametros_atualizacao',valor:JSON.stringify(obj)},{onConflict:'chave'});
   }catch(e){console.warn('[Credijuris] _prmSave supabase:',e);}
@@ -4734,7 +4862,7 @@ async function _prmInit(){
     if(!error&&data?.valor){
       const remote=JSON.parse(data.valor);
       saved=remote;
-      localStorage.setItem(_PRM_KEY,JSON.stringify(remote));
+      _lsSet(_PRM_KEY,JSON.stringify(remote));
     }
   }catch(e){console.warn('[Credijuris] _prmInit supabase:',e);}
   ['selic','ipca','tr','cdi'].forEach(k=>{
@@ -4747,8 +4875,8 @@ async function _prmInit(){
 /* Célula de texto longo com fade e lápis */
 function crtTextCell(aba,id,field,val,proc){
   const preview=val?String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'—';
-  const procArg=proc?`,'${esc(proc)}'`:'';
-  const btn=`<button class="crt-eb" onclick="crtTextEdit('${aba}','${id}','${field}'${procArg})" title="Editar">${_PF_SVG}</button>`;
+  const procArg=proc?`,'${escJs(proc)}'`:'';
+  const btn=`<button class="crt-eb" onclick="crtTextEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}'${procArg})" title="Editar">${_PF_SVG}</button>`;
   return`<div class="crt-txt-cell"><span class="crt-txt-preview">${preview}</span>${btn}</div>`;
 }
 let _crtTxtCtx={aba:'',id:'',field:''};
@@ -4782,7 +4910,7 @@ function crtSelectCell(aba,id,field,val,opts,colors){
     const c=colors?colors[o]:'';
     const label=o===''?'—':esc(o);
     const muted=o===''?'color:#4b5563;font-style:italic':'';
-    return`<div class="crt-sel-opt${val===o?' selected':''}" style="${c?`color:${c}`:muted}" onclick="_crtSelPick('${key}',this,'${esc(o)}','${aba}','${id}','${field}')">${label}</div>`;
+    return`<div class="crt-sel-opt${val===o?' selected':''}" style="${c?`color:${c}`:muted}" onclick="_crtSelPick('${escJs(key)}',this,'${escJs(o)}','${escJs(aba)}','${escJs(id)}','${escJs(field)}')">${esc(label)}</div>`;
   }).join('');
   return`<div class="crt-sel-wrap"><span class="crt-sel-val" data-crtsel="${key}" style="${col?`color:${col}`:''}" onclick="_crtSelToggle(event,'${key}')">${display}</span><div class="crt-sel-dd" id="crtdd-${key}">${options}</div></div>`;
 }
@@ -4874,12 +5002,27 @@ function moveItem(mod,id,toMod){
   const srcData=load(mod);
   const rec=srcData.find(r=>r.id===id);
   if(!rec)return;
+  const numFilhos=(rec.vinculosFilhos||[]).length;
+  if(numFilhos&&!confirm(`Este processo possui ${numFilhos} processo(s) vinculado(s). Eles ficarão sem pai (não são movidos junto). Continuar?`)){
+    return;
+  }
+  /* Cópia imutável sem vínculos (registro movido vira pai standalone na nova aba) */
   const copy={...rec};
   delete copy.vinculoPai;delete copy.vinculosFilhos;
+  /* 1) Adiciona na aba destino */
   save(toMod,[...load(toMod),copy]);
-  (rec.vinculosFilhos||[]).forEach(cid=>{const c=srcData.find(r=>r.id===cid);if(c)delete c.vinculoPai;});
-  if(rec.vinculoPai){const pai=srcData.find(r=>r.id===rec.vinculoPai);if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==id);}
-  save(mod,srcData.filter(r=>r.id!==id));
+  /* 2) Remove vínculos referenciando o registro movido (de forma imutável) */
+  let updatedSrc=srcData.map(r=>{
+    if(rec.vinculosFilhos&&rec.vinculosFilhos.includes(r.id)){
+      const{vinculoPai,...rest}=r;return rest;
+    }
+    if(rec.vinculoPai===r.id&&r.vinculosFilhos){
+      return{...r,vinculosFilhos:r.vinculosFilhos.filter(x=>x!==id)};
+    }
+    return r;
+  });
+  /* 3) Remove o próprio registro da origem */
+  save(mod,updatedSrc.filter(r=>r.id!==id));
   highlightIds.add(copy.id);
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.querySelector(`.tab[data-tab="${toMod}"]`)?.classList.add('on');
@@ -4936,13 +5079,18 @@ function toggleExpand(mod,id){
 function desvincular(mod,filhoId){
   if(!confirm('Desvincular este processo do processo pai?'))return;
   const data=load(mod);
-  const filho=data.find(r=>r.id===filhoId);
-  if(!filho)return;
+  const filhoIdx=data.findIndex(r=>r.id===filhoId);
+  if(filhoIdx===-1)return;
+  const filho=data[filhoIdx];
   if(filho.vinculoPai){
-    const pai=data.find(r=>r.id===filho.vinculoPai);
-    if(pai&&pai.vinculosFilhos)pai.vinculosFilhos=pai.vinculosFilhos.filter(x=>x!==filhoId);
+    const paiIdx=data.findIndex(r=>r.id===filho.vinculoPai);
+    if(paiIdx!==-1){
+      const pai=data[paiIdx];
+      data[paiIdx]={...pai,vinculosFilhos:(pai.vinculosFilhos||[]).filter(x=>x!==filhoId)};
+    }
   }
-  delete filho.vinculoPai;
+  const{vinculoPai,...semVinculo}=filho;
+  data[filhoIdx]=semVinculo;
   save(mod,data);
   render(mod);
   updateDash();
@@ -4963,11 +5111,14 @@ function openVinculo(mod,paiId){
 }
 
 function filterVinculo(){
-  const q=document.getElementById('vinculo-search').value.toLowerCase();
-  const data=load(vMod).filter(r=>r.id!==vPaiId&&!r.vinculoPai&&(
-    (r.numeroProcesso||'').toLowerCase().includes(q)||
-    (r.cedente||'').toLowerCase().includes(q)||
-    (r.cessionario||'').toLowerCase().includes(q)
+  const q=normKw(document.getElementById('vinculo-search').value);
+  /* Excluir o próprio pai, processos que já são filhos de alguém,
+     E processos que já são pais de outros (evita hierarquia multinível). */
+  const data=load(vMod).filter(r=>r.id!==vPaiId&&!r.vinculoPai&&!(r.vinculosFilhos&&r.vinculosFilhos.length)&&(
+    !q||
+    normKw(r.numeroProcesso||'').includes(q)||
+    normKw(r.cedente||'').includes(q)||
+    normKw(r.cessionario||'').includes(q)
   ));
   document.getElementById('vinculo-list').innerHTML=renderVinculoList(data);
 }
@@ -4980,18 +5131,35 @@ function renderVinculoList(items){
         <div style="font-size:12.5px;font-weight:600;color:var(--txt)">${esc(r.numeroProcesso)}</div>
         <div style="font-size:11px;color:var(--txt3);margin-top:2px">${esc(r.advogado||'')} ${r.cedente?'· '+esc(r.cedente):''}</div>
       </div>
-      <button class="btn btn-gold btn-xs" onclick="vincularProcesso('${r.id}')">Vincular</button>
+      <button class="btn btn-gold btn-xs" onclick="vincularProcesso('${escJs(r.id)}')">Vincular</button>
     </div>`).join('');
 }
 
 function vincularProcesso(filhoId){
   const data=load(vMod);
-  const pai=data.find(r=>r.id===vPaiId);
-  const filho=data.find(r=>r.id===filhoId);
-  if(!pai||!filho)return;
-  if(!pai.vinculosFilhos)pai.vinculosFilhos=[];
-  if(!pai.vinculosFilhos.includes(filhoId))pai.vinculosFilhos.push(filhoId);
-  filho.vinculoPai=vPaiId;
+  const paiIdx=data.findIndex(r=>r.id===vPaiId);
+  const filhoIdx=data.findIndex(r=>r.id===filhoId);
+  if(paiIdx===-1||filhoIdx===-1)return;
+  const pai=data[paiIdx],filho=data[filhoIdx];
+  /* Validação anti-ciclo: o filho não pode ser ancestral do pai. */
+  if(filho.vinculosFilhos&&filho.vinculosFilhos.length){
+    showToast('Não é possível vincular: este processo já é pai de outros.');return;
+  }
+  if(filho.id===pai.vinculoPai){
+    showToast('Vínculo cíclico detectado. Operação cancelada.');return;
+  }
+  /* Se filho já estava vinculado a outro pai, desvincula primeiro. */
+  if(filho.vinculoPai&&filho.vinculoPai!==vPaiId){
+    const oldPaiIdx=data.findIndex(r=>r.id===filho.vinculoPai);
+    if(oldPaiIdx!==-1){
+      const oldPai=data[oldPaiIdx];
+      data[oldPaiIdx]={...oldPai,vinculosFilhos:(oldPai.vinculosFilhos||[]).filter(x=>x!==filhoId)};
+    }
+  }
+  const novosFilhos=Array.isArray(pai.vinculosFilhos)?pai.vinculosFilhos.slice():[];
+  if(!novosFilhos.includes(filhoId))novosFilhos.push(filhoId);
+  data[paiIdx]={...pai,vinculosFilhos:novosFilhos};
+  data[filhoIdx]={...filho,vinculoPai:vPaiId};
   save(vMod,data);
   closeModal('vinculo-ov');
   render(vMod);
@@ -5222,29 +5390,32 @@ function addHistEntry(){
   const t=tEl.value.trim();
   if(!d||!t){alert('Preencha a data e a descrição.');return;}
   const data=load(hMod);
-  const rec=data.find(r=>r.id===hId);
-  if(!rec)return;
-  if(!rec.historicoProcessual)rec.historicoProcessual=[];
-  rec.historicoProcessual.push({data:d,descricao:t});
-  rec.historicoProcessual.sort((a,b)=>new Date(a.data)-new Date(b.data));
+  const idx=data.findIndex(r=>r.id===hId);
+  if(idx===-1)return;
+  /* Imutável: cria nova lista ordenada e substitui slot.
+     Adiciona uid no entry para auditabilidade e edição segura. */
+  const novoHist=[...((data[idx].historicoProcessual)||[]),{id:uid(),data:d,descricao:t,createdAt:new Date().toISOString()}];
+  novoHist.sort((a,b)=>new Date(a.data)-new Date(b.data));
+  data[idx]={...data[idx],historicoProcessual:novoHist};
   save(hMod,data);
-  renderHistBody(rec);
+  renderHistBody(data[idx]);
   render(hMod);updateDash();
 }
 
 function delHistEntry(si){
   if(!confirm('Remover esta entrada?'))return;
   const data=load(hMod);
-  const rec=data.find(r=>r.id===hId);
-  if(!rec)return;
+  const idx=data.findIndex(r=>r.id===hId);
+  if(idx===-1)return;
+  const rec=data[idx];
   const sorted=(rec.historicoProcessual||[]).slice().sort((a,b)=>b.data.localeCompare(a.data));
   const target=sorted[si];
   if(!target)return;
-  const realIdx=rec.historicoProcessual.indexOf(target);
-  if(realIdx===-1)return;
-  rec.historicoProcessual.splice(realIdx,1);
+  /* Match por id (preferido) para evitar problemas com índice desatualizado em realtime. */
+  const novoHist=(rec.historicoProcessual||[]).filter(h=>target.id?h.id!==target.id:!(h.data===target.data&&h.descricao===target.descricao));
+  data[idx]={...rec,historicoProcessual:novoHist};
   save(hMod,data);
-  renderHistBody(rec);
+  renderHistBody(data[idx]);
   render(hMod);updateDash();
 }
 
@@ -5275,12 +5446,18 @@ function saveHistEdit(si,realIdx){
   const t=document.getElementById('tl-ed-desc-'+si)?.value.trim();
   if(!d||!t){alert('Preencha a data e a descrição.');return;}
   const data=load(hMod);
-  const rec=data.find(r=>r.id===hId);
-  if(!rec||realIdx===undefined||!rec.historicoProcessual[realIdx])return;
-  rec.historicoProcessual[realIdx]={data:d,descricao:t};
-  rec.historicoProcessual.sort((a,b)=>new Date(a.data)-new Date(b.data));
+  const idx=data.findIndex(r=>r.id===hId);
+  if(idx===-1)return;
+  const rec=data[idx];
+  if(realIdx===undefined||!(rec.historicoProcessual||[])[realIdx])return;
+  /* Imutável + preserva campos extras (id, createdAt) na entry editada. */
+  const original=rec.historicoProcessual[realIdx];
+  const novoHist=rec.historicoProcessual.slice();
+  novoHist[realIdx]={...original,data:d,descricao:t,updatedAt:new Date().toISOString()};
+  novoHist.sort((a,b)=>new Date(a.data)-new Date(b.data));
+  data[idx]={...rec,historicoProcessual:novoHist};
   save(hMod,data);
-  renderHistBody(rec);
+  renderHistBody(data[idx]);
   render(hMod);updateDash();
 }
 
@@ -5349,7 +5526,7 @@ function renderContatos(){
       <td>${waCell}</td>
       <td>${telCell}</td>
       <td>${emCell}</td>
-      <td><button class="btn btn-blue btn-xs" onclick="editContato('${esc(org.orgaoJulgador)}')">Editar</button></td>
+      <td><button class="btn btn-blue btn-xs" onclick="editContato('${escJs(org.orgaoJulgador)}')">Editar</button></td>
     </tr>`;
   }).join('');
   renderPgn('pg-contatos',rows.length,'contatos');
