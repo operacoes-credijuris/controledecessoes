@@ -2993,37 +2993,42 @@ function _crtRenderOperacoes(investidor){
     encerrados:'<span class="crt-aba-badge crt-aba-enc">Encerrado</span>'
   };
 
-  tbody.innerHTML=rows.map(r=>`
+  tbody.innerHTML=rows.map(r=>{
+    const _vProj=_parseNumCrt(r.valorAtualizadoManual)||_parseNumCrt(r.valorFace);
+    const _cap=_parseNumCrt(r.capitalInvestido);
+    const _ganho=_vProj>0?_vProj-_cap:0;
+    return`
     <tr>
-      <td style="min-width:130px"><span class="crt-proc">${_e(r.numeroProcesso)}</span></td>
+      <td style="min-width:130px"><span class="crt-proc">${_e(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</td>
       <td style="min-width:140px" title="${_e(r.cedente)}">${_e(r.cedente)}</td>
       <td style="min-width:140px" title="${_e(r.advogado)}">${_e(r.advogado)}</td>
       <td style="min-width:120px">${_e(r.objeto)}</td>
       <td style="min-width:80px">${_e(r.tribunal)}</td>
-      <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'capitalInvestido',r.capitalInvestido,'text')}</td>
+      <td style="min-width:120px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'capitalInvestido',r.capitalInvestido,'text')}</td>
       <td style="min-width:110px">${_d(r.dataAquisicao)}</td>
-      <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'valorFace',r.valorFace,'text')}</td>
+      <td style="min-width:120px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'valorFace',r.valorFace,'text')}</td>
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataRefFace',r.dataRefFace,'date')}</td>
       <td style="min-width:130px">${crtSelectCell(r._aba,r.id,'indiceAtualizacao',r.indiceAtualizacao,['IPCA + 2%','SELIC'])}</td>
-      <td style="min-width:130px" class="crt-td-num">${_e(r.valorAtualizadoManual)}</td>
+      <td style="min-width:130px" class="crt-td-num">${(()=>{const n=_parseNumCrt(r.valorAtualizadoManual);return n?fmtBRL(n):'—'})()}</td>
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstRecebimento',r.dataEstRecebimento,'date')}</td>
-      <td style="min-width:110px" class="crt-td-num">${crtCell(r._aba,r.id,'jaRecebido',r.jaRecebido,'text')}</td>
+      <td style="min-width:110px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'jaRecebido',r.jaRecebido,'text')}</td>
       <td style="min-width:110px">${_d(r.dataLiquidacao)}</td>
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstComplementar',r.dataEstComplementar,'date')}</td>
-      <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
+      <td style="min-width:120px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
       <td style="min-width:100px">${crtSelectCell(r._aba,r.id,'status',r.status,['','Verde','Azul','Âmbar','Vermelho'],{'Verde':'#4ade80','Azul':'#60a5fa','Âmbar':'#fbbf24','Vermelho':'#f87171'})}</td>
       <td style="min-width:140px;max-width:140px;overflow:hidden">${crtTextCell(r._aba,r.id,'estagioProcessual',r.estagioProcessual,r.numeroProcesso)}</td>
       <td style="min-width:200px;max-width:200px;overflow:hidden">${crtTextCell(r._aba,r.id,'providencias',r.providencias,r.numeroProcesso)}</td>
       <td style="min-width:100px">${_d(SORT_COMPUTED.ultimaMovimentacao(r))}</td>
-      <td style="min-width:120px" class="crt-td-num">—</td>
+      <td style="min-width:120px" class="crt-td-num">${_vProj>0?fmtBRL(_vProj):'—'}</td>
       <td style="min-width:100px">—</td>
       <td style="min-width:80px" class="crt-td-num">—</td>
       <td style="min-width:80px" class="crt-td-num">—</td>
       <td style="min-width:130px">—</td>
       <td style="min-width:90px" class="crt-td-num">—</td>
-      <td style="min-width:120px" class="crt-td-num">—</td>
+      <td style="min-width:120px" class="crt-td-num">${_ganho>0?fmtBRL(_ganho):'—'}</td>
       <td style="min-width:90px" class="crt-td-num">—</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   _crtAtualizaCards(rows);
 }
@@ -4436,6 +4441,13 @@ function _pfSave(mod,id,valor){
 ====================================================== */
 function crtCell(aba,id,field,val,type){
   const display=type==='date'?(val?val.split('-').reverse().join('/'):'—'):(val||'—');
+  const key=`${aba}:${id}:${field}`;
+  const btn=`<button class="crt-eb" onclick="crtEdit('${aba}','${id}','${field}','${type}')" title="Editar">${_PF_SVG}</button>`;
+  return`<span data-crte="${key}">${display}${btn}</span>`;
+}
+function crtCellBRL(aba,id,field,val,type){
+  const n=_parseNumCrt(val);
+  const display=n?fmtBRL(n):(val||'—');
   const key=`${aba}:${id}:${field}`;
   const btn=`<button class="crt-eb" onclick="crtEdit('${aba}','${id}','${field}','${type}')" title="Editar">${_PF_SVG}</button>`;
   return`<span data-crte="${key}">${display}${btn}</span>`;
