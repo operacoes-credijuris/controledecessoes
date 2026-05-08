@@ -1229,7 +1229,10 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-tbl-wrap{margin-top:28px;flex:1;min-height:0;display:flex;flex-direction:column}
 .crt-tbl-title{
   font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;
-  margin-bottom:12px;flex-shrink:0;font-family:var(--font-body)}
+  flex-shrink:0;font-family:var(--font-body)}
+.crt-chk-wrap{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.crt-chk-wrap input[type=checkbox]{width:13px;height:13px;accent-color:#0077ff;cursor:pointer;flex-shrink:0;margin:0}
+.crt-chk-lbl{font-size:10px;color:#6b7280;font-family:var(--font-body)}
 .crt-tbl-scroll{
   overflow:auto;border-radius:10px;flex:1;min-height:0;
   background:linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.008)),#111317;
@@ -2107,7 +2110,13 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
 
     <!-- Tabela Dados por operação -->
     <div class="crt-tbl-wrap">
-      <div class="crt-tbl-title">Dados por operação</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-shrink:0">
+        <div class="crt-tbl-title" style="margin-bottom:0">Dados por operação</div>
+        <label class="crt-chk-wrap">
+          <input type="checkbox" id="crt-show-enc" onchange="_crtRefresh()">
+          <span class="crt-chk-lbl">Exibir encerrados</span>
+        </label>
+      </div>
       <div class="crt-tbl-scroll">
         <table class="crt-tbl" id="crt-tbl-operacoes">
           <thead>
@@ -2820,10 +2829,11 @@ function _crtRenderOperacoes(investidor){
   const inv=norm(investidor);
 
   // Coleta registros das 3 abas marcando origem
+  const showEnc=(document.getElementById('crt-show-enc')||{}).checked;
   const rows=[];
   (CACHE.cessoes||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'cessoes'});});
   (CACHE.rpv||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'rpv'});});
-  (CACHE.encerrados||[]).forEach(r=>{
+  if(showEnc)(CACHE.encerrados||[]).forEach(r=>{
     if(!r.vinculoPai&&norm(r.cessionario)===inv)
       rows.push({...r,_aba:'encerrados'});
   });
