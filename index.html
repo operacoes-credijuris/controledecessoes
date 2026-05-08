@@ -79,9 +79,12 @@ a{color:inherit;text-decoration:none}
 .nav-dot{color:#2a3348;font-size:12px;padding:0 2px;user-select:none;pointer-events:none;line-height:1;flex-shrink:0}
 
 /* MAIN */
-.main{padding:0;overflow:hidden;flex:1;min-height:0;max-width:100%}
+.main{display:block;padding:0;overflow:hidden;flex:1;min-height:0;max-width:100%}
 .pane{display:none}.pane.on{display:flex;flex-direction:column;height:100%;padding:16px 20px;overflow:hidden;box-sizing:border-box}
 #pane-dashboard.on{display:flex;flex-direction:column;padding:20px 24px}
+/* Modo não-exec: oculta nav/main via classe no app-content (fallback robusto) */
+.app-content.mode-nonexec>.nav{display:none!important}
+.app-content.mode-nonexec>.main{display:none!important}
 
 /* STAT CARDS */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:16px;gap:0;border-bottom:1px solid rgba(255,255,255,.06);border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.075);box-shadow:0 22px 52px rgba(0,0,0,.22)}
@@ -2811,8 +2814,13 @@ function _sbHideAll(){
   document.getElementById('pane-credito').style.display='none';
   document.getElementById('pane-config').style.display='none';
   document.getElementById('pane-carteiras').classList.remove('on');
-  document.querySelector('.nav').style.display='';
-  document.querySelector('.main').style.display='';
+  // Restaurar exec mode: remover classe e setar display explícito (nunca dependemos de style='')
+  const appContent=document.querySelector('.app-content');
+  if(appContent)appContent.classList.remove('mode-nonexec');
+  const navEl=document.querySelector('.nav');
+  const mainEl=document.querySelector('.main');
+  if(navEl){navEl.style.display='flex';}
+  if(mainEl){mainEl.style.display='block';}
   // Oculta busca e sincronizar — só visíveis em Execução Processual
   const hdrSearch=document.querySelector('.hdr-search');
   const syncBtn=document.getElementById('sync-btn');
@@ -2826,9 +2834,8 @@ function _sbHideAll(){
 function _sbShowCarteiras(){
   _sbHideAll();
   _execWasActive=false;
+  document.querySelector('.app-content').classList.add('mode-nonexec');
   document.getElementById('pane-carteiras').classList.add('on');
-  document.querySelector('.nav').style.display='none';
-  document.querySelector('.main').style.display='none';
   document.getElementById('sb-item-carteiras').classList.add('active');
   localStorage.setItem('cj-sidebar-active','carteiras');
   // Se a aba ativa for Investidores, popula o select
@@ -2839,9 +2846,8 @@ function _sbShowCarteiras(){
 function _sbShowCredito(){
   _sbHideAll();
   _execWasActive=false;
+  document.querySelector('.app-content').classList.add('mode-nonexec');
   document.getElementById('pane-credito').style.display='flex';
-  document.querySelector('.nav').style.display='none';
-  document.querySelector('.main').style.display='none';
   document.getElementById('sb-item-credito').classList.add('active');
   localStorage.setItem('cj-sidebar-active','credito');
 }
@@ -2849,9 +2855,8 @@ function _sbShowCredito(){
 function _sbShowConfig(){
   _sbHideAll();
   _execWasActive=false;
+  document.querySelector('.app-content').classList.add('mode-nonexec');
   document.getElementById('pane-config').style.display='flex';
-  document.querySelector('.nav').style.display='none';
-  document.querySelector('.main').style.display='none';
   document.getElementById('sb-item-config').classList.add('active');
   localStorage.setItem('cj-sidebar-active','config');
   // preencher email do usuário
@@ -3067,7 +3072,10 @@ function sbNav(item){
     const pEl=document.getElementById('pane-'+target);
     if(pEl)pEl.classList.add('on');
     curTab=target;
-    if(curTab==='dashboard')updateDash();else render(curTab);
+    // Usar requestAnimationFrame para garantir que o DOM foi aplicado antes de renderizar
+    requestAnimationFrame(()=>{
+      if(curTab==='dashboard')updateDash();else render(curTab);
+    });
   }else if(item==='credito'){
     _sbShowCredito();
   }else if(item==='carteiras'){
