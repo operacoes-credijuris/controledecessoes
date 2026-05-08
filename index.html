@@ -199,6 +199,10 @@ tr:hover .cpy-btn,.alert-item:hover .cpy-btn{opacity:.5}
 .pf-btn{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0}
 tr:hover .pf-btn{opacity:.5}
 .pf-btn:hover{opacity:1!important}
+/* CARTEIRAS INLINE EDIT BUTTON */
+.crt-eb{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0}
+.crt-tbl tr:hover .crt-eb{opacity:.45}
+.crt-eb:hover{opacity:1!important}
 /* ALERT NAV BUTTON */
 .al-nav-btn{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0;color:#4b5563}
 .alert-item:hover .al-nav-btn{opacity:.6}
@@ -2811,17 +2815,17 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:140px" title="${_e(r.advogado)}">${_e(r.advogado)}</td>
       <td style="min-width:120px">${_e(r.objeto)}</td>
       <td style="min-width:80px">${_e(r.tribunal)}</td>
-      <td style="min-width:120px" class="crt-td-num">${_e(r.capitalInvestido)}</td>
+      <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'capitalInvestido',r.capitalInvestido,'text')}</td>
       <td style="min-width:110px">${_d(r.dataAquisicao)}</td>
-      <td style="min-width:120px" class="crt-td-num">${_e(r.valorFace)}</td>
-      <td style="min-width:110px">${_d(r.dataRefFace)}</td>
+      <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'valorFace',r.valorFace,'text')}</td>
+      <td style="min-width:110px">${crtCell(r._aba,r.id,'dataRefFace',r.dataRefFace,'date')}</td>
       <td style="min-width:110px">${_e(r.indiceAtualizacao)}</td>
       <td style="min-width:130px" class="crt-td-num">${_e(r.valorAtualizadoManual)}</td>
-      <td style="min-width:110px">—</td>
-      <td style="min-width:110px" class="crt-td-num">—</td>
+      <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstRecebimento',r.dataEstRecebimento,'date')}</td>
+      <td style="min-width:110px" class="crt-td-num">${crtCell(r._aba,r.id,'jaRecebido',r.jaRecebido,'text')}</td>
       <td style="min-width:110px">${_d(r.dataLiquidacao)}</td>
-      <td style="min-width:110px">${_d(r.dataEstComplementar)}</td>
-      <td style="min-width:120px" class="crt-td-num">${_e(r.valorEstComplementar)}</td>
+      <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstComplementar',r.dataEstComplementar,'date')}</td>
+      <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
       <td style="min-width:100px">${_e(r.status)}</td>
       <td style="min-width:140px">${_e(r.estagioProcessual)}</td>
       <td style="min-width:200px" class="crt-td-wrap" title="${_e(r.providencias)}">${_e(r.providencias)}</td>
@@ -4177,6 +4181,43 @@ function _pfSave(mod,id,valor){
   render(mod);
   updateDash();
 }
+/* ======================================================
+   CARTEIRAS — EDIÇÃO INLINE DE CAMPOS
+====================================================== */
+function crtCell(aba,id,field,val,type){
+  const display=type==='date'?(val?val.split('-').reverse().join('/'):'—'):(val||'—');
+  const key=`${aba}:${id}:${field}`;
+  const btn=`<button class="crt-eb" onclick="crtEdit('${aba}','${id}','${field}','${type}')" title="Editar">${_PF_SVG}</button>`;
+  return`<span data-crte="${key}">${display}${btn}</span>`;
+}
+let _crtEsc=false;
+function crtEdit(aba,id,field,type){
+  const key=`${aba}:${id}:${field}`;
+  const span=document.querySelector(`[data-crte="${key}"]`);
+  if(!span)return;
+  const td=span.closest('td');
+  if(!td)return;
+  const rec=load(aba).find(r=>r.id===id);
+  const cur=rec?(type==='date'?(normDate(rec[field]||'')||''):(rec[field]||'')):'';
+  _crtEsc=false;
+  const w=type==='date'?'130px':'110px';
+  const extra=type==='date'?'color-scheme:dark':'';
+  td.innerHTML=`<input type="${type}" value="${esc(cur)}" style="background:#1a1f2e;border:1px solid #0077ff;border-radius:5px;color:#e2e8f0;padding:2px 5px;font-size:10px;font-family:inherit;outline:none;width:${w};${extra}" onblur="if(!_crtEsc)_crtSave('${aba}','${id}','${field}',this.value)" onkeydown="if(event.key==='Enter'){_crtEsc=false;this.blur()}else if(event.key==='Escape'){_crtEsc=true;event.preventDefault();_crtRefresh()}">`;
+  const inp=td.querySelector('input');
+  if(inp){inp.focus();if(type!=='date')inp.select();}
+}
+function _crtSave(aba,id,field,val){
+  const data=load(aba);
+  const idx=data.findIndex(r=>r.id===id);
+  if(idx<0){_crtRefresh();return;}
+  data[idx][field]=val||'';
+  save(aba,data);
+  _crtRefresh();
+}
+function _crtRefresh(){
+  if(_crtAcSelected)_crtRenderOperacoes(_crtAcSelected);
+}
+
 function cpyNum(e){
   e.stopPropagation();
   const num=e.currentTarget.getAttribute('data-num');
