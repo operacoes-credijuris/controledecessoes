@@ -4350,14 +4350,10 @@ function saveRecord(){
   if(curId){
     const idx=data.findIndex(r=>r.id===curId);
     if(idx!==-1){
-      rec.id=curId;
       const old=data[idx];
-      rec.historicoProcessual=old.historicoProcessual||[];
-      if(old.prazoFatal!==undefined)rec.prazoFatal=old.prazoFatal;
-      if(old.diligencias!==undefined)rec.diligencias=old.diligencias;
-      if(old.vinculosFilhos!==undefined)rec.vinculosFilhos=old.vinculosFilhos;
-      if(old.vinculoPai!==undefined)rec.vinculoPai=old.vinculoPai;
-      data[idx]=rec;
+      // Preserva todos os campos existentes (Carteiras, histórico, diligências, etc.)
+      // e sobrescreve apenas com o que veio do formulário
+      data[idx]={...old,...rec,id:curId};
     }
   } else {
     rec.id=uid();
