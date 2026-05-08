@@ -505,7 +505,7 @@ body{
   padding:0 14px;
   line-height:1;
 }
-#logout-btn{display:none!important}
+#logout-btn{display:none}
 #sync-btn{
   background:rgba(0,119,255,.18);
   border-color:rgba(88,183,255,.34);
@@ -2034,7 +2034,7 @@ input[type="date"][style*="background:#1a1f2e"]{
       <div class="cfg-row-ctrl">
         <input id="cfg-advbox-token" class="cfg-token-input" type="password" placeholder="Cole o token aqui…" autocomplete="off">
         <span id="cfg-advbox-status" class="cfg-status"></span>
-        <button class="cfg-save-btn" onclick="cfgSaveAdvboxToken()">Salvar</button>
+        <button id="cfg-advbox-save-btn" class="cfg-save-btn" onclick="cfgSaveAdvboxToken()">Salvar</button>
       </div>
     </div>
   </div>
@@ -2509,6 +2509,7 @@ let sb=null;
 const TABLES={cessoes:'cessoes_ativas',rpv:'rpv_complementar',requerimentos:'diversos',encerrados:'encerrados',contatos:'contatos'};
 const CACHE={cessoes:[],rpv:[],requerimentos:[],encerrados:[],contatos:[]};
 let _currentUserId=null;
+let _realtimeChannel=null;
 let CACHE_AUX=[];
 let curAuxId=null;
 
@@ -2539,7 +2540,11 @@ async function _sbSync(k,d,prev){
       const{error}=await sb.from(tbl).upsert(rows,{onConflict:'id'});
       if(error)throw error;
     }
-  }catch(e){console.error('[Credijuris] sync error',tbl,e);showToast('Erro ao salvar dados. Verifique sua conexão.');}
+  }catch(e){
+    console.error('[Credijuris] sync error',tbl,e);
+    CACHE[k]=prev; // rollback: restaura estado anterior
+    showToast('Erro ao salvar dados. Alteração revertida.');
+  }
 }
 
 async function _loadAllFromSupabase(){
@@ -2556,6 +2561,7 @@ async function _loadAllFromSupabase(){
 
 function _setupRealtime(){
   try{
+    if(_realtimeChannel){try{sb.removeChannel(_realtimeChannel);}catch(e){}}
     const ch=sb.channel('cj-realtime');
     for(const[mod,tbl]of Object.entries(TABLES)){
       ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},async()=>{
@@ -2576,6 +2582,7 @@ function _setupRealtime(){
       await loadAuxiliares();
     });
     ch.subscribe();
+    _realtimeChannel=ch;
   }catch(e){console.error('[Credijuris] realtime setup error',e);}
 }
 
@@ -2652,6 +2659,8 @@ async function _initApp(){
     if(event==='SIGNED_OUT'||event==='USER_DELETED'){
       _currentUserId=null;
       Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+      ['cj-user-filters','cj-sidebar-lasttab','cj-sidebar-active','cj-parametros'].forEach(k=>localStorage.removeItem(k));
+      if(_realtimeChannel){try{sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
       document.getElementById('logout-btn').style.display='none';
       ls.style.display='flex';
     } else if(event==='TOKEN_REFRESHED'&&session){
@@ -2889,7 +2898,7 @@ async function cfgSaveAdvboxToken(){
   const status=document.getElementById('cfg-advbox-status');
   const val=(inp?.value||'').trim();
   if(!val){status.textContent='Token vazio';status.className='cfg-status err';return;}
-  const saveBtn=document.querySelector('.cfg-save-btn');if(saveBtn)saveBtn.disabled=true;
+  const saveBtn=document.getElementById('cfg-advbox-save-btn');if(saveBtn)saveBtn.disabled=true;
   status.textContent='Salvando…';status.className='cfg-status';
   try{
     const{error}=await sb.from('configuracoes').upsert({chave:'advbox_token',valor:val},{onConflict:'chave'});
@@ -3459,7 +3468,7 @@ const SORT_COMPUTED={
   _dur_rpv:   r=>(r.dataAquisicao&&r.dataLiquidacao)?new Date(r.dataLiquidacao)-new Date(r.dataAquisicao):0,
   _dur_enc:   r=>(r.dataAquisicao&&r.dataLiquidacao)?new Date(r.dataLiquidacao)-new Date(r.dataAquisicao):0,
   protocolo:  r=>r.protocolo||'9999-12-31',
-  ultimaMovimentacao: r=>{const h=(r.historicoProcessual||[]).slice().sort((a,b)=>b.data.localeCompare(a.data));if(!h.length)return'';for(const e of h){if(!isPartyAction(e.descricao))return e.data;}return h[0].data||'';},
+  ultimaMovimentacao: r=>{const h=(r.historicoProcessual||[]).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));if(!h.length)return'';for(const e of h){if(!isPartyAction(e.descricao))return e.data;}return h[0].data||'';},
 };
 
 function toggleSort(mod,field,btn){
@@ -3765,9 +3774,10 @@ function _fLoad(){
 }
 
 function render(mod){
+  if(mod==='dashboard'){updateDash();return;}
   ({cessoes:renderCessoes,rpv:renderRPV,
     requerimentos:renderReq,encerrados:renderEnc,
-    contatos:renderContatos})[mod]();
+    contatos:renderContatos})[mod]?.();
   syncSortUI(mod);
   syncFilterBtnsUI(mod);
 }
@@ -3967,6 +3977,8 @@ function saveDiligencia(cessaoId){
   const cessoes=load('cessoes');
   const cess=cessoes.find(r=>r.id===cessaoId);
   if(!cess)return;
+  const _objetoVal=(document.getElementById('f-dil-objeto')?.value||'').trim();
+  if(!_objetoVal){alert('Preencha o campo Objeto.');return;}
   const dil={
     id:curDilId||uid(),
     objeto:document.getElementById('f-dil-objeto')?.value.trim()||'',
@@ -4684,6 +4696,7 @@ function _prmLoad(){
   try{return JSON.parse(localStorage.getItem(_PRM_KEY)||'{}');}catch(e){return{};}
 }
 async function _prmSave(){
+  if(!sb)return;
   const obj={
     selic:document.getElementById('prm-selic').value,
     ipca:document.getElementById('prm-ipca').value,
@@ -4822,6 +4835,7 @@ function goToProcess(mod,id){
   const data=load(mod);
   const rec=data.find(r=>r.id===id);
   const num=rec?(rec.numeroProcesso||''):'';
+  if(!document.querySelector('.nav')?.style.display||document.querySelector('.nav').style.display==='none')_sbShowExec();
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   const _tabEl=document.querySelector(`.tab[data-tab="${mod}"]`);
   if(_tabEl)_tabEl.classList.add('on');
@@ -4863,7 +4877,7 @@ function moveItem(mod,id,toMod){
   save(mod,srcData.filter(r=>r.id!==id));
   highlightIds.add(copy.id);
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  document.querySelector(`.tab[data-tab="${toMod}"]`).classList.add('on');
+  document.querySelector(`.tab[data-tab="${toMod}"]`)?.classList.add('on');
   document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
   curTab=toMod;
   document.getElementById('pane-'+toMod).classList.add('on');
@@ -5029,7 +5043,7 @@ function isPartyAction(descricao){
 }
 
 function calcUltimaMovimentacao(rec){
-  const hist=(rec.historicoProcessual||[]).slice().sort((a,b)=>b.data.localeCompare(a.data));
+  const hist=(rec.historicoProcessual||[]).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   if(!hist.length)return'—';
   if(hist.length===1)return fmtDate(hist[0].data);
   for(const h of hist){
@@ -5107,9 +5121,6 @@ async function loadDiligencias(){
         return;
       }
 
-      window._lastDil=all[0];
-      window._allDil=all;
-
       // /history usa campos diferentes: start (data), comments (notas), author/responsible (usuários)
       const sorted=all.slice().sort((a,b)=>new Date(b.start||b.created_at||0)-new Date(a.start||a.created_at||0));
 
@@ -5180,7 +5191,7 @@ function _movBadge(desc){
 
 function renderHistBody(rec){
   const hist=rec.historicoProcessual||[];
-  const sorted=hist.slice().sort((a,b)=>b.data.localeCompare(a.data));
+  const sorted=hist.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   const tlHtml=hist.length===0
     ?'<p style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhuma entrada no histórico.</p>'
     :`<div class="tl">${sorted.map((h,si)=>{
@@ -5199,8 +5210,11 @@ function renderHistBody(rec){
 }
 
 function addHistEntry(){
-  const d=document.getElementById('h-date').value;
-  const t=document.getElementById('h-desc').value.trim();
+  const dEl=document.getElementById('h-date');
+  const tEl=document.getElementById('h-desc');
+  if(!dEl||!tEl)return;
+  const d=dEl.value;
+  const t=tEl.value.trim();
   if(!d||!t){alert('Preencha a data e a descrição.');return;}
   const data=load(hMod);
   const rec=data.find(r=>r.id===hId);
@@ -5475,7 +5489,7 @@ function openAuxModal(c){
   ['aux-wa','aux-tel'].forEach(id=>{
     const el=document.getElementById('f-'+id);
     if(el&&el.value)maskPhone(el);
-    if(el)el.addEventListener('input',()=>maskPhone(el));
+    if(el){el.oninput=()=>maskPhone(el);}
   });
 }
 
