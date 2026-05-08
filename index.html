@@ -2613,6 +2613,7 @@ async function _onAuthenticated(session){
   await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken()]);
   ls.style.display='none';
   document.getElementById('logout-btn').style.display='';
+  _fLoad();
   _setupRealtime();
   updateDash();
   loadAuxiliares();
@@ -3445,6 +3446,7 @@ function toggleSort(mod,field,btn){
     if(f===s.field){b.textContent=s.dir==='asc'?'↑':'↓';b.classList.add('active');}
     else{b.textContent='↕';b.classList.remove('active');}
   });
+  _fSave();
   PG[mod]=1;render(mod);
 }
 
@@ -3525,6 +3527,7 @@ function applyColFilter(){
   COL_FILTERS[_cfMod][_cfField]=allSel?null:new Set(_cfTemp);
   _cfBtn&&(_cfBtn.classList.toggle('active',!allSel));
   closeColFilterPanel();
+  _fSave();
   PG[_cfMod]=1;render(_cfMod);
 }
 
@@ -3616,6 +3619,7 @@ function clearF(mod){
     if(def){SORT_STATE[mod].field=def.field;SORT_STATE[mod].dir=def.dir;}
     else{SORT_STATE[mod].field=null;SORT_STATE[mod].dir=null;}
   }
+  _fSave();
   PG[mod]=1;render(mod);
 }
 
@@ -3670,11 +3674,73 @@ function syncSortUI(mod){
   });
 }
 
+function syncFilterBtnsUI(mod){
+  const active=COL_FILTERS[mod]||{};
+  document.querySelectorAll(`#pane-${mod} .col-fbtn`).forEach(b=>{
+    const f=b.getAttribute('data-field');
+    b.classList.toggle('active',!!(f&&active[f]));
+  });
+}
+
+/* ======================================================
+   PERSISTÊNCIA DE FILTROS POR USUÁRIO/BROWSER
+   Filtros padrão (JS) → todos os usuários
+   Filtros aplicados → apenas este browser (localStorage)
+====================================================== */
+const _F_LS_KEY='cj-user-filters';
+
+function _fSave(){
+  try{
+    const cf={};
+    for(const[mod,fields]of Object.entries(COL_FILTERS)){
+      cf[mod]={};
+      for(const[field,set]of Object.entries(fields)){
+        if(set instanceof Set)cf[mod][field]=[...set];
+      }
+    }
+    const ss={};
+    for(const[mod,state]of Object.entries(SORT_STATE)){
+      ss[mod]={field:state.field||null,dir:state.dir||null};
+    }
+    localStorage.setItem(_F_LS_KEY,JSON.stringify({
+      colFilters:cf,sortState:ss,
+      consSortCol:_consSortCol,consSortDir:_consSortDir
+    }));
+  }catch(e){console.error('[Credijuris] filter save error',e);}
+}
+
+function _fLoad(){
+  try{
+    const raw=localStorage.getItem(_F_LS_KEY);
+    if(!raw)return;
+    const data=JSON.parse(raw);
+    if(data.colFilters){
+      for(const[mod,fields]of Object.entries(data.colFilters)){
+        if(!COL_FILTERS[mod])continue;
+        for(const[field,arr]of Object.entries(fields)){
+          if(Array.isArray(arr)&&arr.length)COL_FILTERS[mod][field]=new Set(arr);
+        }
+      }
+    }
+    if(data.sortState){
+      for(const[mod,state]of Object.entries(data.sortState)){
+        if(SORT_STATE[mod]&&state&&state.field){
+          SORT_STATE[mod].field=state.field;
+          SORT_STATE[mod].dir=state.dir||'asc';
+        }
+      }
+    }
+    if(data.consSortCol)_consSortCol=data.consSortCol;
+    if(typeof data.consSortDir==='number')_consSortDir=data.consSortDir;
+  }catch(e){console.error('[Credijuris] filter load error',e);}
+}
+
 function render(mod){
   ({cessoes:renderCessoes,rpv:renderRPV,
     requerimentos:renderReq,encerrados:renderEnc,
     contatos:renderContatos})[mod]();
   syncSortUI(mod);
+  syncFilterBtnsUI(mod);
 }
 
 /* ======================================================
@@ -4453,6 +4519,7 @@ const _CONS_COLS=[
 function _consSort(key){
   if(_consSortCol===key)_consSortDir*=-1;
   else{_consSortCol=key;_consSortDir=key==='displayName'?1:-1;}
+  _fSave();
   _crtRenderConsolidado();
 }
 
