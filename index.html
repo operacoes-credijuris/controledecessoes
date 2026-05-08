@@ -1284,6 +1284,9 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-aba-enc{background:rgba(107,114,128,.15);color:#9ca3af;border:1px solid rgba(107,114,128,.25)}
 .crt-td-num{text-align:left;font-variant-numeric:tabular-nums;color:#f2f6fb}
 .crt-td-wrap{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crt-sel{background:#111317;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#dce3ee;font-size:10px;font-family:inherit;padding:2px 4px;outline:none;cursor:pointer;width:100%;max-width:130px}
+.crt-sel:hover{border-color:rgba(255,255,255,.18)}
+.crt-sel:focus{border-color:#0077ff}
 
 /* CONFIGURAÇÕES */
 #pane-config{
@@ -2820,7 +2823,7 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:110px">${_d(r.dataAquisicao)}</td>
       <td style="min-width:120px" class="crt-td-num">${crtCell(r._aba,r.id,'valorFace',r.valorFace,'text')}</td>
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataRefFace',r.dataRefFace,'date')}</td>
-      <td style="min-width:110px">${_e(r.indiceAtualizacao)}</td>
+      <td style="min-width:130px">${crtSelectCell(r._aba,r.id,'indiceAtualizacao',r.indiceAtualizacao,['IPCA + 2%','SELIC'])}</td>
       <td style="min-width:130px" class="crt-td-num">${_e(r.valorAtualizadoManual)}</td>
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstRecebimento',r.dataEstRecebimento,'date')}</td>
       <td style="min-width:110px" class="crt-td-num">${crtCell(r._aba,r.id,'jaRecebido',r.jaRecebido,'text')}</td>
@@ -4217,6 +4220,10 @@ function _crtSave(aba,id,field,val){
 }
 function _crtRefresh(){
   if(_crtAcSelected)_crtRenderOperacoes(_crtAcSelected);
+}
+function crtSelectCell(aba,id,field,val,opts){
+  const options=opts.map(o=>`<option value="${esc(o)}"${val===o?' selected':''}>${esc(o)}</option>`).join('');
+  return`<select class="crt-sel" onchange="_crtSave('${aba}','${id}','${field}',this.value)"><option value=""></option>${options}</select>`;
 }
 
 function cpyNum(e){
