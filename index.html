@@ -4676,7 +4676,7 @@ const _PRM_KEY='cj-parametros';
 function _prmLoad(){
   try{return JSON.parse(localStorage.getItem(_PRM_KEY)||'{}');}catch(e){return{};}
 }
-function _prmSave(){
+async function _prmSave(){
   const obj={
     selic:document.getElementById('prm-selic').value,
     ipca:document.getElementById('prm-ipca').value,
@@ -4684,6 +4684,9 @@ function _prmSave(){
     cdi:document.getElementById('prm-cdi').value
   };
   localStorage.setItem(_PRM_KEY,JSON.stringify(obj));
+  try{
+    await sb.from('configuracoes').upsert({chave:'parametros_atualizacao',valor:JSON.stringify(obj)},{onConflict:'chave'});
+  }catch(e){console.warn('[Credijuris] _prmSave supabase:',e);}
 }
 function _prmUpdate(){
   const ipca=parseFloat(document.getElementById('prm-ipca').value)||0;
@@ -4691,7 +4694,7 @@ function _prmUpdate(){
   const el=document.getElementById('prm-indice-padrao');
   if(el)el.textContent=ind+'% a.a.';
 }
-function _prmInit(){
+async function _prmInit(){
   /* data de referência = hoje */
   const today=new Date();
   const dd=String(today.getDate()).padStart(2,'0');
@@ -4699,8 +4702,16 @@ function _prmInit(){
   const yyyy=today.getFullYear();
   const el=document.getElementById('prm-data-ref');
   if(el)el.textContent=`${dd}/${mm}/${yyyy}`;
-  /* carregar valores salvos */
-  const saved=_prmLoad();
+  /* carregar do Supabase (fonte de verdade); fallback para localStorage */
+  let saved=_prmLoad();
+  try{
+    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave','parametros_atualizacao').single();
+    if(!error&&data?.valor){
+      const remote=JSON.parse(data.valor);
+      saved=remote;
+      localStorage.setItem(_PRM_KEY,JSON.stringify(remote));
+    }
+  }catch(e){console.warn('[Credijuris] _prmInit supabase:',e);}
   ['selic','ipca','tr','cdi'].forEach(k=>{
     const inp=document.getElementById('prm-'+k);
     if(inp&&saved[k]!=null)inp.value=saved[k];
