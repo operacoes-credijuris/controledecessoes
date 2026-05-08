@@ -2792,6 +2792,7 @@ function _crtRenderOperacoes(investidor){
     if(!r.vinculoPai&&norm(r.cessionario)===inv)
       rows.push({...r,_aba:'encerrados'});
   });
+  rows.sort((a,b)=>(a.dataAquisicao||'').localeCompare(b.dataAquisicao||''));
 
   if(!rows.length){
     tbody.innerHTML='<tr><td colspan="28" class="crt-tbl-empty">Nenhuma operação encontrada para este investidor</td></tr>';
