@@ -2199,7 +2199,8 @@ input[type="date"][style*="background:#1a1f2e"]{
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-shrink:0">
         <div class="crt-tbl-title" style="margin-bottom:0">Dados por operação</div>
       </div>
-      <div class="crt-tbl-scroll">
+      <div id="crt-tbl-empty-msg" style="padding:40px 0;text-align:center;color:#4b5563;font-size:13px">Selecione um investidor para visualizar as operações</div>
+      <div class="crt-tbl-scroll" id="crt-tbl-scroll" style="display:none">
         <table class="crt-tbl" id="crt-tbl-operacoes">
           <thead>
             <tr class="crt-th-group">
@@ -2247,11 +2248,7 @@ input[type="date"][style*="background:#1a1f2e"]{
               <th class="crt-th">Retorno</th>
             </tr>
           </thead>
-          <tbody id="crt-tbl-body">
-            <tr>
-              <td colspan="26" class="crt-tbl-empty">Selecione um investidor para visualizar as operações</td>
-            </tr>
-          </tbody>
+          <tbody id="crt-tbl-body"></tbody>
         </table>
       </div>
     </div>
@@ -2968,11 +2965,14 @@ function _crtAcPick(nome){
 
 function _crtRenderOperacoes(investidor){
   const tbody=document.getElementById('crt-tbl-body');
+  const scroll=document.getElementById('crt-tbl-scroll');
+  const emptyMsg=document.getElementById('crt-tbl-empty-msg');
   if(!tbody)return;
-  if(!investidor){
-    tbody.innerHTML='<tr><td colspan="28" class="crt-tbl-empty">Selecione um investidor para visualizar as operações</td></tr>';
-    return;
-  }
+  const _showTable=v=>{
+    if(scroll)scroll.style.display=v?'':'none';
+    if(emptyMsg)emptyMsg.style.display=v?'none':'';
+  };
+  if(!investidor){_showTable(false);return;}
   const norm=s=>(s||'').trim().toLowerCase();
   const inv=norm(investidor);
 
@@ -2984,10 +2984,12 @@ function _crtRenderOperacoes(investidor){
   rows.sort((a,b)=>(a.dataAquisicao||'').localeCompare(b.dataAquisicao||''));
 
   if(!rows.length){
+    _showTable(true);
     tbody.innerHTML='<tr><td colspan="28" class="crt-tbl-empty">Nenhuma operação encontrada para este investidor</td></tr>';
     _crtAtualizaCards([]);
     return;
   }
+  _showTable(true);
 
   const _e=v=>(!v&&v!==0)?'—':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const _d=v=>v?v.split('-').reverse().join('/'):'—'; // yyyy-mm-dd → dd/mm/yyyy
