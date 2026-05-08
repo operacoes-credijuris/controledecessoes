@@ -4485,8 +4485,8 @@ function _parseISODate(s){return s?new Date(s+'T12:00:00'):null;}
 function _crtAutoStatus(r){
   // Verde: liquidado (tem data de liquidação efetiva)
   if(r.dataLiquidacao){return{label:'Verde',color:'#4ade80'};}
-  // Usa dataEstRecebimento (Carteiras) ou expectativaLiquidacao (formulário)
-  const estDate=_parseISODate(r.dataEstRecebimento||r.expectativaLiquidacao);
+  // Usa expectativaLiquidacao das abas de execução processual
+  const estDate=_parseISODate(r.expectativaLiquidacao);
   if(!estDate){return{label:'—',color:'#4b5563'};}
   const today=new Date();today.setHours(0,0,0,0);
   const diffDays=(estDate-today)/(1000*60*60*24);
