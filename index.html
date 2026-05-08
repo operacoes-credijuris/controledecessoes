@@ -2177,10 +2177,6 @@ input[type="date"][style*="background:#1a1f2e"]{
     <div class="crt-tbl-wrap">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-shrink:0">
         <div class="crt-tbl-title" style="margin-bottom:0">Dados por operação</div>
-        <label class="crt-chk-wrap">
-          <input type="checkbox" id="crt-show-enc" onchange="_crtRefresh()">
-          <span class="crt-chk-lbl">Exibir encerrados</span>
-        </label>
       </div>
       <div class="crt-tbl-scroll">
         <table class="crt-tbl" id="crt-tbl-operacoes">
@@ -2941,15 +2937,11 @@ function _crtRenderOperacoes(investidor){
   const norm=s=>(s||'').trim().toLowerCase();
   const inv=norm(investidor);
 
-  // Coleta registros das 3 abas marcando origem
-  const showEnc=(document.getElementById('crt-show-enc')||{}).checked;
+  // Coleta registros das 3 abas marcando origem (processos pai apenas)
   const rows=[];
   (CACHE.cessoes||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'cessoes'});});
   (CACHE.rpv||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'rpv'});});
-  if(showEnc)(CACHE.encerrados||[]).forEach(r=>{
-    if(!r.vinculoPai&&norm(r.cessionario)===inv)
-      rows.push({...r,_aba:'encerrados'});
-  });
+  (CACHE.encerrados||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'encerrados'});});
   rows.sort((a,b)=>(a.dataAquisicao||'').localeCompare(b.dataAquisicao||''));
 
   if(!rows.length){
