@@ -1218,7 +1218,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   box-shadow:0 8px 24px rgba(0,0,0,.18);transition:border-color .15s,background .15s}
 .crt-card:hover{border-color:rgba(255,255,255,.13)}
 .crt-card-lbl{font-size:10px;font-weight:500;color:#6b7280;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-body);letter-spacing:.5px;text-transform:uppercase}
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-body);letter-spacing:.1px}
 .crt-card-val{font-size:18px;font-weight:700;color:#f2f6fb;letter-spacing:-.02em;font-family:var(--font-head);line-height:1.1}
 
 /* TABELA DADOS POR OPERAÇÃO */
@@ -1233,22 +1233,24 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   box-shadow:0 22px 52px rgba(0,0,0,.22)}
 .crt-tbl{border-collapse:collapse;width:100%;min-width:1800px;font-size:10px}
 
-/* group header row — linha discreta, diferenciada só pela borda superior colorida */
+/* group header row */
 .crt-th-group th{
-  padding:3px 8px 2px;text-align:center;font-size:8px;font-weight:500;
-  color:rgba(127,138,153,.45);letter-spacing:.35px;text-transform:uppercase;
+  padding:3px 8px 2px;text-align:center;font-size:8px;font-weight:600;
+  letter-spacing:.35px;text-transform:uppercase;
   background:#15181e;
   border-bottom:1px solid rgba(255,255,255,.04);
   border-top:2px solid transparent;
   white-space:nowrap;font-family:var(--font-body)}
-.crt-thg-id   {border-top-color:#4a7fa8}
-.crt-thg-tir  {border-top-color:#a07d2a}
-.crt-thg-cred {border-top-color:#2e7a50}
-.crt-thg-atual{border-top-color:#6b5fa0}
-.crt-thg-receb{border-top-color:#8f4a4a}
-.crt-thg-comp {border-top-color:#7a5220}
-.crt-thg-vivos{border-top-color:#2e6e8a}
-.crt-thg-calc {border-top-color:#6a4a8a}
+/* borda de divisão de grupo — primeira th de cada grupo recebe borda esquerda */
+.crt-th-group th[class*="crt-thg-"]:not(.crt-thg-id){border-left:1px solid rgba(255,255,255,.07)}
+.crt-thg-id   {color:#7bafd4;border-top-color:#4a7fa8}
+.crt-thg-tir  {color:#c9a84c;border-top-color:#a07d2a}
+.crt-thg-cred {color:#52a87a;border-top-color:#2e7a50}
+.crt-thg-atual{color:#9b8fca;border-top-color:#6b5fa0}
+.crt-thg-receb{color:#c47a7a;border-top-color:#8f4a4a}
+.crt-thg-comp {color:#b8834a;border-top-color:#7a5220}
+.crt-thg-vivos{color:#5ba8c8;border-top-color:#2e6e8a}
+.crt-thg-calc {color:#a87ac4;border-top-color:#6a4a8a}
 .crt-thg-sub{font-weight:400;opacity:.7;letter-spacing:0;text-transform:none;font-size:7.5px}
 
 /* sub-header row — idêntico ao thead th do site */
@@ -1257,11 +1259,18 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   white-space:nowrap;background:#15181e;
   border-bottom:1px solid rgba(255,255,255,.07);
   text-transform:uppercase;letter-spacing:.5px;font-family:var(--font-body)}
+/* borda de divisão nos sub-headers — alinha com os grupos */
+.crt-th-sub th.crt-sub-grp-start{border-left:1px solid rgba(255,255,255,.07)}
 
 /* body */
 .crt-tbl tbody tr{border-bottom:1px solid #1e2433;transition:background .12s}
 .crt-tbl tbody tr:hover{background:#1d222a}
 .crt-tbl td{padding:5px 8px;font-size:10px;color:#dce3ee;vertical-align:middle;white-space:nowrap}
+/* bordas de grupo nas células do body (mesmas posições dos grupos no header) */
+.crt-tbl td:nth-child(6),.crt-tbl td:nth-child(8),
+.crt-tbl td:nth-child(11),.crt-tbl td:nth-child(12),
+.crt-tbl td:nth-child(15),.crt-tbl td:nth-child(17),
+.crt-tbl td:nth-child(21){border-left:1px solid rgba(255,255,255,.06)}
 .crt-tbl-empty{text-align:center;padding:40px 20px !important;color:#4b5563;font-size:13px;font-style:italic;white-space:normal !important}
 .crt-tbl tbody tr:has(.crt-tbl-empty){border-bottom:none}
 .crt-proc{font-size:10px;font-weight:600;color:#f2f6fb;font-family:var(--font-head)}
@@ -2048,7 +2057,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
         <div class="crt-card-val" id="crt-card-capital">—</div>
       </div>
       <div class="crt-card">
-        <div class="crt-card-lbl">TIR média carteira</div>
+        <div class="crt-card-lbl">TIR média</div>
         <div class="crt-card-val" id="crt-card-tir">—</div>
       </div>
       <div class="crt-card">
@@ -2093,28 +2102,28 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
               <th class="crt-th">Tipo de crédito</th>
               <th class="crt-th">Tribunal</th>
               <!-- TIR obrigatório -->
-              <th class="crt-th">Capital investido</th>
+              <th class="crt-th crt-sub-grp-start">Capital investido</th>
               <th class="crt-th">Data da cessão</th>
               <!-- Crédito -->
-              <th class="crt-th">Valor de face</th>
+              <th class="crt-th crt-sub-grp-start">Valor de face</th>
               <th class="crt-th">Data ref. do face</th>
               <th class="crt-th">Índice de atualização</th>
               <!-- Valor atual. -->
-              <th class="crt-th">Valor atualizado manual</th>
+              <th class="crt-th crt-sub-grp-start">Valor atualizado manual</th>
               <!-- Recebimento principal -->
-              <th class="crt-th">Data est. recebimento</th>
+              <th class="crt-th crt-sub-grp-start">Data est. recebimento</th>
               <th class="crt-th">Já recebido</th>
               <th class="crt-th">Data receb. efetivo</th>
               <!-- Complementar -->
-              <th class="crt-th">Data est. complementar</th>
+              <th class="crt-th crt-sub-grp-start">Data est. complementar</th>
               <th class="crt-th">Valor est. complementar</th>
               <!-- Dados vivos -->
-              <th class="crt-th">Status</th>
+              <th class="crt-th crt-sub-grp-start">Status</th>
               <th class="crt-th">Estágio processual</th>
               <th class="crt-th">Providências / prox. passos</th>
               <th class="crt-th">Últ. atualização</th>
               <!-- Calculado automaticamente -->
-              <th class="crt-th">Valor projetado</th>
+              <th class="crt-th crt-sub-grp-start">Valor projetado</th>
               <th class="crt-th">Status TIR</th>
               <th class="crt-th">TIR a.a.</th>
               <th class="crt-th">TIR mensal</th>
@@ -2797,7 +2806,7 @@ function _crtRenderOperacoes(investidor){
 
   tbody.innerHTML=rows.map(r=>`
     <tr>
-      <td style="min-width:180px"><span class="crt-proc">${_e(r.numeroProcesso)}</span> ${abaBadge[r._aba]||''}</td>
+      <td style="min-width:130px"><span class="crt-proc">${_e(r.numeroProcesso)}</span></td>
       <td style="min-width:140px" title="${_e(r.cedente)}">${_e(r.cedente)}</td>
       <td style="min-width:140px" title="${_e(r.advogado)}">${_e(r.advogado)}</td>
       <td style="min-width:120px">${_e(r.objeto)}</td>
