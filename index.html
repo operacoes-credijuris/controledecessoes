@@ -2994,9 +2994,6 @@ function _crtRenderOperacoes(investidor){
   };
 
   tbody.innerHTML=rows.map(r=>{
-    const _vProj=_parseNumCrt(r.valorAtualizadoManual)||_parseNumCrt(r.valorFace);
-    const _cap=_parseNumCrt(r.capitalInvestido);
-    const _ganho=_vProj>0?_vProj-_cap:0;
     return`
     <tr>
       <td style="min-width:130px"><span class="crt-proc">${_e(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</td>
@@ -3019,13 +3016,13 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:140px;max-width:140px;overflow:hidden">${crtTextCell(r._aba,r.id,'estagioProcessual',r.estagioProcessual,r.numeroProcesso)}</td>
       <td style="min-width:200px;max-width:200px;overflow:hidden">${crtTextCell(r._aba,r.id,'providencias',r.providencias,r.numeroProcesso)}</td>
       <td style="min-width:100px">${_d(SORT_COMPUTED.ultimaMovimentacao(r))}</td>
-      <td style="min-width:120px" class="crt-td-num">${_vProj>0?fmtBRL(_vProj):'—'}</td>
+      <td style="min-width:120px" class="crt-td-num">—</td>
       <td style="min-width:100px">—</td>
       <td style="min-width:80px" class="crt-td-num">—</td>
       <td style="min-width:80px" class="crt-td-num">—</td>
       <td style="min-width:130px">—</td>
       <td style="min-width:90px" class="crt-td-num">—</td>
-      <td style="min-width:120px" class="crt-td-num">${_ganho>0?fmtBRL(_ganho):'—'}</td>
+      <td style="min-width:120px" class="crt-td-num">—</td>
       <td style="min-width:90px" class="crt-td-num">—</td>
     </tr>`;
   }).join('');
