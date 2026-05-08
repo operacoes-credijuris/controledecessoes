@@ -2738,6 +2738,7 @@ function fmtBRL(v){
 ====================================================== */
 let curTab='dashboard';
 let lastExecTab=localStorage.getItem('cj-sidebar-lasttab')||'dashboard';
+let _execWasActive=false; // true quando exec já foi visitado nesta sessão
 
 // SIDEBAR
 (function _initSidebar(){
@@ -2747,6 +2748,7 @@ let lastExecTab=localStorage.getItem('cj-sidebar-lasttab')||'dashboard';
   if(active==='carteiras')_sbShowCarteiras();
   else if(active==='credito')_sbShowCredito();
   else if(active==='config')_sbShowConfig();
+  else _execWasActive=true; // exec era a seção ativa — respeitar lastExecTab ao retornar
 })();
 
 function _sbSetCollapsed(v){
@@ -2811,6 +2813,7 @@ function _sbHideAll(){
 
 function _sbShowCarteiras(){
   _sbHideAll();
+  _execWasActive=false;
   document.getElementById('pane-carteiras').classList.add('on');
   document.querySelector('.nav').style.display='none';
   document.querySelector('.main').style.display='none';
@@ -2823,6 +2826,7 @@ function _sbShowCarteiras(){
 
 function _sbShowCredito(){
   _sbHideAll();
+  _execWasActive=false;
   document.getElementById('pane-credito').style.display='flex';
   document.querySelector('.nav').style.display='none';
   document.querySelector('.main').style.display='none';
@@ -2832,6 +2836,7 @@ function _sbShowCredito(){
 
 function _sbShowConfig(){
   _sbHideAll();
+  _execWasActive=false;
   document.getElementById('pane-config').style.display='flex';
   document.querySelector('.nav').style.display='none';
   document.querySelector('.main').style.display='none';
@@ -3040,8 +3045,9 @@ function sbNav(item){
   }
   if(item==='exec'){
     _sbShowExec();
-    // Restaurar última aba ativa
-    const target=lastExecTab||'dashboard';
+    // Se exec não estava ativo nesta sessão (ex: vindo de carteiras), sempre abre no dashboard
+    const target=_execWasActive?(lastExecTab||'dashboard'):'dashboard';
+    _execWasActive=true;
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
     document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
     const tEl=document.querySelector(`.tab[data-tab="${target}"]`);
@@ -3064,6 +3070,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
     curTab=t.dataset.tab;
     lastExecTab=curTab;
+    _execWasActive=true;
     localStorage.setItem('cj-sidebar-lasttab',curTab);
     document.getElementById('pane-'+curTab).classList.add('on');
     _gsClose();
