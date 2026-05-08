@@ -335,6 +335,7 @@ tr.child-row td:first-child{padding-left:36px}
 .obj-bdg-blue{background:rgba(37,99,235,.15);color:#93c5fd;border:1px solid rgba(37,99,235,.4)}
 .obj-bdg-purple{background:rgba(0,119,255,.15);color:#c4b5fd;border:1px solid rgba(0,119,255,.4)}
 .obj-bdg-marsala{background:rgba(120,72,20,.2);color:#c8924a;border:1px solid rgba(120,72,20,.5)}
+.obj-bdg-teal{background:rgba(20,184,166,.12);color:#5eead4;border:1px solid rgba(20,184,166,.35)}
 /* SENHA MODAL */
 .senha-display{font-size:26px;font-weight:700;font-family:monospace;letter-spacing:3px;background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:8px;padding:16px 24px;color:var(--gold2);word-break:break-all}
 
@@ -707,6 +708,11 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   background:rgba(217,119,6,.32);
   color:#ffe8ae;
   border-color:#f6b73c;
+}
+.obj-bdg-teal{
+  background:rgba(20,184,166,.25);
+  color:#99f6e4;
+  border-color:#2dd4bf;
 }
 
 .fb{
@@ -4971,7 +4977,7 @@ function objetoHtml(v){
     else if(n.includes('honorario')&&n.includes('sucumb')){label='Hon. sucumbenciais';cls='obj-bdg obj-bdg-marsala';}
     else if(n.includes('contratua')&&!n.includes('honorario')){label='Hon. contratuais';cls='obj-bdg obj-bdg-purple';}
     else if(n.includes('sucumb')){label='Hon. sucumbenciais';cls='obj-bdg obj-bdg-marsala';}
-    else if(n.includes('agravo')&&n.includes('instrumento')){label='Ag. de Instrumento';}
+    else if((n.includes('agravo')||n.includes('ag.'))&&n.includes('instrumento')){label='Ag. de Instrumento';cls='obj-bdg obj-bdg-teal';}
     return`<div><span class="${cls}">${esc(label)}</span></div>`;
   }).join('')+'</div>';
 }
