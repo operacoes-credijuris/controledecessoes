@@ -3408,11 +3408,26 @@ function openActMenu(e,mod,id,isChild){
 ====================================================== */
 function gv(id){const e=document.getElementById(id);return e?e.value.trim().toLowerCase():'';}
 
-function filterRecs(recs,mod){
+/* Encontra filhos que batem com a query, expande seus pais e retorna o Set de IDs de pais forçados */
+function _expandChildMatches(mod,allData,q){
+  if(!q)return new Set();
+  const ms=v=>(v||'').toLowerCase().includes(q);
+  const forced=new Set();
+  allData.filter(r=>r.vinculoPai).forEach(child=>{
+    if(ms(child.numeroProcesso)||ms(child.advogado)||ms(child.cedente)||ms(child.cessionario)||ms(child.devedor)){
+      const pai=allData.find(r=>r.id===child.vinculoPai);
+      if(pai){expandedByMod[mod].add(pai.id);forced.add(pai.id);}
+    }
+  });
+  return forced;
+}
+
+function filterRecs(recs,mod,forcedIds=new Set()){
   const ms=(val,f)=>!f||(val||'').toLowerCase().includes(f);
   const procId={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
   const vProc=procId?gv(procId):'';
   return recs.filter(r=>{
+    if(forcedIds.has(r.id))return true;
     if(vProc&&!(ms(r.numeroProcesso,vProc)||ms(r.advogado,vProc)||ms(r.cedente,vProc)||ms(r.cessionario,vProc)||ms(r.devedor,vProc)))return false;
     const active=COL_FILTERS[mod];
     if(active){
@@ -3537,7 +3552,8 @@ function cessoesRow(r,allData,isChild){
 
 function renderCessoes(){
   const allData=load('cessoes');
-  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'cessoes'),'cessoes');
+  const forced=_expandChildMatches('cessoes',allData,gv('fc-proc'));
+  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'cessoes',forced),'cessoes');
   const rows=paginate(sorted,'cessoes');
   const tb=document.getElementById('tb-cessoes');
   if(!sorted.length){
@@ -3585,7 +3601,8 @@ function rpvRow(r,allData,isChild){
 
 function renderRPV(){
   const allData=load('rpv');
-  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'rpv'),'rpv');
+  const forced=_expandChildMatches('rpv',allData,gv('fr-proc'));
+  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'rpv',forced),'rpv');
   const rows=paginate(sorted,'rpv');
   const tb=document.getElementById('tb-rpv');
   if(!sorted.length){
@@ -3772,7 +3789,8 @@ function reqRow(r,allData,isChild){
 
 function renderReq(){
   const allData=load('requerimentos');
-  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'requerimentos'),'requerimentos');
+  const forced=_expandChildMatches('requerimentos',allData,gv('fre-proc'));
+  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'requerimentos',forced),'requerimentos');
   const rows=paginate(sorted,'requerimentos');
   const tb=document.getElementById('tb-requerimentos');
   if(!sorted.length){
@@ -3816,7 +3834,8 @@ function encRow(r,allData,isChild){
 
 function renderEnc(){
   const allData=load('encerrados');
-  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'encerrados'),'encerrados');
+  const forced=_expandChildMatches('encerrados',allData,gv('fen-proc'));
+  const sorted=sortRecs(filterRecs(allData.filter(r=>!r.vinculoPai),'encerrados',forced),'encerrados');
   const rows=paginate(sorted,'encerrados');
   const tb=document.getElementById('tb-encerrados');
   if(!sorted.length){
