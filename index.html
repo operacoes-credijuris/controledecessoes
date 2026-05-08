@@ -175,8 +175,16 @@ tr:hover .cpy-btn,.alert-item:hover .cpy-btn{opacity:.5}
 tr:hover .pf-btn{opacity:.5}
 .pf-btn:hover{opacity:1!important}
 /* CARTEIRAS STATUS INFO TOOLTIP */
-.crt-status-info{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#2a3348;color:#7ea8cc;font-size:9px;font-weight:700;cursor:default;position:relative;margin-left:4px;vertical-align:middle;font-style:normal;line-height:1;border:1px solid #3a4a64}
-.crt-status-tip{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a2035;border:1px solid #2a3a54;border-radius:7px;padding:8px 11px;white-space:nowrap;font-size:11px;font-weight:400;color:#c8d6e8;line-height:1.9;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none}
+.crt-status-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#1a2540,#111827);color:#4d87c4;font-size:8.5px;font-weight:800;cursor:default;position:relative;margin-left:5px;vertical-align:middle;font-style:normal;line-height:1;border:1px solid rgba(0,119,255,.35);box-shadow:0 0 0 2px rgba(0,119,255,.07);transition:border-color .15s,color .15s,box-shadow .15s}
+.crt-status-info:hover{border-color:rgba(0,119,255,.65);color:#79b8f7;box-shadow:0 0 0 3px rgba(0,119,255,.12)}
+.crt-status-tip{display:none;position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%);background:linear-gradient(160deg,#13192b,#0e1420);border:1px solid rgba(0,119,255,.18);border-radius:10px;padding:11px 15px 12px;white-space:nowrap;font-size:11px;font-weight:400;color:#94a3b8;line-height:1;z-index:999;box-shadow:0 12px 40px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.04);pointer-events:none}
+.crt-status-tip::before{content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:rgba(0,119,255,.22);border-top:none}
+.crt-status-tip::after{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);border:4px solid transparent;border-bottom-color:#13192b;border-top:none}
+.crt-status-tip .st-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.crt-status-tip .st-row:last-child{border-bottom:none}
+.crt-status-tip .st-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.crt-status-tip .st-lbl{font-weight:600;font-size:10.5px;letter-spacing:.3px}
+.crt-status-tip .st-desc{color:#4b5a72;font-size:10px}
 .crt-status-info:hover .crt-status-tip{display:block}
 /* CARTEIRAS INLINE EDIT BUTTON */
 .crt-eb{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0}
@@ -2212,7 +2220,7 @@ input[type="date"][style*="background:#1a1f2e"]{
               <!-- Complementar -->
               <th class="crt-th crt-sub-grp-start">Valor est. complementar</th>
               <!-- Dados vivos -->
-              <th class="crt-th crt-sub-grp-start">Status <span class="crt-status-info" tabindex="0">i<span class="crt-status-tip"><span style="color:#4ade80">●</span> Verde — liquidado<br><span style="color:#60a5fa">●</span> Azul — &gt;1 mês p/ liquidação<br><span style="color:#fbbf24">●</span> Âmbar — &lt;1 mês p/ liquidação<br><span style="color:#f87171">●</span> Vermelho — prazo vencido</span></span></th>
+              <th class="crt-th crt-sub-grp-start">Status <span class="crt-status-info" tabindex="0">i<span class="crt-status-tip"><span class="st-row"><span class="st-dot" style="background:#4ade80;box-shadow:0 0 5px rgba(74,222,128,.5)"></span><span class="st-lbl" style="color:#4ade80">Verde</span><span class="st-desc">— liquidado</span></span><span class="st-row"><span class="st-dot" style="background:#60a5fa;box-shadow:0 0 5px rgba(96,165,250,.5)"></span><span class="st-lbl" style="color:#60a5fa">Azul</span><span class="st-desc">— &gt;1 mês p/ liquidação</span></span><span class="st-row"><span class="st-dot" style="background:#fbbf24;box-shadow:0 0 5px rgba(251,191,36,.5)"></span><span class="st-lbl" style="color:#fbbf24">Âmbar</span><span class="st-desc">— &lt;1 mês p/ liquidação</span></span><span class="st-row"><span class="st-dot" style="background:#f87171;box-shadow:0 0 5px rgba(248,113,113,.5)"></span><span class="st-lbl" style="color:#f87171">Vermelho</span><span class="st-desc">— prazo vencido</span></span></span></span></th>
               <th class="crt-th">Estágio processual</th>
               <th class="crt-th">Providências / prox. passos</th>
               <th class="crt-th">Últ. atualização</th>
