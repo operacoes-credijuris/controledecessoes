@@ -2211,9 +2211,8 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
               <th colspan="5" class="crt-thg crt-thg-id">Identificação <span class="crt-thg-sub">· fixo na abertura</span></th>
               <th colspan="2" class="crt-thg crt-thg-tir">TIR obrigatório</th>
               <th colspan="3" class="crt-thg crt-thg-cred">Crédito <span class="crt-thg-sub">· fixo na abertura</span></th>
-              <th colspan="1" class="crt-thg crt-thg-atual">Valor atual.</th>
               <th colspan="3" class="crt-thg crt-thg-receb">Recebimento principal</th>
-              <th colspan="2" class="crt-thg crt-thg-comp">Complementar</th>
+              <th colspan="1" class="crt-thg crt-thg-comp">Complementar</th>
               <th colspan="4" class="crt-thg crt-thg-vivos">Dados vivos <span class="crt-thg-sub">· atualizar mensalmente</span></th>
               <th colspan="8" class="crt-thg crt-thg-calc">Calculado automaticamente</th>
             </tr>
@@ -2231,15 +2230,12 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
               <th class="crt-th crt-sub-grp-start">Valor de face</th>
               <th class="crt-th">Data ref. do face</th>
               <th class="crt-th">Índice de atualização</th>
-              <!-- Valor atual. -->
-              <th class="crt-th crt-sub-grp-start">Valor atualizado manual</th>
               <!-- Recebimento principal -->
               <th class="crt-th crt-sub-grp-start">Data est. recebimento</th>
               <th class="crt-th">Já recebido</th>
               <th class="crt-th">Data receb. efetivo</th>
               <!-- Complementar -->
-              <th class="crt-th crt-sub-grp-start">Data est. complementar</th>
-              <th class="crt-th">Valor est. complementar</th>
+              <th class="crt-th crt-sub-grp-start">Valor est. complementar</th>
               <!-- Dados vivos -->
               <th class="crt-th crt-sub-grp-start">Status</th>
               <th class="crt-th">Estágio processual</th>
@@ -2258,7 +2254,7 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
           </thead>
           <tbody id="crt-tbl-body">
             <tr>
-              <td colspan="28" class="crt-tbl-empty">Selecione um investidor para visualizar as operações</td>
+              <td colspan="26" class="crt-tbl-empty">Selecione um investidor para visualizar as operações</td>
             </tr>
           </tbody>
         </table>
@@ -3006,11 +3002,9 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:120px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'valorFace',r.valorFace,'text')}</td>
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataRefFace',r.dataRefFace,'date')}</td>
       <td style="min-width:130px">${crtSelectCell(r._aba,r.id,'indiceAtualizacao',r.indiceAtualizacao,['IPCA + 2%','SELIC'])}</td>
-      <td style="min-width:130px" class="crt-td-num">${(()=>{const n=_parseNumCrt(r.valorAtualizadoManual);return n?fmtBRL(n):'—'})()}</td>
       <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstRecebimento',r.dataEstRecebimento,'date')}</td>
       <td style="min-width:110px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'jaRecebido',r.jaRecebido,'text')}</td>
       <td style="min-width:110px">${_d(r.dataLiquidacao)}</td>
-      <td style="min-width:110px">${crtCell(r._aba,r.id,'dataEstComplementar',r.dataEstComplementar,'date')}</td>
       <td style="min-width:120px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
       <td style="min-width:100px">${crtSelectCell(r._aba,r.id,'status',r.status,['','Verde','Azul','Âmbar','Vermelho'],{'Verde':'#4ade80','Azul':'#60a5fa','Âmbar':'#fbbf24','Vermelho':'#f87171'})}</td>
       <td style="min-width:140px;max-width:140px;overflow:hidden">${crtTextCell(r._aba,r.id,'estagioProcessual',r.estagioProcessual,r.numeroProcesso)}</td>
