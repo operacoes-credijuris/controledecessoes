@@ -4764,7 +4764,7 @@ function _crtRenderConsolidado(){
   const fmtNum=v=>v>0?fmtBRL(v):'—';
 
   const tableRows=[];
-  let totCap=0,totReceber=0,totRecebido=0,totOps=0;
+  let totCap=0,totRecebido=0,totOps=0;
 
   for(const[normName,displayName]of investMap){
     const ops=[];
@@ -4774,12 +4774,8 @@ function _crtRenderConsolidado(){
 
     const capital=ops.reduce((s,r)=>s+_parseNumCrt(r.capitalInvestido),0);
     const recebido=ops.reduce((s,r)=>s+_parseNumCrt(r.jaRecebido),0);
-    const aReceberEst=ops.filter(r=>r._aba!=='encerrados').reduce((s,r)=>{
-      const est=_parseNumCrt(r.valorAtualizadoManual)||_parseNumCrt(r.valorFace);
-      return s+Math.max(0,est-_parseNumCrt(r.jaRecebido));
-    },0);
-    totCap+=capital;totReceber+=aReceberEst;totRecebido+=recebido;totOps+=ops.length;
-    tableRows.push({displayName,capital,aReceberEst,recebido,retorno:null,tir:null,count:ops.length});
+    totCap+=capital;totRecebido+=recebido;totOps+=ops.length;
+    tableRows.push({displayName,capital,recebido,retorno:null,tir:null,count:ops.length});
   }
 
   /* ordenação */
@@ -4797,7 +4793,7 @@ function _crtRenderConsolidado(){
     <tr>
       <td style="font-weight:500;color:#e2e8f0">${esc(r.displayName)}</td>
       <td class="crt-td-num">${fmtNum(r.capital)}</td>
-      <td class="crt-td-num">${fmtNum(r.aReceberEst)}</td>
+      <td class="crt-td-num">—</td>
       <td class="crt-td-num">${fmtNum(r.recebido)}</td>
       <td class="crt-td-num">—</td>
       <td class="crt-td-num">—</td>
@@ -4813,7 +4809,7 @@ function _crtRenderConsolidado(){
         <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-top:1px">Total da carteira</div>
       </td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totCap)}</td>
-      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totReceber)}</td>
+      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totRecebido)}</td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
