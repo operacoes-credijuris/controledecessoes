@@ -2806,8 +2806,17 @@ function _crtRenderOperacoes(investidor){
 function _crtAtualizaCards(rows){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('crt-card-operacoes', rows.length||'—');
+
+  // Capital total = soma de capitalInvestido de todas as linhas
+  const totalCapital=rows.reduce((sum,r)=>{
+    const raw=String(r.capitalInvestido??'').replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.');
+    const n=parseFloat(raw);
+    return sum+(isNaN(n)?0:n);
+  },0);
+  set('crt-card-capital', totalCapital>0 ? fmtBRL(totalCapital) : '—');
+
   // Os demais cards aguardam campos de cálculo futuros
-  ['crt-card-capital','crt-card-tir','crt-card-retorno','crt-card-recebido','crt-card-areceber']
+  ['crt-card-tir','crt-card-retorno','crt-card-recebido','crt-card-areceber']
     .forEach(id=>set(id,'—'));
 }
 function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
