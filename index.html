@@ -871,9 +871,11 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   flex-direction:column;
   gap:16px;
   min-height:0;
+  height:100%;
 }
 .dash-col-stack .dash-agenda{
-  flex:none;
+  flex:1;
+  min-height:0;
 }
 .dash-agenda,
 .dash-movements,
@@ -884,11 +886,9 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   min-width:0;
 }
 .dash-urgencies-panel{
-  flex:1;
-  min-height:0;
+  flex:none;
 }
 .dash-urgencies-panel .dash-urgencies{
-  flex:1;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -2038,13 +2038,13 @@ input[type="date"][style*="background:#1a1f2e"]{
 <!-- PAINEL CARTEIRAS -->
 <div id="pane-carteiras">
   <nav class="crt-nav">
-    <div class="crt-tab on" data-crt="parametros" onclick="crtNav('parametros')">Parâmetros</div>
+    <div class="crt-tab" data-crt="parametros" onclick="crtNav('parametros')">Parâmetros</div>
     <span class="crt-sep">|</span>
-    <div class="crt-tab" data-crt="investidores" onclick="crtNav('investidores')">Investidores</div>
+    <div class="crt-tab on" data-crt="investidores" onclick="crtNav('investidores')">Investidores</div>
     <span class="crt-sep">|</span>
     <div class="crt-tab" data-crt="consolidado" onclick="crtNav('consolidado')">Consolidado</div>
   </nav>
-  <div id="crt-pane-parametros" class="crt-pane on">
+  <div id="crt-pane-parametros" class="crt-pane">
     <div class="cfg-section" style="max-width:620px">
       <div class="cfg-section-hdr">
         <div class="cfg-section-kicker">Taxas de Mercado</div>
@@ -2124,7 +2124,7 @@ input[type="date"][style*="background:#1a1f2e"]{
       </div>
     </div>
   </div>
-  <div id="crt-pane-investidores" class="crt-pane">
+  <div id="crt-pane-investidores" class="crt-pane on">
     <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
       <div class="fg">
         <label class="flbl" style="display:flex;align-items:center;gap:7px">
