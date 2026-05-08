@@ -2055,7 +2055,84 @@ body.light .tbl-wrap td .bdg{font-weight:500!important}
     <div class="crt-tab" data-crt="consolidado" onclick="crtNav('consolidado')">Consolidado</div>
   </nav>
   <div id="crt-pane-parametros" class="crt-pane on">
-    <!-- conteúdo Parâmetros -->
+    <div class="cfg-section" style="max-width:620px">
+      <div class="cfg-section-hdr">
+        <div class="cfg-section-kicker">Taxas de Mercado</div>
+        <div class="cfg-section-title">Parâmetros de atualização</div>
+      </div>
+      <!-- SELIC -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">SELIC vigente</div>
+          <div class="cfg-row-sub">% a.a.</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <input id="prm-selic" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
+            style="width:140px;text-align:right"
+            oninput="_prmUpdate()"
+            onblur="_prmSave()">
+        </div>
+      </div>
+      <!-- IPCA -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">IPCA acumulado 12m</div>
+          <div class="cfg-row-sub">% a.a.</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <input id="prm-ipca" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
+            style="width:140px;text-align:right"
+            oninput="_prmUpdate()"
+            onblur="_prmSave()">
+        </div>
+      </div>
+      <!-- TR -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">TR</div>
+          <div class="cfg-row-sub">% a.a.</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <input id="prm-tr" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
+            style="width:140px;text-align:right"
+            oninput="_prmUpdate()"
+            onblur="_prmSave()">
+        </div>
+      </div>
+      <!-- CDI -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">CDI</div>
+          <div class="cfg-row-sub">% a.a.</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <input id="prm-cdi" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
+            style="width:140px;text-align:right"
+            oninput="_prmUpdate()"
+            onblur="_prmSave()">
+        </div>
+      </div>
+      <!-- Data de referência (read-only) -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">Data de referência do relatório</div>
+          <div class="cfg-row-sub">Preenchida automaticamente com a data de hoje</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <span id="prm-data-ref" style="font-size:13px;font-weight:600;color:#dce3ee;background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 16px;min-width:140px;text-align:right;display:inline-block;box-sizing:border-box"></span>
+        </div>
+      </div>
+      <!-- Índice padrão (read-only) -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">Índice padrão de projeção</div>
+          <div class="cfg-row-sub">IPCA + 2% a.a. — calculado automaticamente</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <span id="prm-indice-padrao" style="font-size:13px;font-weight:600;color:#60a5fa;background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 16px;min-width:140px;text-align:right;display:inline-block;box-sizing:border-box"></span>
+        </div>
+      </div>
+    </div>
   </div>
   <div id="crt-pane-investidores" class="crt-pane">
     <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
@@ -2511,6 +2588,7 @@ async function _onAuthenticated(session){
   _setupRealtime();
   updateDash();
   loadAuxiliares();
+  _prmInit();
 }
 
 async function _initApp(){
@@ -2780,6 +2858,7 @@ function crtNav(tab){
   document.querySelectorAll('.crt-tab').forEach(t=>t.classList.toggle('on',t.dataset.crt===tab));
   document.querySelectorAll('.crt-pane').forEach(p=>p.classList.toggle('on',p.id==='crt-pane-'+tab));
   if(tab==='investidores')_crtPopulateInvestidores();
+  if(tab==='parametros')_prmInit();
 }
 
 let _crtInvestidores=[];
@@ -4269,6 +4348,46 @@ function _crtSave(aba,id,field,val){
 function _crtRefresh(){
   if(_crtAcSelected)_crtRenderOperacoes(_crtAcSelected);
 }
+
+/* ======================================================
+   PARÂMETROS
+====================================================== */
+const _PRM_KEY='cj-parametros';
+function _prmLoad(){
+  try{return JSON.parse(localStorage.getItem(_PRM_KEY)||'{}');}catch(e){return{};}
+}
+function _prmSave(){
+  const obj={
+    selic:document.getElementById('prm-selic').value,
+    ipca:document.getElementById('prm-ipca').value,
+    tr:document.getElementById('prm-tr').value,
+    cdi:document.getElementById('prm-cdi').value
+  };
+  localStorage.setItem(_PRM_KEY,JSON.stringify(obj));
+}
+function _prmUpdate(){
+  const ipca=parseFloat(document.getElementById('prm-ipca').value)||0;
+  const ind=(ipca+2).toFixed(2);
+  const el=document.getElementById('prm-indice-padrao');
+  if(el)el.textContent=ind+'% a.a.';
+}
+function _prmInit(){
+  /* data de referência = hoje */
+  const today=new Date();
+  const dd=String(today.getDate()).padStart(2,'0');
+  const mm=String(today.getMonth()+1).padStart(2,'0');
+  const yyyy=today.getFullYear();
+  const el=document.getElementById('prm-data-ref');
+  if(el)el.textContent=`${dd}/${mm}/${yyyy}`;
+  /* carregar valores salvos */
+  const saved=_prmLoad();
+  ['selic','ipca','tr','cdi'].forEach(k=>{
+    const inp=document.getElementById('prm-'+k);
+    if(inp&&saved[k]!=null)inp.value=saved[k];
+  });
+  _prmUpdate();
+}
+
 /* Célula de texto longo com fade e lápis */
 function crtTextCell(aba,id,field,val,proc){
   const preview=val?String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'—';
