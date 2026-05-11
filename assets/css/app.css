@@ -92,6 +92,8 @@ a{color:inherit;text-decoration:none}
 .btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .18s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-family:var(--font-body)}
 .btn-gold{background:#0077ff;color:#fff;font-weight:600}
 .btn-gold:hover{background:#1a8aff;transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,119,255,.4)}
+.btn-gold:disabled,.btn-gold[disabled]{background:#1e2433;color:#4b5563;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-gold:disabled:hover,.btn-gold[disabled]:hover{background:#1e2433;color:#4b5563;transform:none;box-shadow:none}
 .btn-blue{background:#1e2433;color:#94a3b8;border:1px solid #2a3348}
 .btn-blue:hover{background:#252d3d;color:#e2e8f0}
 .btn-red{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3)}
