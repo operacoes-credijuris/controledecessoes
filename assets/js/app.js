@@ -820,7 +820,10 @@ async function gcSubmit(){
       for(const file of GC.uploads[papel]){
         done++;
         _gcProgress(`Enviando arquivos… (${done}/${total}) ${file.name}`);
-        const safeName=file.name.replace(/[^\w.\-()À-ſ]/g,'_');
+        // Supabase Storage não aceita acento/símbolo — normaliza p/ ASCII
+        const safeName=file.name
+          .normalize('NFD').replace(/[̀-ͯ]/g,'')
+          .replace(/[^\w.\-()]/g,'_');
         const path=`${userId}/${GC.job_id}/${papel}/${safeName}`;
         const{error}=await sb.storage.from('contratos-input').upload(path,file,{upsert:true});
         if(error)throw new Error(`Upload de ${file.name} falhou: ${error.message}`);
