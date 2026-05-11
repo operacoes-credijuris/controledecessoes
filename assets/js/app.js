@@ -402,12 +402,14 @@ function _sbHideAll(){
   document.getElementById('pane-credito').style.display='none';
   document.getElementById('pane-config').style.display='none';
   document.getElementById('pane-carteiras').classList.remove('on');
+  const paneContratos=document.getElementById('pane-contratos');
+  if(paneContratos)paneContratos.style.display='none';
   document.querySelector('.app-content')?.classList.remove('mode-nonexec');
   const hdrSearch=document.querySelector('.hdr-search');
   const syncBtn=document.getElementById('sync-btn');
   if(hdrSearch)hdrSearch.style.display='none';
   if(syncBtn)syncBtn.style.display='none';
-  ['sb-item-exec','sb-item-credito','sb-item-config','sb-item-carteiras'].forEach(id=>{
+  ['sb-item-exec','sb-item-credito','sb-item-config','sb-item-carteiras','sb-item-contratos'].forEach(id=>{
     document.getElementById(id)?.classList.remove('active');
   });
 }
@@ -659,6 +661,203 @@ function sbNav(item){
     _sbShowCredito();
   }else if(item==='carteiras'){
     _sbShowCarteiras();
+  }else if(item==='contratos'){
+    _sbShowContratos();
+  }
+}
+
+/* ======================================================
+   GERAR CONTRATOS — pane
+====================================================== */
+const GC={
+  job_id:null,
+  investidores:[],
+  uploads:{apresentacao:[],cedente:[],escritorio:[]},
+};
+
+function _sbShowContratos(){
+  _sbHideAll();
+  _execWasActive=false;
+  const pane=document.getElementById('pane-contratos');
+  if(pane)pane.style.display='flex';
+  document.getElementById('sb-item-contratos')?.classList.add('active');
+  localStorage.setItem('cj-sidebar-active','contratos');
+  gcInit();
+}
+
+async function gcInit(){
+  GC.job_id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
+  GC.uploads={apresentacao:[],cedente:[],escritorio:[]};
+  const res=document.getElementById('gc-result');if(res)res.innerHTML='';
+  await gcLoadInvestidores();
+  gcRenderInvestidores();
+  gcRenderFiles();
+}
+
+async function gcLoadInvestidores(){
+  if(!sb){GC.investidores=[];return;}
+  try{
+    const{data,error}=await sb.from('investidores').select('id,nome,cpf').order('nome');
+    if(error)throw error;
+    GC.investidores=data||[];
+  }catch(e){
+    console.error('[GC] loadInvestidores',e);
+    GC.investidores=[];
+  }
+}
+
+function gcRenderInvestidores(){
+  const sel=document.getElementById('gc-investidor');
+  if(!sel)return;
+  if(GC.investidores.length===0){
+    sel.innerHTML='<option value="">(nenhum investidor cadastrado — rode o seed no Supabase)</option>';
+    return;
+  }
+  sel.innerHTML='<option value="">— selecione —</option>'+
+    GC.investidores.map(i=>`<option value="${esc(i.id)}">${esc(i.nome)}${i.cpf?` (${esc(i.cpf)})`:''}</option>`).join('');
+}
+
+function gcRenderFiles(){
+  for(const papel of ['apresentacao','cedente','escritorio']){
+    const list=document.getElementById('gc-files-'+papel);
+    if(!list)continue;
+    const arr=GC.uploads[papel];
+    if(arr.length===0){
+      list.innerHTML='<div class="gc-files-empty">Nenhum arquivo selecionado</div>';
+    }else{
+      list.innerHTML=arr.map((f,idx)=>`
+        <div class="gc-file-item">
+          <span class="gc-file-name">${esc(f.name)}</span>
+          <span class="gc-file-size">${(f.size/1024).toFixed(1)} KB</span>
+          <button class="gc-file-rm" onclick="gcRemoveFile('${papel}',${idx})" title="Remover">✕</button>
+        </div>
+      `).join('');
+    }
+  }
+  const btn=document.getElementById('gc-submit');
+  if(!btn)return;
+  const inv=document.getElementById('gc-investidor')?.value||'';
+  const inter=(document.getElementById('gc-intermediador')?.value||'').trim();
+  const hasApresentacao=GC.uploads.apresentacao.length>0;
+  btn.disabled=!(inv&&inter&&hasApresentacao);
+}
+
+function gcOnFileSelect(papel,input){
+  if(!input||!input.files)return;
+  for(const f of Array.from(input.files))GC.uploads[papel].push(f);
+  input.value='';
+  gcRenderFiles();
+}
+
+function gcRemoveFile(papel,idx){
+  GC.uploads[papel].splice(idx,1);
+  gcRenderFiles();
+}
+
+function _gcProgress(msg){
+  const p=document.getElementById('gc-progress');
+  const t=document.getElementById('gc-progress-text');
+  if(p)p.style.display='flex';
+  if(t)t.textContent=msg;
+}
+
+function _gcHideProgress(){
+  const p=document.getElementById('gc-progress');
+  if(p)p.style.display='none';
+}
+
+function _gcShowOk(data){
+  const r=document.getElementById('gc-result');
+  if(!r)return;
+  const pendBlock=(data.pendentes&&data.pendentes.length)?`
+    <div class="gc-pendentes">
+      ⚠ Variáveis não preenchidas em alguns contratos: <strong>${esc(data.pendentes.join(', '))}</strong>
+      <div class="gc-pendentes-hint">Edite manualmente nos arquivos .docx no Drive.</div>
+    </div>`:'';
+  const tipos=Array.isArray(data.tipos_gerados)?data.tipos_gerados:[];
+  r.innerHTML=`
+    <div class="gc-result-ok">
+      <div class="gc-result-title ok">✓ ${tipos.length} contrato(s) gerado(s)</div>
+      <div class="gc-result-msg">${esc(tipos.join(', '))} — enviados pra pasta <em>${esc(DRIVE_PASTA_CONTRATOS_LABEL)}</em> no Drive.</div>
+      <a href="${esc(data.drive_folder_url)}" target="_blank" rel="noopener" class="btn btn-gold btn-sm">
+        Abrir pasta no Drive ↗
+      </a>
+      ${pendBlock}
+    </div>`;
+}
+const DRIVE_PASTA_CONTRATOS_LABEL='2. Contratos assinados';
+
+function _gcShowErr(msg){
+  const r=document.getElementById('gc-result');
+  if(!r)return;
+  r.innerHTML=`
+    <div class="gc-result-err">
+      <div class="gc-result-title err">✕ Erro ao gerar contratos</div>
+      <div class="gc-result-msg">${esc(msg)}</div>
+    </div>`;
+}
+
+async function gcSubmit(){
+  const btn=document.getElementById('gc-submit');
+  if(!btn||btn.disabled)return;
+  const r=document.getElementById('gc-result');if(r)r.innerHTML='';
+  btn.disabled=true;
+
+  const investidor_id=document.getElementById('gc-investidor').value;
+  const intermediador=(document.getElementById('gc-intermediador').value||'').trim();
+  const tipo=document.getElementById('gc-tipo').value||null;
+
+  try{
+    if(!sb)throw new Error('Supabase não inicializado');
+    const{data:userData}=await sb.auth.getUser();
+    const userId=userData?.user?.id;
+    if(!userId)throw new Error('Sessão expirada — faça login de novo');
+
+    // 1. Upload de arquivos
+    const total=GC.uploads.apresentacao.length+GC.uploads.cedente.length+GC.uploads.escritorio.length;
+    let done=0;
+    for(const papel of ['apresentacao','cedente','escritorio']){
+      for(const file of GC.uploads[papel]){
+        done++;
+        _gcProgress(`Enviando arquivos… (${done}/${total}) ${file.name}`);
+        const safeName=file.name.replace(/[^\w.\-()À-ſ]/g,'_');
+        const path=`${userId}/${GC.job_id}/${papel}/${safeName}`;
+        const{error}=await sb.storage.from('contratos-input').upload(path,file,{upsert:true});
+        if(error)throw new Error(`Upload de ${file.name} falhou: ${error.message}`);
+      }
+    }
+
+    // 2. Invoca a Edge Function
+    _gcProgress('Extraindo dados e gerando contratos… (pode levar 30–90s)');
+    const{data,error}=await sb.functions.invoke('gerar-contrato',{
+      body:{job_id:GC.job_id,investidor_id,intermediador,tipo},
+    });
+    if(error){
+      // Tenta extrair mensagem detalhada do response body
+      let detail=error.message||String(error);
+      try{
+        if(error.context&&typeof error.context.json==='function'){
+          const j=await error.context.json();
+          if(j?.error)detail=j.error;
+          if(j?.intermediadores_disponiveis)detail+='\n\nIntermediadores disponíveis no Drive:\n• '+j.intermediadores_disponiveis.join('\n• ');
+        }
+      }catch(_){}
+      throw new Error(detail);
+    }
+    if(data?.error)throw new Error(data.error);
+
+    _gcHideProgress();
+    _gcShowOk(data);
+
+    // Reset state pra próxima geração
+    GC.job_id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
+    GC.uploads={apresentacao:[],cedente:[],escritorio:[]};
+    gcRenderFiles();
+  }catch(e){
+    console.error('[GC] submit',e);
+    _gcHideProgress();
+    _gcShowErr(e.message||String(e));
+    btn.disabled=false;
   }
 }
 
