@@ -1,1 +1,13 @@
 .claude/
+
+# Seeds com PII / secrets — nunca comitar
+supabase/seeds/investidores.sql
+supabase/seeds/configuracoes.sql
+
+# Backup do index.html original
+index.html.original.bak
+
+# Imagens duplicadas na raiz (agora vivem em assets/img/)
+/4.png
+/7.png
+/favicon.png
