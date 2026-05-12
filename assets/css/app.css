@@ -1180,13 +1180,17 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   background:
     radial-gradient(circle at 20% 0%,rgba(0,119,255,.09),transparent 34%),
     #171a1f;
-  flex:1;display:none;flex-direction:column;overflow-x:hidden;overflow-y:auto;
+  flex:1;display:none;flex-direction:column;overflow:hidden;
 }
-#crt-pane-consolidado{overflow:visible;flex:none}
-#crt-pane-consolidado .crt-tbl-wrap{flex:none;overflow:visible;margin-top:0;min-height:0}
-#crt-pane-consolidado #crt-cons-scroll{overflow:visible;flex:none;height:auto;min-height:0}
-#crt-pane-consolidado #crt-cons-total-wrap{overflow:hidden}
 #crt-pane-consolidado .crt-tbl{min-width:0}
+#crt-pane-consolidado #crt-cons-total-wrap{overflow:hidden}
+/* scrollbar interna alinhada ao tema (sem cantos brancos) */
+#crt-cons-scroll::-webkit-scrollbar{width:7px;height:7px}
+#crt-cons-scroll::-webkit-scrollbar-thumb{background:rgba(110,159,206,.28);border-radius:4px}
+#crt-cons-scroll::-webkit-scrollbar-thumb:hover{background:rgba(110,159,206,.5)}
+#crt-cons-scroll::-webkit-scrollbar-track{background:transparent}
+#crt-cons-scroll::-webkit-scrollbar-corner{background:transparent}
+#crt-cons-scroll{scrollbar-color:rgba(110,159,206,.28) transparent;scrollbar-width:thin}
 /* select com aparência alinhada ao tema escuro */
 #crt-cons-mes{
   width:280px;appearance:none;-webkit-appearance:none;-moz-appearance:none;
