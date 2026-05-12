@@ -592,6 +592,10 @@
     <div class="crt-tbl-wrap">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-shrink:0">
         <div class="crt-tbl-title" style="margin-bottom:0">Dados por operação</div>
+        <button id="crt-btn-export" onclick="_crtExportarXLSX()" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(180deg,rgba(0,119,255,.18),rgba(0,119,255,.08)),#0d1117;border:1px solid rgba(0,119,255,.4);color:#cfe0f5;font-size:11px;font-weight:600;letter-spacing:.3px;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s" onmouseover="this.style.borderColor='rgba(0,119,255,.7)'" onmouseout="this.style.borderColor='rgba(0,119,255,.4)'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar Excel
+        </button>
       </div>
       <div id="crt-tbl-empty-msg" style="padding:40px 0;text-align:center;color:#4b5563;font-size:13px">Selecione um investidor para visualizar as operações</div>
       <div class="crt-tbl-scroll" id="crt-tbl-scroll" style="display:none">
@@ -988,6 +992,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
   onerror="(function(){var e=document.getElementById('lc-err');if(e){e.textContent='Falha ao carregar Supabase. Verifique sua conexão.';e.style.display='block';}})()"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="assets/js/app.js"></script>
 
 <!-- COLUMN FILTER PANEL -->

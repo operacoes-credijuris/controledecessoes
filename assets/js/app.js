@@ -607,6 +607,69 @@ function _crtRenderOperacoes(investidor){
   _crtAtualizaCards(rows);
 }
 
+function _crtExportarXLSX(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca de exportação ainda carregando, tente novamente em alguns segundos.');return;}
+  const investidor=_crtAcSelected;
+  if(!investidor){alert('Selecione um investidor antes de exportar.');return;}
+  const norm=s=>(s||'').trim().toLowerCase();
+  const inv=norm(investidor);
+  const rows=[];
+  (CACHE.cessoes||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'cessoes'});});
+  (CACHE.rpv||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'rpv'});});
+  (CACHE.encerrados||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'encerrados'});});
+  rows.sort((a,b)=>(a.dataAquisicao||'').localeCompare(b.dataAquisicao||''));
+  if(!rows.length){alert('Não há operações para exportar.');return;}
+  const _d=v=>v?v.split('-').reverse().join('/'):'';
+  const _abaLbl={cessoes:'Ativa',rpv:'RPV',encerrados:'Encerrado'};
+  const headers=['Aba','Nº processo','Cedente','Advogado','Tipo de crédito','Tribunal',
+    'Capital investido (R$)','Data da cessão','Valor de face (R$)','Data ref. do face','Índice de atualização',
+    'Data est. recebimento','Já recebido (R$)','Data receb. efetivo','Valor est. complementar (R$)',
+    'Status','Estágio processual','Providências / próx. passos','Últ. atualização','Status TIR'];
+  const data=rows.map(r=>{
+    const st=_crtAutoStatus(r);
+    const jr=_parseNumCrt(r.jaRecebido);
+    return[
+      _abaLbl[r._aba]||r._aba,
+      r.numeroProcesso||'',
+      r.cedente||'',
+      r.advogado||'',
+      r.objeto||'',
+      r.tribunal||'',
+      _parseNumCrt(r.capitalInvestido)||'',
+      _d(r.dataAquisicao),
+      _parseNumCrt(r.valorFace)||'',
+      _d(r.dataRefFace),
+      r.indiceAtualizacao||'',
+      _d(r.dataEstRecebimento),
+      jr||'',
+      _d(r.dataLiquidacao),
+      _parseNumCrt(r.valorEstComplementar)||'',
+      st.label||'',
+      r.estagioProcessual||'',
+      r.providencias||'',
+      _d(SORT_COMPUTED.ultimaMovimentacao(r)),
+      jr>0?'Efetivada':'Estimada'
+    ];
+  });
+  const ws=XLSX.utils.aoa_to_sheet([headers,...data]);
+  // larguras aproximadas
+  ws['!cols']=[{wch:10},{wch:22},{wch:24},{wch:20},{wch:18},{wch:10},{wch:18},{wch:12},{wch:18},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:20},{wch:14},{wch:22},{wch:30},{wch:14},{wch:12}];
+  // formato de moeda nas colunas R$ (G=6, I=8, M=12, O=14, 0-index)
+  const moneyCols=[6,8,12,14];
+  for(let i=1;i<=rows.length;i++){
+    moneyCols.forEach(c=>{
+      const ref=XLSX.utils.encode_cell({r:i,c});
+      if(ws[ref]&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
+    });
+  }
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Operações');
+  const safe=investidor.replace(/[^a-zA-Z0-9-_]+/g,'_');
+  const d=new Date();
+  const ts=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb,`operacoes_${safe}_${ts}.xlsx`);
+}
+
 function _crtAtualizaCards(rows){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('crt-card-operacoes', rows.length||'—');
