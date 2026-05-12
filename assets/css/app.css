@@ -143,7 +143,8 @@ tbody td.wrap{white-space:normal;min-width:120px;max-width:220px}
 #pane-cessoes table,#pane-rpv table,#pane-encerrados table,#pane-requerimentos table{font-size:8px}
 #pane-cessoes thead th,#pane-rpv thead th,#pane-encerrados thead th,#pane-requerimentos thead th{font-size:7px;padding:3px 5px;letter-spacing:.35px}
 #pane-cessoes tbody td,#pane-rpv tbody td,#pane-encerrados tbody td,#pane-requerimentos tbody td{padding:3px 5px}
-#pane-cessoes .bdg,#pane-rpv .bdg,#pane-encerrados .bdg,#pane-requerimentos .bdg{font-size:8px;padding:1px 5px}
+#pane-cessoes .bdg,#pane-rpv .bdg,#pane-encerrados .bdg,#pane-requerimentos .bdg,
+#pane-cessoes .obj-bdg,#pane-rpv .obj-bdg,#pane-encerrados .obj-bdg,#pane-requerimentos .obj-bdg{font-size:7px;padding:1px 5px;border-radius:14px}
 #pane-contatos table{font-size:10px}
 #pane-contatos thead th{font-size:9px;padding:4px 6px}
 #pane-contatos tbody td{padding:4px 6px}
