@@ -1873,11 +1873,7 @@ thead th{
 tbody td{padding:7px 8px;line-height:1.5}
 tbody tr{border-bottom:1px solid rgba(255,255,255,.04)}
 tbody tr:hover{background:#1d222a}
-#pane-cessoes thead th,#pane-rpv thead th,
-#pane-encerrados thead th,#pane-requerimentos thead th,
 #pane-contatos thead th{font-size:9px;padding:7px 8px;letter-spacing:.6px}
-#pane-cessoes tbody td,#pane-rpv tbody td,
-#pane-encerrados tbody td,#pane-requerimentos tbody td,
 #pane-contatos tbody td{padding:6px 8px;font-size:11px}
 
 /* Cards (genéricos) */
