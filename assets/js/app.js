@@ -754,32 +754,97 @@ function _crtExportarXLSX(){
     ['N.º operações',txt('crt-card-operacoes')]
   ];
   const aoa=[
-    ['Investidor',investidor,'','Mês de Referência',mesRefFmt],
-    [],
-    ['Resumo'],
-    ...cards.map(([k,v])=>[k,v]),
-    [],
-    headers,
+    ['Investidor',investidor],            // linha 1
+    ['Mês de Referência',mesRefFmt],     // linha 2
+    [],                                   // linha 3
+    ['Resumo'],                           // linha 4
+    ...cards.map(([k,v])=>[k,v]),        // linhas 5–10
+    [],                                   // linha 11
+    headers,                              // linha 12 = header da tabela
     ...data
   ];
-  const headerRow=aoa.findIndex(r=>r[0]==='Aba'); // índice da linha de headers da tabela
+  const headerRowIdx=aoa.findIndex(r=>r[0]==='Aba');
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  // larguras aproximadas
-  ws['!cols']=[{wch:22},{wch:24},{wch:4},{wch:22},{wch:20},{wch:10},{wch:18},{wch:12},{wch:18},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:20},{wch:14},{wch:22},{wch:30},{wch:14},{wch:18},{wch:12},{wch:12},{wch:12}];
-  // formato de moeda nas colunas R$ na tabela: G=6, I=8, M=12, O=14, T=19
-  const moneyCols=[6,8,12,14,19];
-  const pctCols=[21,22]; // V=TIR a.a., W=TIR mensal
-  for(let i=1;i<=rows.length;i++){
-    const rowIdx=headerRow+i;
-    moneyCols.forEach(c=>{
-      const ref=XLSX.utils.encode_cell({r:rowIdx,c});
-      if(ws[ref]&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
-    });
-    pctCols.forEach(c=>{
-      const ref=XLSX.utils.encode_cell({r:rowIdx,c});
-      if(ws[ref]&&typeof ws[ref].v==='number')ws[ref].z='0.00%';
-    });
+  // larguras alinhadas às colunas da tabela (23 cols: A..W)
+  ws['!cols']=[{wch:12},{wch:22},{wch:26},{wch:22},{wch:18},{wch:10},{wch:20},{wch:13},{wch:20},{wch:14},{wch:18},{wch:14},{wch:18},{wch:14},{wch:22},{wch:12},{wch:24},{wch:32},{wch:14},{wch:20},{wch:12},{wch:12},{wch:12}];
+
+  // ----- paleta inspirada no tema -----
+  const C={
+    brand:'0077FF',      // azul principal
+    brandSoft:'1E3A5F',  // azul header da tabela
+    gold:'C9A84C',
+    bgTitle:'0D1117',    // título sobre fundo claro? usaremos para texto
+    txtMuted:'6E9FCE',
+    border:'D0D7DE',
+    rowAlt:'F4F8FC'
+  };
+  const fontBase={name:'Calibri',sz:11};
+  const borderThin={top:{style:'thin',color:{rgb:C.border}},bottom:{style:'thin',color:{rgb:C.border}},left:{style:'thin',color:{rgb:C.border}},right:{style:'thin',color:{rgb:C.border}}};
+
+  const setStyle=(ref,s)=>{if(ws[ref])ws[ref].s=Object.assign({},ws[ref].s||{},s);};
+  const styleRow=(r,cMin,cMax,s)=>{for(let c=cMin;c<=cMax;c++)setStyle(XLSX.utils.encode_cell({r,c}),s);};
+
+  // linha 1 (Investidor)
+  setStyle('A1',{font:{...fontBase,bold:true,color:{rgb:C.txtMuted},sz:9},alignment:{horizontal:'left',vertical:'center'}});
+  setStyle('B1',{font:{...fontBase,bold:true,sz:14,color:{rgb:C.brand}},alignment:{horizontal:'left',vertical:'center'}});
+  // linha 2 (Mês de Referência)
+  setStyle('A2',{font:{...fontBase,bold:true,color:{rgb:C.txtMuted},sz:9},alignment:{horizontal:'left',vertical:'center'}});
+  setStyle('B2',{font:{...fontBase,bold:true,sz:12,color:{rgb:C.brandSoft}},alignment:{horizontal:'left',vertical:'center'}});
+
+  // linha 4 ("Resumo")
+  setStyle('A4',{font:{...fontBase,bold:true,sz:12,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:C.brand}},alignment:{horizontal:'left',vertical:'center'}});
+  // mescla A4:B4
+  ws['!merges']=(ws['!merges']||[]);
+  ws['!merges'].push({s:{r:3,c:0},e:{r:3,c:1}});
+
+  // cards (linhas 5–10): label coluna A, valor coluna B
+  for(let i=0;i<cards.length;i++){
+    const r=4+i;
+    setStyle(XLSX.utils.encode_cell({r,c:0}),{font:{...fontBase,bold:true,color:{rgb:C.brandSoft}},fill:{patternType:'solid',fgColor:{rgb:C.rowAlt}},alignment:{horizontal:'left',vertical:'center'},border:borderThin});
+    setStyle(XLSX.utils.encode_cell({r,c:1}),{font:{...fontBase,bold:true,sz:12,color:{rgb:C.brand}},alignment:{horizontal:'right',vertical:'center'},border:borderThin});
   }
+
+  // altura das linhas do topo
+  ws['!rows']=[];
+  ws['!rows'][0]={hpt:22};
+  ws['!rows'][1]={hpt:20};
+  ws['!rows'][3]={hpt:22};
+  ws['!rows'][headerRowIdx]={hpt:32};
+
+  // header da tabela
+  const totalCols=23;
+  styleRow(headerRowIdx,0,totalCols-1,{
+    font:{...fontBase,bold:true,color:{rgb:'FFFFFF'},sz:10},
+    fill:{patternType:'solid',fgColor:{rgb:C.brandSoft}},
+    alignment:{horizontal:'center',vertical:'center',wrapText:true},
+    border:borderThin
+  });
+
+  // formato + estilo das linhas de dados
+  const moneyCols=[6,8,12,14,19];
+  const pctCols=[21,22];
+  for(let i=1;i<=rows.length;i++){
+    const rIdx=headerRowIdx+i;
+    const zebra=i%2===0;
+    for(let c=0;c<totalCols;c++){
+      const ref=XLSX.utils.encode_cell({r:rIdx,c});
+      const isMoney=moneyCols.includes(c);
+      const isPct=pctCols.includes(c);
+      const align=isMoney||isPct||c===0||c===19?'right':'left';
+      const style={
+        font:{...fontBase,sz:10},
+        alignment:{horizontal:align,vertical:'center',wrapText:false},
+        border:borderThin
+      };
+      if(zebra)style.fill={patternType:'solid',fgColor:{rgb:C.rowAlt}};
+      if(ws[ref])ws[ref].s=style;
+      if(ws[ref]&&isMoney&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
+      if(ws[ref]&&isPct&&typeof ws[ref].v==='number')ws[ref].z='0.00%';
+    }
+  }
+  // congela painel até abaixo do header da tabela
+  ws['!freeze']={xSplit:0,ySplit:headerRowIdx+1};
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:headerRowIdx,c:0},e:{r:headerRowIdx+rows.length,c:totalCols-1}})};
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Operações');
   const safe=investidor.replace(/[^a-zA-Z0-9-_]+/g,'_');
