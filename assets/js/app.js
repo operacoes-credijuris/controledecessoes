@@ -773,9 +773,21 @@ function _crtAtualizaCards(rows){
   const totalRecebido=rows.reduce((sum,r)=>sum+_parseNumCrt(r.jaRecebido),0);
   set('crt-card-recebido', totalRecebido>0 ? fmtBRL(totalRecebido) : '—');
 
-  // Os demais cards aguardam campos de cálculo futuros
-  ['crt-card-tir','crt-card-retorno','crt-card-areceber']
-    .forEach(id=>set(id,'—'));
+  // TIR média = média simples das TIR a.a. válidas
+  const tirs=rows.map(_calcTirAnual).filter(v=>v!=null&&isFinite(v));
+  const tirAvg=tirs.length?(tirs.reduce((s,v)=>s+v,0)/tirs.length):null;
+  set('crt-card-tir', tirAvg==null?'—':(tirAvg*100).toFixed(2).replace('.',',')+'%');
+
+  // A receber estimado = soma de Valor projetado das linhas sem Já recebido
+  const totalAReceber=rows.reduce((sum,r)=>{
+    const jr=_parseNumCrt(r.jaRecebido);
+    if(jr>0)return sum;
+    const vp=_calcValorProjetado(r);
+    return sum+(vp||0);
+  },0);
+  set('crt-card-areceber', totalAReceber>0 ? fmtBRL(totalAReceber) : '—');
+
+  set('crt-card-retorno','—');
 }
 function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
 function _crtAcKey(e){
