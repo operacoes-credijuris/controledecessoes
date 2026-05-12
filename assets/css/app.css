@@ -1180,8 +1180,11 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   background:
     radial-gradient(circle at 20% 0%,rgba(0,119,255,.09),transparent 34%),
     #171a1f;
-  flex:1;display:none;flex-direction:column;overflow:hidden;
+  flex:1;display:none;flex-direction:column;overflow-x:hidden;overflow-y:auto;
 }
+#crt-pane-consolidado{overflow-y:auto}
+#crt-pane-consolidado .crt-tbl-wrap{flex:none;overflow:visible}
+#crt-pane-consolidado #crt-cons-scroll{overflow:visible;flex:none;height:auto}
 #pane-carteiras.on{display:flex}
 .crt-nav{
   display:flex;align-items:center;gap:0;flex-shrink:0;
