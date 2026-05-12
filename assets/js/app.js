@@ -2400,6 +2400,43 @@ function _crtConsolidadoFlows(ops){
 /* estado de ordenação do Consolidado */
 let _consSortCol='displayName';
 let _consSortDir=1; // 1=asc, -1=desc
+let _consMonthFilter='todos'; // 'todos' | 'yyyy-mm'
+
+function _consMesChange(v){
+  _consMonthFilter=v||'todos';
+  _crtRenderConsolidado();
+}
+
+function _consPopulateMonths(){
+  const sel=document.getElementById('crt-cons-mes');
+  if(!sel)return;
+  const all=[...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])];
+  let minYM=null;
+  all.forEach(r=>{
+    if(r.vinculoPai)return;
+    const d=r.dataAquisicao;
+    if(!d||d.length<7)return;
+    const ym=d.slice(0,7);
+    if(!minYM||ym<minYM)minYM=ym;
+  });
+  const now=new Date();
+  const cy=now.getFullYear(),cm=now.getMonth()+1;
+  const months=[];
+  if(minYM){
+    let [y,m]=minYM.split('-').map(Number);
+    while(y<cy||(y===cy&&m<=cm)){
+      months.push(`${y}-${String(m).padStart(2,'0')}`);
+      m++;if(m>12){m=1;y++;}
+    }
+  }
+  months.reverse();
+  const MES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const lbl=ym=>{const [y,m]=ym.split('-');return`${MES[Number(m)-1]}/${y}`;};
+  sel.innerHTML=['<option value="todos">Tudo</option>',
+    ...months.map(ym=>`<option value="${ym}">${lbl(ym)}</option>`)].join('');
+  if(_consMonthFilter!=='todos'&&!months.includes(_consMonthFilter))_consMonthFilter='todos';
+  sel.value=_consMonthFilter;
+}
 
 const _CONS_COLS=[
   {key:'displayName', label:'Investidor',         num:false},
@@ -2441,7 +2478,9 @@ function _crtRenderConsolidado(){
   const tbody=document.getElementById('crt-cons-tbody');
   const thead=document.getElementById('crt-cons-thead');
   if(!tbody)return;
+  _consPopulateMonths();
   const norm=s=>(s||'').trim().toLowerCase();
+  const monthOK=r=>_consMonthFilter==='todos'||(r.dataAquisicao||'').startsWith(_consMonthFilter);
 
   /* cabeçalho dinâmico com setas de ordenação */
   if(thead){
@@ -2473,10 +2512,11 @@ function _crtRenderConsolidado(){
 
   for(const[normName,displayName]of investMap){
     const ops=[];
-    (CACHE.cessoes||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName)ops.push({...r,_aba:'cessoes'});});
-    (CACHE.rpv||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName)ops.push({...r,_aba:'rpv'});});
-    (CACHE.encerrados||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName)ops.push({...r,_aba:'encerrados'});});
+    (CACHE.cessoes||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName&&monthOK(r))ops.push({...r,_aba:'cessoes'});});
+    (CACHE.rpv||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName&&monthOK(r))ops.push({...r,_aba:'rpv'});});
+    (CACHE.encerrados||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName&&monthOK(r))ops.push({...r,_aba:'encerrados'});});
 
+    if(!ops.length)continue;
     const capital=ops.reduce((s,r)=>s+_parseNumCrt(r.capitalInvestido),0);
     const recebido=ops.reduce((s,r)=>s+_parseNumCrt(r.jaRecebido),0);
     totCap+=capital;totRecebido+=recebido;totOps+=ops.length;
@@ -2492,6 +2532,13 @@ function _crtRenderConsolidado(){
     if(typeof va==='string')return va.localeCompare(vb,'pt-BR',{sensitivity:'base'})*_consSortDir;
     return(va-vb)*_consSortDir;
   });
+
+  if(!tableRows.length){
+    tbody.innerHTML='<tr><td colspan="7" class="crt-tbl-empty">Nenhuma cessão no mês selecionado</td></tr>';
+    const totEmpty=document.getElementById('crt-cons-total');
+    if(totEmpty)totEmpty.innerHTML='';
+    return;
+  }
 
   /* tabela principal — apenas os investidores */
   tbody.innerHTML=tableRows.map(r=>`
