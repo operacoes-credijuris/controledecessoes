@@ -595,7 +595,7 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:100px">${_d(SORT_COMPUTED.ultimaMovimentacao(r))}</td>
       <td style="min-width:120px" class="crt-td-num crt-sub-grp-start">${(()=>{const v=_calcValorProjetado(r);return v?fmtBRL(v):'—';})()}</td>
       <td style="min-width:100px">${(()=>{const jr=_parseNumCrt(r.jaRecebido);return jr>0?'<strong>Efetivada</strong>':'Estimada';})()}</td>
-      <td style="min-width:80px" class="crt-td-num">—</td>
+      <td style="min-width:80px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);return t==null?'—':(t*100).toFixed(2).replace('.',',')+'%';})()}</td>
       <td style="min-width:80px" class="crt-td-num">—</td>
       <td style="min-width:130px">—</td>
       <td style="min-width:90px" class="crt-td-num">—</td>
@@ -605,6 +605,28 @@ function _crtRenderOperacoes(investidor){
   }).join('');
 
   _crtAtualizaCards(rows);
+}
+
+function _calcTirAnual(r){
+  const capital=_parseNumCrt(r.capitalInvestido);
+  if(!capital||capital<=0)return null;
+  const st=_crtAutoStatus(r);
+  let valorFinal,d0,d1;
+  if(st.label==='Verde'){
+    valorFinal=_parseNumCrt(r.jaRecebido);
+    d0=r.dataAquisicao;d1=r.dataLiquidacao;
+  }else{
+    valorFinal=_calcValorProjetado(r);
+    d0=r.dataAquisicao;d1=r.dataEstRecebimento;
+  }
+  if(!valorFinal||valorFinal<=0||!d0||!d1)return null;
+  const t0=new Date(d0+'T12:00:00').getTime();
+  const t1=new Date(d1+'T12:00:00').getTime();
+  if(!isFinite(t0)||!isFinite(t1))return null;
+  const dias=(t1-t0)/86400000;
+  if(dias<=0)return null;
+  const tir=Math.pow(valorFinal/capital,365/dias)-1;
+  return isFinite(tir)?tir:null;
 }
 
 function _calcValorProjetado(r){
@@ -652,11 +674,12 @@ function _crtExportarXLSX(){
   const headers=['Aba','Nº processo','Cedente','Advogado','Tipo de crédito','Tribunal',
     'Capital investido (R$)','Data da cessão','Valor de face (R$)','Data ref. do face','Índice de atualização',
     'Data est. recebimento','Já recebido (R$)','Data receb. efetivo','Valor est. complementar (R$)',
-    'Status','Estágio processual','Providências / próx. passos','Últ. atualização','Valor projetado (R$)','Status TIR'];
+    'Status','Estágio processual','Providências / próx. passos','Últ. atualização','Valor projetado (R$)','Status TIR','TIR a.a.'];
   const data=rows.map(r=>{
     const st=_crtAutoStatus(r);
     const jr=_parseNumCrt(r.jaRecebido);
     const vp=_calcValorProjetado(r);
+    const tir=_calcTirAnual(r);
     return[
       _abaLbl[r._aba]||r._aba,
       r.numeroProcesso||'',
@@ -678,19 +701,23 @@ function _crtExportarXLSX(){
       r.providencias||'',
       _d(SORT_COMPUTED.ultimaMovimentacao(r)),
       vp||'',
-      jr>0?'Efetivada':'Estimada'
+      jr>0?'Efetivada':'Estimada',
+      tir==null?'':tir
     ];
   });
   const ws=XLSX.utils.aoa_to_sheet([headers,...data]);
   // larguras aproximadas
-  ws['!cols']=[{wch:10},{wch:22},{wch:24},{wch:20},{wch:18},{wch:10},{wch:18},{wch:12},{wch:18},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:20},{wch:14},{wch:22},{wch:30},{wch:14},{wch:18},{wch:12}];
+  ws['!cols']=[{wch:10},{wch:22},{wch:24},{wch:20},{wch:18},{wch:10},{wch:18},{wch:12},{wch:18},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:20},{wch:14},{wch:22},{wch:30},{wch:14},{wch:18},{wch:12},{wch:12}];
   // formato de moeda nas colunas R$ (G=6, I=8, M=12, O=14, T=19, 0-index)
   const moneyCols=[6,8,12,14,19];
+  const pctCol=21; // V = TIR a.a.
   for(let i=1;i<=rows.length;i++){
     moneyCols.forEach(c=>{
       const ref=XLSX.utils.encode_cell({r:i,c});
       if(ws[ref]&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
     });
+    const refPct=XLSX.utils.encode_cell({r:i,c:pctCol});
+    if(ws[refPct]&&typeof ws[refPct].v==='number')ws[refPct].z='0.00%';
   }
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Operações');
