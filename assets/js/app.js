@@ -2407,18 +2407,33 @@ function _consMesChange(v){
   _crtRenderConsolidado();
 }
 
+function _extractYM(v){
+  if(!v)return null;
+  if(v instanceof Date)return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}`;
+  const s=String(v);
+  // tenta yyyy-mm em qualquer lugar (yyyy-mm-dd, yyyy-mm-ddTHH:MM, etc)
+  const m1=s.match(/(\d{4})-(\d{2})/);
+  if(m1)return `${m1[1]}-${m1[2]}`;
+  // tenta dd/mm/yyyy
+  const m2=s.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m2)return `${m2[3]}-${m2[2]}`;
+  return null;
+}
+
 function _consPopulateMonths(){
   const sel=document.getElementById('crt-cons-mes');
   if(!sel)return;
   const all=[...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])];
   let minYM=null;
+  let sample=null;
   all.forEach(r=>{
     if(r.vinculoPai)return;
-    const d=r.dataAquisicao;
-    if(!d||d.length<7)return;
-    const ym=d.slice(0,7);
+    if(!sample)sample=r;
+    const ym=_extractYM(r.dataAquisicao);
+    if(!ym)return;
     if(!minYM||ym<minYM)minYM=ym;
   });
+  if(!minYM&&sample)console.warn('[Credijuris] _consPopulateMonths: nenhum dataAquisicao válido encontrado. Amostra:',sample);
   const now=new Date();
   const cy=now.getFullYear(),cm=now.getMonth()+1;
   const months=[];
@@ -2480,7 +2495,7 @@ function _crtRenderConsolidado(){
   if(!tbody)return;
   _consPopulateMonths();
   const norm=s=>(s||'').trim().toLowerCase();
-  const monthOK=r=>_consMonthFilter==='todos'||(r.dataAquisicao||'').startsWith(_consMonthFilter);
+  const monthOK=r=>_consMonthFilter==='todos'||_extractYM(r.dataAquisicao)===_consMonthFilter;
 
   /* cabeçalho dinâmico com setas de ordenação */
   if(thead){
