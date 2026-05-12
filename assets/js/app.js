@@ -2402,10 +2402,50 @@ let _consSortCol='displayName';
 let _consSortDir=1; // 1=asc, -1=desc
 let _consMonthFilter='todos'; // 'todos' | 'yyyy-mm'
 
-function _consMesChange(v){
+const _MES_PT=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function _consMesLbl(v){
+  if(!v||v==='todos')return'Tudo';
+  const [y,m]=v.split('-');return`${_MES_PT[Number(m)-1]} de ${y}`;
+}
+
+let _consMesItems=['todos'];
+
+function _consMesToggle(e){
+  if(e)e.stopPropagation();
+  const dd=document.getElementById('crt-cons-mes-dd');
+  if(!dd)return;
+  dd.classList.contains('on')?_consMesClose():_consMesOpen();
+}
+function _consMesOpen(){
+  const dd=document.getElementById('crt-cons-mes-dd');
+  if(!dd)return;
+  dd.innerHTML=_consMesItems.map(v=>{
+    const sel=v===_consMonthFilter?' sel':'';
+    return`<div class="crt-ac-item${sel}" onmousedown="_consMesPick('${v}')">${_consMesLbl(v)}</div>`;
+  }).join('');
+  dd.classList.add('on');
+}
+function _consMesClose(){
+  const dd=document.getElementById('crt-cons-mes-dd');
+  if(dd)dd.classList.remove('on');
+}
+function _consMesPick(v){
   _consMonthFilter=v||'todos';
+  const inp=document.getElementById('crt-cons-mes-input');
+  if(inp)inp.value=_consMesLbl(_consMonthFilter);
+  _consMesClose();
   _crtRenderConsolidado();
 }
+function _consMesKey(e){
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();_consMesToggle(e);return;}
+  if(e.key==='Escape'){e.preventDefault();_consMesClose();return;}
+  const dd=document.getElementById('crt-cons-mes-dd');
+  if(!dd||!dd.classList.contains('on'))return;
+  const cur=_consMesItems.indexOf(_consMonthFilter);
+  if(e.key==='ArrowDown'){e.preventDefault();_consMesPick(_consMesItems[Math.min(cur+1,_consMesItems.length-1)]);_consMesOpen();}
+  else if(e.key==='ArrowUp'){e.preventDefault();_consMesPick(_consMesItems[Math.max(cur-1,0)]);_consMesOpen();}
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#crt-cons-mes-input')&&!e.target.closest('#crt-cons-mes-dd'))_consMesClose();});
 
 function _extractYM(v){
   if(!v)return null;
@@ -2421,19 +2461,16 @@ function _extractYM(v){
 }
 
 function _consPopulateMonths(){
-  const sel=document.getElementById('crt-cons-mes');
-  if(!sel)return;
+  const inp=document.getElementById('crt-cons-mes-input');
+  if(!inp)return;
   const all=[...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])];
   let minYM=null;
-  let sample=null;
   all.forEach(r=>{
     if(r.vinculoPai)return;
-    if(!sample)sample=r;
     const ym=_extractYM(r.dataAquisicao);
     if(!ym)return;
     if(!minYM||ym<minYM)minYM=ym;
   });
-  if(!minYM&&sample)console.warn('[Credijuris] _consPopulateMonths: nenhum dataAquisicao válido encontrado. Amostra:',sample);
   const now=new Date();
   const cy=now.getFullYear(),cm=now.getMonth()+1;
   const months=[];
@@ -2445,12 +2482,9 @@ function _consPopulateMonths(){
     }
   }
   months.reverse();
-  const MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const lbl=ym=>{const [y,m]=ym.split('-');return`${MES[Number(m)-1]} de ${y}`;};
-  sel.innerHTML=['<option value="todos">Tudo</option>',
-    ...months.map(ym=>`<option value="${ym}">${lbl(ym)}</option>`)].join('');
+  _consMesItems=['todos',...months];
   if(_consMonthFilter!=='todos'&&!months.includes(_consMonthFilter))_consMonthFilter='todos';
-  sel.value=_consMonthFilter;
+  inp.value=_consMesLbl(_consMonthFilter);
 }
 
 const _CONS_COLS=[

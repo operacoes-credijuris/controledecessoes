@@ -1192,12 +1192,12 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 #crt-cons-scroll::-webkit-scrollbar-track{background:transparent}
 #crt-cons-scroll::-webkit-scrollbar-corner{background:transparent}
 #crt-cons-scroll{scrollbar-color:rgba(110,159,206,.28) transparent;scrollbar-width:thin}
-/* select com aparência alinhada ao tema escuro */
-#crt-cons-mes{
-  width:280px;appearance:none;-webkit-appearance:none;-moz-appearance:none;
+/* dropdown customizado do filtro de mês (mesmo padrão do investidor) */
+#crt-cons-mes-input{
+  width:280px;cursor:pointer;caret-color:transparent;user-select:none;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5l3 3 3-3' stroke='%236e9fce' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
-#crt-cons-mes option{background:#0d1117;color:var(--txt)}
+#crt-cons-mes-dd{max-height:300px}
 #pane-carteiras.on{display:flex}
 .crt-nav{
   display:flex;align-items:center;gap:0;flex-shrink:0;
