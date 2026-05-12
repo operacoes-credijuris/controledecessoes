@@ -598,12 +598,27 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:80px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);return t==null?'—':(t*100).toFixed(2).replace('.',',')+'%';})()}</td>
       <td style="min-width:80px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);if(t==null||t<=-1)return'—';const m=Math.pow(1+t,1/12)-1;return isFinite(m)?(m*100).toFixed(2).replace('.',',')+'%':'—';})()}</td>
       <td style="min-width:90px" class="crt-td-num">${(()=>{const d=_calcDiasCarteira(r);return d==null?'—':d+' dias';})()}</td>
-      <td style="min-width:120px" class="crt-td-num">—</td>
+      <td style="min-width:120px" class="crt-td-num">${(()=>{const g=_calcGanhoProjetado(r);return g==null?'—':fmtBRL(g);})()}</td>
       <td style="min-width:90px" class="crt-td-num">—</td>
     </tr>`;
   }).join('');
 
   _crtAtualizaCards(rows);
+}
+
+function _calcGanhoProjetado(r){
+  const capital=_parseNumCrt(r.capitalInvestido);
+  if(!capital)return null;
+  const st=_crtAutoStatus(r);
+  if(st.label==='Verde'){
+    const jr=_parseNumCrt(r.jaRecebido);
+    const comp=_parseNumCrt(r.valorEstComplementar);
+    if(!jr&&!comp)return null;
+    return(jr+comp)-capital;
+  }
+  const vp=_calcValorProjetado(r);
+  if(vp==null)return null;
+  return vp-capital;
 }
 
 function _calcDiasCarteira(r){
