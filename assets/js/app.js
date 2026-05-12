@@ -606,6 +606,120 @@ function _crtRenderOperacoes(investidor){
   _crtAtualizaCards(rows);
 }
 
+function _consExportarXLSX(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca de exportação ainda carregando, tente novamente em alguns segundos.');return;}
+  const norm=s=>(s||'').trim().toLowerCase();
+  const monthOK=r=>_consMonthFilter==='todos'||_extractYM(r.dataAquisicao)===_consMonthFilter;
+  const investMap=new Map();
+  [...(CACHE.cessoes||[]),...(CACHE.rpv||[]),...(CACHE.encerrados||[])].forEach(r=>{
+    if(r.vinculoPai)return;
+    const v=(r.cessionario||'').trim();
+    if(v)investMap.set(norm(v),v);
+  });
+  if(!investMap.size){alert('Nenhum investidor para exportar.');return;}
+  const tableRows=[];
+  let totCap=0,totReceb=0,totAReceber=0,totGanho=0,totOps=0;
+  const tirs=[];
+  for(const[normName,displayName]of investMap){
+    const ops=[];
+    (CACHE.cessoes||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName&&monthOK(r))ops.push({...r,_aba:'cessoes'});});
+    (CACHE.rpv||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName&&monthOK(r))ops.push({...r,_aba:'rpv'});});
+    (CACHE.encerrados||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===normName&&monthOK(r))ops.push({...r,_aba:'encerrados'});});
+    if(!ops.length)continue;
+    const capital=ops.reduce((s,r)=>s+_parseNumCrt(r.capitalInvestido),0);
+    const recebido=ops.reduce((s,r)=>s+_parseNumCrt(r.jaRecebido),0);
+    const aReceber=ops.reduce((s,r)=>{const jr=_parseNumCrt(r.jaRecebido);if(jr>0)return s;const vp=_calcValorProjetado(r);return s+(vp||0);},0);
+    const ganho=ops.reduce((s,r)=>s+(_calcGanhoProjetado(r)||0),0);
+    const tirList=ops.map(_calcTirAnual).filter(v=>v!=null&&isFinite(v));
+    const tirAvg=tirList.length?(tirList.reduce((s,v)=>s+v,0)/tirList.length):null;
+    const retorno=capital>0?ganho/capital:null;
+    tableRows.push({displayName,capital,aReceber,recebido,retorno,tir:tirAvg,count:ops.length});
+    totCap+=capital;totReceb+=recebido;totAReceber+=aReceber;totGanho+=ganho;totOps+=ops.length;
+    tirs.push(...tirList);
+  }
+  if(!tableRows.length){alert('Nenhuma cessão no filtro atual.');return;}
+  tableRows.sort((a,b)=>a.displayName.localeCompare(b.displayName,'pt-BR',{sensitivity:'base'}));
+  const totRetorno=totCap>0?totGanho/totCap:null;
+  const totTir=tirs.length?(tirs.reduce((s,v)=>s+v,0)/tirs.length):null;
+
+  const mesLbl=_consMesLbl(_consMonthFilter);
+  const headers=['Investidor','Capital inv. (R$)','A receber est. (R$)','Já recebido (R$)','Retorno','TIR a.a.','Qtd. operações'];
+  const aoa=[
+    ['Consolidado de carteiras'],
+    ['Filtro de mês',mesLbl],
+    [],
+    headers,
+    ...tableRows.map(r=>[r.displayName,r.capital,r.aReceber,r.recebido,r.retorno==null?'':r.retorno,r.tir==null?'':r.tir,r.count]),
+    ['Total da carteira',totCap,totAReceber,totReceb,totRetorno==null?'':totRetorno,totTir==null?'':totTir,totOps]
+  ];
+  const headerRowIdx=3;
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:36},{wch:20},{wch:20},{wch:20},{wch:14},{wch:14},{wch:18}];
+
+  const C={brand:'0077FF',brandSoft:'1E3A5F',txtMuted:'6E9FCE',border:'D0D7DE',rowAlt:'F4F8FC'};
+  const fontBase={name:'Calibri',sz:11};
+  const borderThin={top:{style:'thin',color:{rgb:C.border}},bottom:{style:'thin',color:{rgb:C.border}},left:{style:'thin',color:{rgb:C.border}},right:{style:'thin',color:{rgb:C.border}}};
+  const setStyle=(ref,s)=>{if(ws[ref])ws[ref].s=Object.assign({},ws[ref].s||{},s);};
+
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:headers.length-1}}];
+  setStyle('A1',{font:{...fontBase,bold:true,sz:14,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:C.brand}},alignment:{horizontal:'left',vertical:'center'}});
+  setStyle('A2',{font:{...fontBase,bold:true,color:{rgb:C.txtMuted},sz:9},alignment:{horizontal:'left',vertical:'center'}});
+  setStyle('B2',{font:{...fontBase,bold:true,sz:12,color:{rgb:C.brandSoft}},alignment:{horizontal:'left',vertical:'center'}});
+
+  ws['!rows']=[];
+  ws['!rows'][0]={hpt:24};
+  ws['!rows'][headerRowIdx]={hpt:30};
+
+  for(let c=0;c<headers.length;c++){
+    setStyle(XLSX.utils.encode_cell({r:headerRowIdx,c}),{
+      font:{...fontBase,bold:true,sz:10,color:{rgb:'FFFFFF'}},
+      fill:{patternType:'solid',fgColor:{rgb:C.brandSoft}},
+      alignment:{horizontal:'center',vertical:'center',wrapText:true},
+      border:borderThin
+    });
+  }
+
+  const moneyCols=[1,2,3];
+  const pctCols=[4,5];
+  for(let i=0;i<tableRows.length;i++){
+    const rIdx=headerRowIdx+1+i;
+    const zebra=i%2===1;
+    for(let c=0;c<headers.length;c++){
+      const ref=XLSX.utils.encode_cell({r:rIdx,c});
+      const align=c===0?'left':'right';
+      const style={font:{...fontBase,sz:10},alignment:{horizontal:align,vertical:'center'},border:borderThin};
+      if(zebra)style.fill={patternType:'solid',fgColor:{rgb:C.rowAlt}};
+      if(ws[ref])ws[ref].s=style;
+      if(ws[ref]&&moneyCols.includes(c)&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
+      if(ws[ref]&&pctCols.includes(c)&&typeof ws[ref].v==='number')ws[ref].z='0.00%';
+    }
+  }
+
+  const totRIdx=headerRowIdx+1+tableRows.length;
+  for(let c=0;c<headers.length;c++){
+    const ref=XLSX.utils.encode_cell({r:totRIdx,c});
+    const align=c===0?'left':'right';
+    if(ws[ref])ws[ref].s={
+      font:{...fontBase,bold:true,sz:11,color:{rgb:'FFFFFF'}},
+      fill:{patternType:'solid',fgColor:{rgb:C.brand}},
+      alignment:{horizontal:align,vertical:'center'},
+      border:borderThin
+    };
+    if(ws[ref]&&moneyCols.includes(c)&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
+    if(ws[ref]&&pctCols.includes(c)&&typeof ws[ref].v==='number')ws[ref].z='0.00%';
+  }
+
+  ws['!freeze']={xSplit:0,ySplit:headerRowIdx+1};
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:headerRowIdx,c:0},e:{r:totRIdx-1,c:headers.length-1}})};
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Consolidado');
+  const d=new Date();
+  const ts=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const mesSafe=(_consMonthFilter==='todos'?'tudo':_consMonthFilter);
+  XLSX.writeFile(wb,`consolidado_${mesSafe}_${ts}.xlsx`);
+}
+
 function _calcGanhoProjetado(r){
   const capital=_parseNumCrt(r.capitalInvestido);
   if(!capital)return null;
