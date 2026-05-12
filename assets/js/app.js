@@ -787,7 +787,9 @@ function _crtAtualizaCards(rows){
   },0);
   set('crt-card-areceber', totalAReceber>0 ? fmtBRL(totalAReceber) : '—');
 
-  set('crt-card-retorno','—');
+  // Retorno projetado = soma(Ganho projetado) / soma(Capital investido)
+  const totalGanho=rows.reduce((s,r)=>s+(_calcGanhoProjetado(r)||0),0);
+  set('crt-card-retorno', totalCapital>0 ? ((totalGanho/totalCapital)*100).toFixed(2).replace('.',',')+'%' : '—');
 }
 function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
 function _crtAcKey(e){
