@@ -597,13 +597,30 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:100px">${(()=>{const jr=_parseNumCrt(r.jaRecebido);return jr>0?'<strong>Efetivada</strong>':'Estimada';})()}</td>
       <td style="min-width:80px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);return t==null?'—':(t*100).toFixed(2).replace('.',',')+'%';})()}</td>
       <td style="min-width:80px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);if(t==null||t<=-1)return'—';const m=Math.pow(1+t,1/12)-1;return isFinite(m)?(m*100).toFixed(2).replace('.',',')+'%':'—';})()}</td>
-      <td style="min-width:90px" class="crt-td-num">—</td>
+      <td style="min-width:90px" class="crt-td-num">${(()=>{const d=_calcDiasCarteira(r);return d==null?'—':d+' dias';})()}</td>
       <td style="min-width:120px" class="crt-td-num">—</td>
       <td style="min-width:90px" class="crt-td-num">—</td>
     </tr>`;
   }).join('');
 
   _crtAtualizaCards(rows);
+}
+
+function _calcDiasCarteira(r){
+  const d0=r.dataAquisicao;
+  if(!d0)return null;
+  const st=_crtAutoStatus(r);
+  let t1;
+  if(st.label==='Verde'){
+    if(!r.dataLiquidacao)return null;
+    t1=new Date(r.dataLiquidacao+'T12:00:00').getTime();
+  }else{
+    t1=Date.now();
+  }
+  const t0=new Date(d0+'T12:00:00').getTime();
+  if(!isFinite(t0)||!isFinite(t1))return null;
+  const dias=Math.round((t1-t0)/86400000);
+  return dias>=0?dias:null;
 }
 
 function _calcTirAnual(r){
