@@ -648,11 +648,13 @@
     </div>
   </div>
   <div id="crt-pane-consolidado" class="crt-pane">
-    <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 10px;background:linear-gradient(180deg,rgba(0,119,255,.05),rgba(0,119,255,.02)),#111317;border:1px solid rgba(0,119,255,.18);border-radius:10px">
-      <span style="font-size:8px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:#6e9fce">Filtrar por mês</span>
-      <select id="crt-cons-mes" onchange="_consMesChange(this.value)" style="background:#0d1117;border:1px solid #1e2433;border-radius:8px;padding:6px 10px;color:var(--txt);font-size:12px;font-family:inherit;outline:none;cursor:pointer;min-width:140px">
-        <option value="todos">Tudo</option>
-      </select>
+    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px">
+      <div class="fg">
+        <label class="flbl">Filtrar por mês</label>
+        <select id="crt-cons-mes" class="finp" onchange="_consMesChange(this.value)" style="cursor:pointer">
+          <option value="todos">Tudo</option>
+        </select>
+      </div>
     </div>
     <div class="crt-tbl-wrap" style="margin-top:0">
       <!-- tabela principal (rolável) -->

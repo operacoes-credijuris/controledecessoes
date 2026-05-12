@@ -2445,8 +2445,8 @@ function _consPopulateMonths(){
     }
   }
   months.reverse();
-  const MES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const lbl=ym=>{const [y,m]=ym.split('-');return`${MES[Number(m)-1]}/${y}`;};
+  const MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const lbl=ym=>{const [y,m]=ym.split('-');return`${MES[Number(m)-1]} de ${y}`;};
   sel.innerHTML=['<option value="todos">Tudo</option>',
     ...months.map(ym=>`<option value="${ym}">${lbl(ym)}</option>`)].join('');
   if(_consMonthFilter!=='todos'&&!months.includes(_consMonthFilter))_consMonthFilter='todos';
