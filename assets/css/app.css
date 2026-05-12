@@ -1186,6 +1186,10 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   flex:1;display:none;flex-direction:column;overflow:hidden;
 }
 #crt-pane-consolidado .crt-tbl{min-width:0}
+/* Investidores — Dados por operação: fonte e padding reduzidos */
+#crt-pane-investidores .crt-tbl{font-size:8px;min-width:1440px}
+#crt-pane-investidores .crt-th-sub th{font-size:7px;padding:3px 5px;letter-spacing:.35px}
+#crt-pane-investidores .crt-tbl td{font-size:8px;padding:3px 5px}
 #crt-pane-consolidado #crt-cons-scroll{overflow-x:hidden}
 #crt-pane-consolidado #crt-cons-total-wrap{overflow:hidden}
 /* scrollbar interna alinhada ao tema (sem cantos brancos) */

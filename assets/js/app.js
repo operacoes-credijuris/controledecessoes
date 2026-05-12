@@ -575,31 +575,31 @@ function _crtRenderOperacoes(investidor){
   tbody.innerHTML=rows.map(r=>{
     return`
     <tr>
-      <td style="min-width:130px"><span class="crt-proc">${_e(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</td>
-      <td style="min-width:140px" title="${_e(r.cedente)}">${_e(r.cedente)}</td>
-      <td style="min-width:140px" title="${_e(r.advogado)}">${_e(r.advogado)}</td>
-      <td style="min-width:120px">${_e(r.objeto)}</td>
-      <td style="min-width:80px">${_e(r.tribunal)}</td>
-      <td style="min-width:120px" class="crt-td-num crt-sub-grp-start">${crtCellBRL(r._aba,r.id,'capitalInvestido',r.capitalInvestido,'text')}</td>
-      <td style="min-width:110px">${_d(r.dataAquisicao)}</td>
-      <td style="min-width:120px" class="crt-td-num crt-sub-grp-start">${crtCellBRL(r._aba,r.id,'valorFace',r.valorFace,'text')}</td>
-      <td style="min-width:110px">${crtCell(r._aba,r.id,'dataRefFace',r.dataRefFace,'date')}</td>
-      <td style="min-width:130px">${crtSelectCell(r._aba,r.id,'indiceAtualizacao',r.indiceAtualizacao,['IPCA + 2%','SELIC'])}</td>
-      <td style="min-width:110px" class="crt-sub-grp-start">${crtCell(r._aba,r.id,'dataEstRecebimento',r.dataEstRecebimento,'date')}</td>
-      <td style="min-width:110px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'jaRecebido',r.jaRecebido,'text')}</td>
-      <td style="min-width:110px">${_d(r.dataLiquidacao)}</td>
-      <td style="min-width:120px" class="crt-td-num crt-sub-grp-start">${crtCellBRL(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
-      <td style="min-width:100px" class="crt-sub-grp-start">${(()=>{const s=_crtAutoStatus(r);return`<span style="font-weight:600;color:${s.color}">${s.label}</span>`;})()}</td>
-      <td style="min-width:140px;max-width:140px;overflow:hidden">${crtTextCell(r._aba,r.id,'estagioProcessual',r.estagioProcessual,r.numeroProcesso)}</td>
-      <td style="min-width:200px;max-width:200px;overflow:hidden">${crtTextCell(r._aba,r.id,'providencias',r.providencias,r.numeroProcesso)}</td>
-      <td style="min-width:100px">${_d(SORT_COMPUTED.ultimaMovimentacao(r))}</td>
-      <td style="min-width:120px" class="crt-td-num crt-sub-grp-start">${(()=>{const v=_calcValorProjetado(r);return v?fmtBRL(v):'—';})()}</td>
-      <td style="min-width:100px">${(()=>{const jr=_parseNumCrt(r.jaRecebido);return jr>0?'<strong>Efetivada</strong>':'Estimada';})()}</td>
-      <td style="min-width:80px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);return t==null?'—':(t*100).toFixed(2).replace('.',',')+'%';})()}</td>
-      <td style="min-width:80px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);if(t==null||t<=-1)return'—';const m=Math.pow(1+t,1/12)-1;return isFinite(m)?(m*100).toFixed(2).replace('.',',')+'%':'—';})()}</td>
-      <td style="min-width:90px" class="crt-td-num">${(()=>{const d=_calcDiasCarteira(r);return d==null?'—':d+' dias';})()}</td>
-      <td style="min-width:120px" class="crt-td-num">${(()=>{const g=_calcGanhoProjetado(r);return g==null?'—':fmtBRL(g);})()}</td>
-      <td style="min-width:90px" class="crt-td-num">${(()=>{const g=_calcGanhoProjetado(r);const c=_parseNumCrt(r.capitalInvestido);return(g==null||!c)?'—':((g/c)*100).toFixed(2).replace('.',',')+'%';})()}</td>
+      <td style="min-width:104px"><span class="crt-proc">${_e(r.numeroProcesso)}</span>${cpyBtn(r.numeroProcesso||'')}</td>
+      <td style="min-width:112px" title="${_e(r.cedente)}">${_e(r.cedente)}</td>
+      <td style="min-width:112px" title="${_e(r.advogado)}">${_e(r.advogado)}</td>
+      <td style="min-width:96px">${_e(r.objeto)}</td>
+      <td style="min-width:64px">${_e(r.tribunal)}</td>
+      <td style="min-width:96px" class="crt-td-num crt-sub-grp-start">${crtCellBRL(r._aba,r.id,'capitalInvestido',r.capitalInvestido,'text')}</td>
+      <td style="min-width:88px">${_d(r.dataAquisicao)}</td>
+      <td style="min-width:96px" class="crt-td-num crt-sub-grp-start">${crtCellBRL(r._aba,r.id,'valorFace',r.valorFace,'text')}</td>
+      <td style="min-width:88px">${crtCell(r._aba,r.id,'dataRefFace',r.dataRefFace,'date')}</td>
+      <td style="min-width:104px">${crtSelectCell(r._aba,r.id,'indiceAtualizacao',r.indiceAtualizacao,['IPCA + 2%','SELIC'])}</td>
+      <td style="min-width:88px" class="crt-sub-grp-start">${crtCell(r._aba,r.id,'dataEstRecebimento',r.dataEstRecebimento,'date')}</td>
+      <td style="min-width:88px" class="crt-td-num">${crtCellBRL(r._aba,r.id,'jaRecebido',r.jaRecebido,'text')}</td>
+      <td style="min-width:88px">${_d(r.dataLiquidacao)}</td>
+      <td style="min-width:96px" class="crt-td-num crt-sub-grp-start">${crtCellBRL(r._aba,r.id,'valorEstComplementar',r.valorEstComplementar,'text')}</td>
+      <td style="min-width:80px" class="crt-sub-grp-start">${(()=>{const s=_crtAutoStatus(r);return`<span style="font-weight:600;color:${s.color}">${s.label}</span>`;})()}</td>
+      <td style="min-width:112px;max-width:112px;overflow:hidden">${crtTextCell(r._aba,r.id,'estagioProcessual',r.estagioProcessual,r.numeroProcesso)}</td>
+      <td style="min-width:160px;max-width:160px;overflow:hidden">${crtTextCell(r._aba,r.id,'providencias',r.providencias,r.numeroProcesso)}</td>
+      <td style="min-width:80px">${_d(SORT_COMPUTED.ultimaMovimentacao(r))}</td>
+      <td style="min-width:96px" class="crt-td-num crt-sub-grp-start">${(()=>{const v=_calcValorProjetado(r);return v?fmtBRL(v):'—';})()}</td>
+      <td style="min-width:80px">${(()=>{const jr=_parseNumCrt(r.jaRecebido);return jr>0?'<strong>Efetivada</strong>':'Estimada';})()}</td>
+      <td style="min-width:64px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);return t==null?'—':(t*100).toFixed(2).replace('.',',')+'%';})()}</td>
+      <td style="min-width:64px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);if(t==null||t<=-1)return'—';const m=Math.pow(1+t,1/12)-1;return isFinite(m)?(m*100).toFixed(2).replace('.',',')+'%':'—';})()}</td>
+      <td style="min-width:72px" class="crt-td-num">${(()=>{const d=_calcDiasCarteira(r);return d==null?'—':d+' dias';})()}</td>
+      <td style="min-width:96px" class="crt-td-num">${(()=>{const g=_calcGanhoProjetado(r);return g==null?'—':fmtBRL(g);})()}</td>
+      <td style="min-width:72px" class="crt-td-num">${(()=>{const g=_calcGanhoProjetado(r);const c=_parseNumCrt(r.capitalInvestido);return(g==null||!c)?'—':((g/c)*100).toFixed(2).replace('.',',')+'%';})()}</td>
     </tr>`;
   }).join('');
 
