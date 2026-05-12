@@ -737,19 +737,46 @@ function _crtExportarXLSX(){
       tir==null||tir<=-1?'':(Math.pow(1+tir,1/12)-1)
     ];
   });
-  const ws=XLSX.utils.aoa_to_sheet([headers,...data]);
+  // cabeçalho com Investidor, Mês de Referência e Cards
+  const mesRefVal=document.getElementById('crt-mes-referencia')?.value||'';
+  const mesRefFmt=mesRefVal?(()=>{
+    const [y,m]=mesRefVal.split('-');
+    const MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    return `${MES[Number(m)-1]} de ${y}`;
+  })():'';
+  const txt=(id,fb='—')=>document.getElementById(id)?.textContent||fb;
+  const cards=[
+    ['Capital total',txt('crt-card-capital')],
+    ['TIR média',txt('crt-card-tir')],
+    ['Retorno projetado',txt('crt-card-retorno')],
+    ['Já recebido',txt('crt-card-recebido')],
+    ['A receber estimado',txt('crt-card-areceber')],
+    ['N.º operações',txt('crt-card-operacoes')]
+  ];
+  const aoa=[
+    ['Investidor',investidor,'','Mês de Referência',mesRefFmt],
+    [],
+    ['Resumo'],
+    ...cards.map(([k,v])=>[k,v]),
+    [],
+    headers,
+    ...data
+  ];
+  const headerRow=aoa.findIndex(r=>r[0]==='Aba'); // índice da linha de headers da tabela
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
   // larguras aproximadas
-  ws['!cols']=[{wch:10},{wch:22},{wch:24},{wch:20},{wch:18},{wch:10},{wch:18},{wch:12},{wch:18},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:20},{wch:14},{wch:22},{wch:30},{wch:14},{wch:18},{wch:12},{wch:12},{wch:12}];
-  // formato de moeda nas colunas R$ (G=6, I=8, M=12, O=14, T=19, 0-index)
+  ws['!cols']=[{wch:22},{wch:24},{wch:4},{wch:22},{wch:20},{wch:10},{wch:18},{wch:12},{wch:18},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:20},{wch:14},{wch:22},{wch:30},{wch:14},{wch:18},{wch:12},{wch:12},{wch:12}];
+  // formato de moeda nas colunas R$ na tabela: G=6, I=8, M=12, O=14, T=19
   const moneyCols=[6,8,12,14,19];
   const pctCols=[21,22]; // V=TIR a.a., W=TIR mensal
   for(let i=1;i<=rows.length;i++){
+    const rowIdx=headerRow+i;
     moneyCols.forEach(c=>{
-      const ref=XLSX.utils.encode_cell({r:i,c});
+      const ref=XLSX.utils.encode_cell({r:rowIdx,c});
       if(ws[ref]&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
     });
     pctCols.forEach(c=>{
-      const ref=XLSX.utils.encode_cell({r:i,c});
+      const ref=XLSX.utils.encode_cell({r:rowIdx,c});
       if(ws[ref]&&typeof ws[ref].v==='number')ws[ref].z='0.00%';
     });
   }
