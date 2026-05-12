@@ -599,7 +599,7 @@ function _crtRenderOperacoes(investidor){
       <td style="min-width:80px" class="crt-td-num">${(()=>{const t=_calcTirAnual(r);if(t==null||t<=-1)return'—';const m=Math.pow(1+t,1/12)-1;return isFinite(m)?(m*100).toFixed(2).replace('.',',')+'%':'—';})()}</td>
       <td style="min-width:90px" class="crt-td-num">${(()=>{const d=_calcDiasCarteira(r);return d==null?'—':d+' dias';})()}</td>
       <td style="min-width:120px" class="crt-td-num">${(()=>{const g=_calcGanhoProjetado(r);return g==null?'—':fmtBRL(g);})()}</td>
-      <td style="min-width:90px" class="crt-td-num">—</td>
+      <td style="min-width:90px" class="crt-td-num">${(()=>{const g=_calcGanhoProjetado(r);const c=_parseNumCrt(r.capitalInvestido);return(g==null||!c)?'—':((g/c)*100).toFixed(2).replace('.',',')+'%';})()}</td>
     </tr>`;
   }).join('');
 
