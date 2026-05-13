@@ -1529,8 +1529,6 @@ function renderCalendario() {
   if(!cal) return;
   const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const nomesSem = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const modLabel = {cessoes:'Cessões',rpv:'RPV',requerimentos:'Diversos'};
-  const modBdg = {cessoes:'bdg-blue',rpv:'bdg-grn',requerimentos:'bdg-ylw'};
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const hojeStr = todayStr();
@@ -1565,47 +1563,31 @@ function renderCalendario() {
     const dateStr = `${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isHoje = (d === hoje.getDate() && isCurMonth);
     const recs = prazosByDay[dateStr] || [];
-    const qtd = recs.length;
-    const temPrazo = qtd > 0;
+    const temPrazo = recs.length > 0;
     const cls = ['cal-row'];
     if(isHoje) cls.push('cal-row-today');
     if(temPrazo) cls.push('cal-row-has-deadline');
     if(dow === 0 || dow === 6) cls.push('cal-row-weekend');
     const tag = isHoje ? '<span class="cal-row-tag">hoje</span>' : '';
-    const leftHtml = `<div class="cal-row-left">
-      <span class="cal-row-day">${d}</span>
-      <span class="cal-row-wd">${nomesSem[dow]}</span>
-      ${tag}
-    </div>`;
-
-    if(temPrazo){
-      const itemsHtml = recs.map(r=>{
-        const partes = (r.cedente || r.cessionario)
-          ? `<div class="cal-item-sub">${esc(r.cedente||'')}${r.cedente && r.cessionario ? ' v. ' : ''}${esc(r.cessionario||'')}</div>`
-          : '';
-        return `<div class="cal-item">
-          <div class="cal-item-main">
-            <div class="cal-item-proc"><span>${esc(r.numeroProcesso||'')}</span>${navBtn(r._mod, r.id)}</div>
+    const tasksHtml = temPrazo
+      ? `<div class="cal-row-tasks">${recs.map(r=>{
+          const partes = (r.cedente || r.cessionario)
+            ? `<span class="cal-task-sub">${esc(r.cedente||'')}${r.cedente && r.cessionario ? ' v. ' : ''}${esc(r.cessionario||'')}</span>`
+            : '';
+          return `<div class="cal-task" title="${esc(r.numeroProcesso||'')}">
+            <span class="cal-task-proc">${esc(r.numeroProcesso||'')}</span>
             ${partes}
-          </div>
-          <span class="bdg ${modBdg[r._mod]}">${modLabel[r._mod]}</span>
-        </div>`;
-      }).join('');
-      rows += `<div class="cal-group">
-        <div class="${cls.join(' ')}">
-          ${leftHtml}
-          <div class="cal-row-right">
-            <div class="cal-row-badge">${qtd}</div>
-          </div>
-        </div>
-        <div class="cal-group-body">${itemsHtml}</div>
-      </div>`;
-    } else {
-      rows += `<div class="${cls.join(' ')}">
-        ${leftHtml}
-        <div class="cal-row-badge-ph"></div>
-      </div>`;
-    }
+          </div>`;
+        }).join('')}</div>`
+      : '';
+    rows += `<div class="${cls.join(' ')}">
+      <div class="cal-row-left">
+        <span class="cal-row-day">${d}</span>
+        <span class="cal-row-wd">${nomesSem[dow]}</span>
+        ${tag}
+      </div>
+      ${tasksHtml}
+    </div>`;
   }
 
   cal.innerHTML = `

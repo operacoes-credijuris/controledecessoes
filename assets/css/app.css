@@ -889,7 +889,8 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  padding:12px 16px 10px;
+  padding:10px 16px;
+  min-height:62px;
   border-bottom:1px solid rgba(255,255,255,.055);
   background:#15181e;
   flex-shrink:0;
@@ -980,84 +981,51 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:10px;
-  padding:8px 12px;
-  margin:1px 0;
-  border-radius:8px;
-  border:1px solid transparent;
-  transition:background .15s,border-color .15s;
-}
-.cal-row:hover{
-  background:#1c2129;
-  border-color:rgba(255,255,255,.06);
-}
-.cal-row-right{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-shrink:0;
-}
-.cal-group{
-  margin:2px 0;
-  border-radius:8px;
-  background:#0f1116;
-  border:1px solid rgba(255,255,255,.05);
-  overflow:hidden;
-}
-.cal-group .cal-row{
-  margin:0;
-  border-radius:0;
-  border:0;
-  background:transparent;
-}
-.cal-group .cal-row.cal-row-today{
-  border-radius:0;
-}
-.cal-group-body{
-  display:flex;
-  flex-direction:column;
-}
-.cal-item{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:8px 14px 8px 28px;
-  border-top:1px solid rgba(255,255,255,.04);
-  background:#0f1116;
+  gap:12px;
+  padding:9px 12px;
+  border-bottom:1px solid rgba(255,255,255,.035);
   transition:background .15s;
 }
-.cal-item:hover{background:#15181e}
-.cal-item-main{
+.cal-row:last-child{border-bottom:0}
+.cal-row:hover{background:#1a1d24}
+.cal-row-tasks{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:2px;
   flex:1;
   min-width:0;
   overflow:hidden;
 }
-.cal-item-proc{
+.cal-task{
   display:flex;
-  align-items:center;
-  gap:4px;
-  overflow:hidden;
-  font-size:12px;
-  font-weight:600;
-  color:var(--txt);
-  white-space:nowrap;
-  text-overflow:ellipsis;
-}
-.cal-item-proc>span:first-child{
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:1px;
+  max-width:100%;
   min-width:0;
+  line-height:1.25;
 }
-.cal-item-sub{
+.cal-task-proc{
+  font-size:11px;
+  font-weight:600;
+  color:#a8b3c2;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:100%;
+}
+.cal-task-sub{
   font-size:10px;
   color:#6b7280;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  margin-top:2px;
+  max-width:100%;
 }
-.cal-item .bdg{flex-shrink:0;font-size:9px}
+.cal-row.cal-row-has-deadline .cal-task-proc{color:#dceaff}
+.cal-row.cal-row-today .cal-task-proc{color:#e9f3ff}
+.cal-row.cal-row-today .cal-task-sub{color:#8aa4c4}
 .cal-row-left{
   display:flex;
   align-items:baseline;
@@ -1092,44 +1060,14 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   line-height:1;
   margin-left:2px;
 }
-.cal-row-badge{
-  min-width:24px;
-  padding:2px 9px;
-  border-radius:999px;
-  background:#20242b;
-  border:1px solid rgba(255,255,255,.06);
-  color:#7f8a99;
-  font-size:11px;
-  font-weight:700;
-  text-align:center;
-  line-height:14px;
-  flex-shrink:0;
-}
-.cal-row-badge-ph{
-  min-width:24px;
-  height:18px;
-  visibility:hidden;
-  flex-shrink:0;
-}
 .cal-row.cal-row-weekend .cal-row-day,
 .cal-row.cal-row-weekend .cal-row-wd{opacity:.55}
-.cal-row.cal-row-has-deadline .cal-row-badge{
-  background:rgba(248,113,113,.18);
-  border-color:rgba(248,113,113,.45);
-  color:#ffb4b4;
-}
 .cal-row.cal-row-today{
-  background:linear-gradient(90deg,rgba(0,119,255,.22),rgba(0,119,255,.04));
-  border-color:rgba(0,119,255,.42);
+  background:linear-gradient(90deg,rgba(0,119,255,.18),rgba(0,119,255,.03));
   box-shadow:inset 3px 0 0 #168fff;
 }
 .cal-row.cal-row-today .cal-row-day{color:#fff}
 .cal-row.cal-row-today .cal-row-wd{color:#bfddff}
-.cal-row.cal-row-today.cal-row-has-deadline .cal-row-badge{
-  background:rgba(255,255,255,.22);
-  border-color:rgba(255,255,255,.40);
-  color:#fff;
-}
 /* URGÊNCIAS — dropdown no título */
 .urg-dd-wrap{
   position:relative;
