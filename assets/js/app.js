@@ -4493,8 +4493,10 @@ function _syncProgressHide(el){el?.remove();}
 
 /* Versão atual do schema das diligências salvas em r._advboxDiligencias.
    Incrementa quando novos campos são adicionados ao objeto salvo. Usada para
-   detectar caches velhos e forçar re-fetch, ignorando a otimização (A). */
-const DILIGENCIA_SCHEMA_VER = 2;
+   detectar caches velhos e forçar re-fetch, ignorando a otimização (A).
+   v3: preserva campos crus do Advbox para investigar marcação de "prazo fatal". */
+const DILIGENCIA_SCHEMA_VER = 3;
+let _diligenciaDebugSampleLogged = false;
 
 /* Calcula uma "assinatura" do objeto lawsuit retornado pela Advbox para
    detectar se houve mudança desde a última sincronização. Tenta nomes comuns
@@ -4612,14 +4614,31 @@ async function syncAdvbox(opts){
     let openDils=null;
     if(!hr.skip && !hr.err){
       const histAll=Array.isArray(hr.data)?hr.data:(hr.data.data||hr.data.results||[]);
+      // FASE 1 (investigação): loga uma amostra crua do Advbox no console pra identificar
+      // qual campo distingue "prazo fatal" das diligências comuns. Roda apenas uma vez por sync.
+      if(!_diligenciaDebugSampleLogged && histAll.length){
+        console.info('[Credijuris][DEBUG] Amostra crua de diligencia do Advbox (history) — processo',rec.numeroProcesso,':',histAll[0]);
+        console.info('[Credijuris][DEBUG] Keys disponiveis:',Object.keys(histAll[0]));
+        _diligenciaDebugSampleLogged=true;
+      }
       openDils=histAll
         .filter(p=>p.date_deadline && !(p.status==='completed' || (p.completed!=null && p.completed!==false)))
-        .map(p=>({
-          task:String(p.task||'').slice(0,200),
-          notes:String(p.comments||p.notes||'').slice(0,300),
-          deadline:String(p.date_deadline).slice(0,10),
-          responsible:String(p.responsible||p.author||'').slice(0,80)
-        }));
+        .map(p=>{
+          const clean={
+            task:String(p.task||'').slice(0,200),
+            notes:String(p.comments||p.notes||'').slice(0,300),
+            deadline:String(p.date_deadline).slice(0,10),
+            responsible:String(p.responsible||p.author||'').slice(0,80)
+          };
+          // FASE 1 (investigação): preserva campos crus que possivelmente marcam "prazo fatal".
+          // Adicionamos somente campos top-level que existem na resposta — undefined são ignorados.
+          ['id','category','categoria','task_type','tipo_tarefa','tipo','type','priority','prioridade',
+           'tags','flag_fatal','is_fatal','fatal','is_deadline','deadline_type','tipo_prazo',
+           'kind','classification','classificacao'].forEach(k=>{
+            if(p[k]!==undefined && p[k]!==null) clean['_raw_'+k]=p[k];
+          });
+          return clean;
+        });
     }
 
     const arr=load(mod);
@@ -4714,6 +4733,44 @@ async function syncAdvbox(opts){
   else if(topTab!=='dashboard')render(topTab);
   updateDash();
 }
+
+/* ======================================================
+   DEBUG — helpers temporarios (Fase 1 investigacao prazo fatal)
+====================================================== */
+window._debugDiligencias = function(){
+  const mods=['cessoes','rpv','requerimentos'];
+  const all=[];
+  mods.forEach(m=>{
+    load(m).forEach(r=>{
+      (r._advboxDiligencias||[]).forEach(d=>{
+        all.push({mod:m,processo:r.numeroProcesso,...d});
+      });
+    });
+  });
+  const rawKeys=new Set();
+  all.forEach(d=>Object.keys(d).forEach(k=>{ if(k.startsWith('_raw_'))rawKeys.add(k); }));
+  console.group('[Credijuris] Diligencias cacheadas:',all.length);
+  if(!all.length){
+    console.warn('Nenhuma diligencia cacheada. Faca uma sync primeiro (botao Sincronizar no topo).');
+  } else {
+    console.log('Sample [0]:',all[0]);
+    console.log('Todos os _raw_* encontrados nas diligencias:',[...rawKeys]);
+    // Agrupa por valor de cada _raw_ field — ajuda a identificar quais marcam "fatal"
+    rawKeys.forEach(k=>{
+      const valores=new Map();
+      all.forEach(d=>{
+        const v=d[k];
+        if(v===undefined||v===null)return;
+        const key=typeof v==='object'?JSON.stringify(v):String(v);
+        valores.set(key,(valores.get(key)||0)+1);
+      });
+      console.log(`Distribuicao de ${k}:`,Object.fromEntries(valores));
+    });
+    console.log('Lista completa:',all);
+  }
+  console.groupEnd();
+  return all;
+};
 
 /* ======================================================
    INIT
