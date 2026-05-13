@@ -669,8 +669,10 @@ async function driveListIntermediadores(
     categoria_rpv_id: null as string | null,
   };
   const out: Array<{ id: string; name: string; categoria: string }> = [];
+  // Match tolerante a acentos/encoding — resiste a deploys que quebrem UTF-8 da constante
+  const alvoNorm = normalizar(DRIVE_CATEGORIA_PADRAO);
   for (const cat of cats) {
-    if (cat.name !== DRIVE_CATEGORIA_PADRAO) continue; // só RPV por enquanto (matching Python default)
+    if (normalizar(cat.name) !== alvoNorm) continue; // só RPV por enquanto (matching Python default)
     debug.categoria_rpv_id = cat.id;
     const subs = await driveListFiles(
       token,
