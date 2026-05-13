@@ -1647,7 +1647,8 @@ function renderCalendario() {
   let totalRecs = 0;
   [['cessoes',load('cessoes')],['rpv',load('rpv')],['requerimentos',load('requerimentos')]].forEach(([mod,recs])=>{
     recs.forEach(r=>{
-      if(r.vinculoPai) return;
+      // Inclui processos filhos (vinculoPai!=null) — diligencias sao por processo,
+      // entao filhos tem prazos independentes do pai.
       totalRecs++;
       if(Object.prototype.hasOwnProperty.call(r,'_advboxDiligencias')) recsWithDilsField++;
       const dils = r._advboxDiligencias || [];
