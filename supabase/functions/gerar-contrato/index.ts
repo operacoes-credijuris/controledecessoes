@@ -143,11 +143,14 @@ const CLAUDE_SYSTEM_PROMPT =
 // ============================================================================
 
 function normalizar(s: string): string {
-  // Lowercase, sem acento, sem pontuação — pra busca
+  // Lowercase, sem acento, sem pontuação — pra busca.
+  // O range ̀-ͯ cobre as combining marks (NFD separa "á" em "a"+◌́);
+  // usar escapes Unicode em vez de caracteres literais sobrevive a deploys que
+  // corrompam encoding (cmd → CP1252 → Deno UTF-8 invalidaria chars literais).
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036F]/g, '')
     .replace(/[.\-/() ]/g, '');
 }
 
