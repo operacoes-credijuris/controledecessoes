@@ -131,31 +131,34 @@
         </div>
       </div>
 
-      <!-- COLUNA 2 — Urgências (seletor no topo + lista) -->
+      <!-- COLUNA 2 — Urgências (dropdown + lista) -->
       <div class="dash-panel dash-urgencies-panel">
         <div class="dash-panel-hdr">
-          <div>
+          <div class="urg-dd-wrap">
             <div class="dash-panel-kicker danger">Urgências</div>
-            <div class="dash-panel-title" id="urg-current-title">Prazos Fatais</div>
+            <button type="button" id="urg-dd-btn" class="urg-dd-btn" aria-haspopup="menu" aria-expanded="false" onclick="toggleUrgDD(event)">
+              <span class="urg-dd-lbl" id="urg-current-title">Prazos Fatais</span>
+              <span class="urg-dd-chevron" aria-hidden="true">▾</span>
+            </button>
+            <div class="urg-dd-menu" id="urg-dd-menu" role="menu" hidden>
+              <button type="button" class="urg-dd-item on" role="menuitem" data-urgency="prazos" onclick="selectUrgency('prazos')">
+                <span class="urg-dot urg-dot-red"></span>
+                <span class="urg-dd-item-lbl">Prazos Fatais</span>
+                <span class="urg-dd-item-count" id="urg-count-prazos">0</span>
+              </button>
+              <button type="button" class="urg-dd-item" role="menuitem" data-urgency="liquidacao" onclick="selectUrgency('liquidacao')">
+                <span class="urg-dot urg-dot-yellow"></span>
+                <span class="urg-dd-item-lbl">Liquidação Próxima ou Vencida</span>
+                <span class="urg-dd-item-count" id="urg-count-liq">0</span>
+              </button>
+              <button type="button" class="urg-dd-item" role="menuitem" data-urgency="paralisados" onclick="selectUrgency('paralisados')">
+                <span class="urg-dot urg-dot-orange"></span>
+                <span class="urg-dd-item-lbl">Paralisados</span>
+                <span class="urg-dd-item-count" id="urg-count-par">0</span>
+              </button>
+            </div>
           </div>
           <span id="urg-current-count" class="dash-count"></span>
-        </div>
-        <div class="urg-selector" role="tablist">
-          <button type="button" class="urg-tab on urg-tab-red" data-urgency="prazos" onclick="selectUrgency('prazos')">
-            <span class="urg-dot"></span>
-            <span class="urg-tab-lbl">Prazos Fatais</span>
-            <span class="urg-tab-count" id="urg-count-prazos">0</span>
-          </button>
-          <button type="button" class="urg-tab urg-tab-yellow" data-urgency="liquidacao" onclick="selectUrgency('liquidacao')">
-            <span class="urg-dot"></span>
-            <span class="urg-tab-lbl">Liquidação Próxima ou Vencida</span>
-            <span class="urg-tab-count" id="urg-count-liq">0</span>
-          </button>
-          <button type="button" class="urg-tab urg-tab-orange" data-urgency="paralisados" onclick="selectUrgency('paralisados')">
-            <span class="urg-dot"></span>
-            <span class="urg-tab-lbl">Paralisados</span>
-            <span class="urg-tab-count" id="urg-count-par">0</span>
-          </button>
         </div>
         <div id="dash-urgency-body" class="dash-urgency-body"></div>
       </div>

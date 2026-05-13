@@ -1512,90 +1512,69 @@ function updateDash(){
 }
 
 /* ======================================================
-   CALENDÁRIO DE PRAZOS
+   CALENDÁRIO DE PRAZOS — lista vertical a partir de hoje
 ====================================================== */
-let calAno = new Date().getFullYear();
-let calMes = new Date().getMonth();
-
-function calNav(dir) {
-  calMes += dir;
-  if(calMes > 11){calMes=0;calAno++;}
-  if(calMes < 0){calMes=11;calAno--;}
-  renderCalendario();
-}
+const CAL_DAYS_AHEAD = 90;
 
 function renderCalendario() {
   const cal = document.getElementById('cal-container');
   if(!cal) return;
-  const hoje = new Date();
-  const diasNoMes = new Date(calAno, calMes + 1, 0).getDate();
   const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const nomesSem = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const hojeStr = todayStr();
 
-  const prazosNivel = {};
+  // Agrega prazos por dia
   const prazosQtd = {};
-  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
   let overdueQtd = 0;
   [...load('cessoes'),...load('rpv'),...load('requerimentos')].forEach(r => {
-    if(r.prazoFatal) {
-      const d = normDate(r.prazoFatal);
-      if(d) {
-        if(d < hojeStr) {
-          overdueQtd++; // vencido: acumula no dia de hoje
-        } else {
-          prazosNivel[d] = fatalLevel(d);
-          prazosQtd[d] = (prazosQtd[d] || 0) + 1;
-        }
-      }
-    }
+    if(!r.prazoFatal) return;
+    const d = normDate(r.prazoFatal);
+    if(!d) return;
+    if(d < hojeStr) overdueQtd++;
+    else prazosQtd[d] = (prazosQtd[d] || 0) + 1;
   });
-  if(overdueQtd > 0) {
-    prazosNivel[hojeStr] = 'red';
-    prazosQtd[hojeStr] = (prazosQtd[hojeStr] || 0) + overdueQtd;
-  }
+  // Vencidos contam no dia de hoje
+  if(overdueQtd > 0) prazosQtd[hojeStr] = (prazosQtd[hojeStr] || 0) + overdueQtd;
 
-  let cells = '';
-  for(let d = 1; d <= diasNoMes; d++) {
-    const dt = new Date(calAno, calMes, d);
+  let html = '';
+  let lastMonth = -1;
+  let lastYear = -1;
+  for(let i = 0; i <= CAL_DAYS_AHEAD; i++) {
+    const dt = new Date(hoje);
+    dt.setDate(dt.getDate() + i);
+    const y = dt.getFullYear();
+    const m = dt.getMonth();
+    const dd = dt.getDate();
     const dow = dt.getDay();
-    const dateStr = `${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isHoje = d === hoje.getDate() && calMes === hoje.getMonth() && calAno === hoje.getFullYear();
-    const temPrazo = !!prazosNivel[dateStr];
-    const qtdPrazo = prazosQtd[dateStr] || 0;
-    const cls = ['cal-hcell'];
-    if(isHoje) cls.push('cal-today');
-    if(temPrazo) cls.push('cal-has-deadline');
-    if(dow===0 || dow===6) cls.push('cal-weekend');
+    if(m !== lastMonth || y !== lastYear) {
+      html += `<div class="cal-month-sep">${meses[m]} ${y}</div>`;
+      lastMonth = m;
+      lastYear = y;
+    }
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+    const isHoje = (i === 0);
+    const qtd = prazosQtd[dateStr] || 0;
+    const temPrazo = qtd > 0;
+    const cls = ['cal-row'];
+    if(isHoje) cls.push('cal-row-today');
+    if(temPrazo) cls.push('cal-row-has-deadline');
+    if(dow === 0 || dow === 6) cls.push('cal-row-weekend');
     const badge = temPrazo
-      ? `<div class="cal-hbadge">${qtdPrazo}</div>`
-      : '<div class="cal-hbadge-ph"></div>';
-    cells += `<div class="${cls.join(' ')}" data-day="${d}">
-      <div class="cal-hwd">${nomesSem[dow]}</div>
-      <div class="cal-hday">${d}</div>
+      ? `<div class="cal-row-badge">${qtd}</div>`
+      : '<div class="cal-row-badge-ph"></div>';
+    const tag = isHoje ? '<span class="cal-row-tag">hoje</span>' : '';
+    html += `<div class="${cls.join(' ')}">
+      <div class="cal-row-left">
+        <span class="cal-row-day">${dd}</span>
+        <span class="cal-row-wd">${nomesSem[dow]}</span>
+        ${tag}
+      </div>
       ${badge}
     </div>`;
   }
 
-  cal.innerHTML = `
-    <div class="cal-head">
-      <div class="cal-title">${meses[calMes]} <span>${calAno}</span></div>
-      <div class="cal-nav">
-        <button type="button" onclick="calNav(-1)" aria-label="Mês anterior">‹</button>
-        <button type="button" onclick="calNav(1)" aria-label="Próximo mês">›</button>
-      </div>
-    </div>
-    <div class="cal-hstrip" id="cal-hstrip">${cells}</div>`;
-
-  // Centralizar dia de hoje (ou dia 1 quando navegando para outro mês)
-  const strip = document.getElementById('cal-hstrip');
-  if(strip) {
-    const ehMesCorrente = calMes === hoje.getMonth() && calAno === hoje.getFullYear();
-    const alvo = ehMesCorrente ? hoje.getDate() : 1;
-    const cell = strip.querySelector(`[data-day="${alvo}"]`);
-    if(cell) {
-      strip.scrollLeft = Math.max(0, cell.offsetLeft - strip.offsetWidth/2 + cell.offsetWidth/2);
-    }
-  }
+  cal.innerHTML = `<div class="cal-vlist" id="cal-vlist">${html}</div>`;
 }
 
 /* ======================================================
@@ -2320,8 +2299,40 @@ function selectUrgency(tipo){
   clone.classList.add('dash-side-list');
   clone.style.cssText='';
   body.appendChild(clone);
-  document.querySelectorAll('.urg-tab').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
+  document.querySelectorAll('.urg-dd-item').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
+  closeUrgDD();
 }
+
+/* Dropdown de Urgências */
+function toggleUrgDD(e){
+  e&&e.stopPropagation();
+  const menu=document.getElementById('urg-dd-menu');
+  if(!menu)return;
+  if(menu.hidden) openUrgDD(); else closeUrgDD();
+}
+function openUrgDD(){
+  const btn=document.getElementById('urg-dd-btn');
+  const menu=document.getElementById('urg-dd-menu');
+  if(menu) menu.hidden=false;
+  if(btn) btn.setAttribute('aria-expanded','true');
+}
+function closeUrgDD(){
+  const btn=document.getElementById('urg-dd-btn');
+  const menu=document.getElementById('urg-dd-menu');
+  if(menu) menu.hidden=true;
+  if(btn) btn.setAttribute('aria-expanded','false');
+}
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('urg-dd-menu');
+  if(!menu||menu.hidden) return;
+  const btn=document.getElementById('urg-dd-btn');
+  if(menu.contains(e.target)||(btn&&btn.contains(e.target))) return;
+  closeUrgDD();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeUrgDD();
+});
+
 // Compatibilidade: chamadas antigas a openDashPanel ainda funcionam como seleção.
 function openDashPanel(tipo){ selectUrgency(tipo); }
 
