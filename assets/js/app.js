@@ -4096,6 +4096,11 @@ function _syncProgressUpdate(el,{label,pct,sub}){
 }
 function _syncProgressHide(el){el?.remove();}
 
+/* Versão atual do schema das diligências salvas em r._advboxDiligencias.
+   Incrementa quando novos campos são adicionados ao objeto salvo. Usada para
+   detectar caches velhos e forçar re-fetch, ignorando a otimização (A). */
+const DILIGENCIA_SCHEMA_VER = 2;
+
 /* Calcula uma "assinatura" do objeto lawsuit retornado pela Advbox para
    detectar se houve mudança desde a última sincronização. Tenta nomes comuns
    de campos de "última atualização" + indicadores derivados. Se nenhum dos
@@ -4113,7 +4118,8 @@ function _advboxLawsuitSig(lawsuit){
   return parts.length?parts.map(String).join('|'):null;
 }
 
-async function syncAdvbox(){
+async function syncAdvbox(opts){
+  const force = !!(opts && opts.force);
   const btn=document.getElementById('sync-btn');
   if(!btn||btn.disabled)return;
   if(!_secrets.advbox()){showToast('Token Advbox não configurado.');return;}
@@ -4177,15 +4183,17 @@ async function syncAdvbox(){
     const lawsuits=Array.isArray(sr.data)?sr.data:(sr.data.results||sr.data.data||[]);
     if(!lawsuits.length){if(tentativa===1)st.done++;await _sleep(2000);return;}
 
-    // (A) Skip cedo se a "assinatura" do lawsuit não mudou desde a última sync.
-    // Tentamos vários nomes de campo de "última atualização" — se nenhum existir,
-    // newSig vira null e o caminho rápido fica desabilitado para este registro.
+    // (A) Skip cedo se a "assinatura" do lawsuit não mudou desde a última sync
+    // E o schema das diligências salvas estiver atualizado E o sync não tiver
+    // sido invocado com force=true (botão manual).
     const _arr0 = load(mod);
     const _idx0 = _arr0.findIndex(r=>r.id===rec.id);
     const newSig = _advboxLawsuitSig(lawsuits[0]);
     const savedSig = _idx0!==-1 ? (_arr0[_idx0]._advboxLawsuitSig||'') : '';
-    if(newSig && savedSig && savedSig===newSig){
-      // Assinatura igual → sem mudanças. Pula /movements e /history.
+    const savedSchemaVer = _idx0!==-1 ? (_arr0[_idx0]._advboxDiligenciasSchemaVer||0) : 0;
+    const schemaOk = savedSchemaVer >= DILIGENCIA_SCHEMA_VER;
+    if(!force && newSig && savedSig && savedSig===newSig && schemaOk){
+      // Assinatura igual + schema atualizado → sem mudanças. Pula /movements e /history.
       if(tentativa===1)st.done++;
       _upd(rec.numeroProcesso+' · sem mudança');
       await _sleep(500);
@@ -4226,8 +4234,12 @@ async function syncAdvbox(){
     const movsChanged=movs.length>0 && !(movs.length===savedCount && histAtual.length);
     const curDils=idx!==-1?JSON.stringify(arr[idx]._advboxDiligencias||[]):'[]';
     const dilsChanged=openDils!==null && JSON.stringify(openDils)!==curDils;
+    const savedSigCur = idx!==-1 ? (arr[idx]._advboxLawsuitSig||'') : '';
+    const savedSchemaVerCur = idx!==-1 ? (arr[idx]._advboxDiligenciasSchemaVer||0) : 0;
+    const sigNeedsUpdate = !!newSig && savedSigCur !== newSig;
+    const schemaNeedsUpdate = openDils !== null && savedSchemaVerCur < DILIGENCIA_SCHEMA_VER;
 
-    if(!movsChanged && !dilsChanged){
+    if(!movsChanged && !dilsChanged && !sigNeedsUpdate && !schemaNeedsUpdate){
       if(tentativa===1)st.done++;
       await _sleep(2000);
       return;
@@ -4267,7 +4279,7 @@ async function syncAdvbox(){
         updated={...updated,historicoProcessual:hist,_advboxMovCount:movs.length};
       }
       if(openDils!==null){
-        updated={...updated,_advboxDiligencias:openDils};
+        updated={...updated,_advboxDiligencias:openDils,_advboxDiligenciasSchemaVer:DILIGENCIA_SCHEMA_VER};
       }
       if(lawsuitSig){
         updated={...updated,_advboxLawsuitSig:lawsuitSig};
