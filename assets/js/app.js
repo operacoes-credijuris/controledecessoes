@@ -749,7 +749,7 @@ function _consExportarXLSX(){
   const ws=XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols']=[{wch:36},{wch:20},{wch:20},{wch:20},{wch:14},{wch:14},{wch:18}];
 
-  const C={brand:'0077FF',brandSoft:'1E3A5F',txtMuted:'6E9FCE',border:'D0D7DE',rowAlt:'F4F8FC'};
+  const C={brand:'6E7DBB',brandSoft:'1B2138',txtMuted:'8C9AD0',border:'D0D7DE',rowAlt:'F4F8FC'};
   const fontBase={name:'Calibri',sz:11};
   const borderThin={top:{style:'thin',color:{rgb:C.border}},bottom:{style:'thin',color:{rgb:C.border}},left:{style:'thin',color:{rgb:C.border}},right:{style:'thin',color:{rgb:C.border}}};
   const setStyle=(ref,s)=>{if(ws[ref])ws[ref].s=Object.assign({},ws[ref].s||{},s);};
@@ -975,13 +975,13 @@ function _crtExportarXLSX(){
   // larguras alinhadas às colunas da tabela (23 cols: A..W)
   ws['!cols']=[{wch:12},{wch:22},{wch:26},{wch:22},{wch:18},{wch:10},{wch:20},{wch:13},{wch:20},{wch:14},{wch:18},{wch:14},{wch:18},{wch:14},{wch:22},{wch:12},{wch:24},{wch:32},{wch:14},{wch:20},{wch:12},{wch:12},{wch:12}];
 
-  // ----- paleta inspirada no tema -----
+  // ----- paleta inspirada no tema (Credijuris periwinkle) -----
   const C={
-    brand:'0077FF',      // azul principal
-    brandSoft:'1E3A5F',  // azul header da tabela
+    brand:'6E7DBB',      // periwinkle principal
+    brandSoft:'1B2138',  // azul-marinho header da tabela
     gold:'C9A84C',
     bgTitle:'0D1117',    // título sobre fundo claro? usaremos para texto
-    txtMuted:'6E9FCE',
+    txtMuted:'8C9AD0',
     border:'D0D7DE',
     rowAlt:'F4F8FC'
   };
@@ -2770,7 +2770,7 @@ function editPrazoFatal(mod,id){
   const rec=load(mod).find(r=>r.id===id);
   const cur=(rec&&rec.prazoFatal)?normDate(rec.prazoFatal):'';
   _pfEsc=false;
-  td.innerHTML=`<input type="date" value="${cur}" style="background:#1a1f2e;border:1px solid #0077ff;border-radius:5px;color:#e2e8f0;padding:2px 5px;font-size:12px;font-family:inherit;outline:none;width:130px;color-scheme:dark" onblur="if(!_pfEsc)_pfSave('${mod}','${esc(id)}',this.value)" onkeydown="if(event.key==='Enter'){_pfEsc=false;this.blur()}else if(event.key==='Escape'){_pfEsc=true;event.preventDefault();render('${mod}')}">`;
+  td.innerHTML=`<input type="date" value="${cur}" style="background:#1a1f2e;border:1px solid #6e7dbb;border-radius:5px;color:#e2e8f0;padding:2px 5px;font-size:12px;font-family:inherit;outline:none;width:130px;color-scheme:dark" onblur="if(!_pfEsc)_pfSave('${mod}','${esc(id)}',this.value)" onkeydown="if(event.key==='Enter'){_pfEsc=false;this.blur()}else if(event.key==='Escape'){_pfEsc=true;event.preventDefault();render('${mod}')}">`;
   const inp=td.querySelector('input');
   if(inp){inp.focus();inp.click();}
 }
@@ -2817,7 +2817,7 @@ function crtEdit(aba,id,field,type){
   _crtEsc=false;
   const w=type==='date'?'130px':'110px';
   const extra=type==='date'?'color-scheme:dark':'';
-  td.innerHTML=`<input type="${esc(type)}" value="${esc(cur)}" style="background:#1a1f2e;border:1px solid #0077ff;border-radius:5px;color:#e2e8f0;padding:2px 5px;font-size:10px;font-family:inherit;outline:none;width:${w};${extra}" onblur="if(!_crtEsc)_crtSave('${escJs(aba)}','${escJs(id)}','${escJs(field)}',this.value)" onkeydown="if(event.key==='Enter'){_crtEsc=false;this.blur()}else if(event.key==='Escape'){_crtEsc=true;event.preventDefault();_crtRefresh()}">`;
+  td.innerHTML=`<input type="${esc(type)}" value="${esc(cur)}" style="background:#1a1f2e;border:1px solid #6e7dbb;border-radius:5px;color:#e2e8f0;padding:2px 5px;font-size:10px;font-family:inherit;outline:none;width:${w};${extra}" onblur="if(!_crtEsc)_crtSave('${escJs(aba)}','${escJs(id)}','${escJs(field)}',this.value)" onkeydown="if(event.key==='Enter'){_crtEsc=false;this.blur()}else if(event.key==='Escape'){_crtEsc=true;event.preventDefault();_crtRefresh()}">`;
   const inp=td.querySelector('input');
   if(inp){inp.focus();if(type!=='date')inp.select();}
 }
@@ -3573,8 +3573,8 @@ function switchHistTab(tab){
   ['historico','diligencias'].forEach(t=>{
     document.getElementById('hist-tab-content-'+t).style.display=t===tab?'block':'none';
     const btn=document.getElementById('hist-tab-'+(t==='historico'?'hist':'dil'));
-    btn.style.color=t===tab?'#0077ff':'#6b7280';
-    btn.style.borderBottom=t===tab?'2px solid #0077ff':'2px solid transparent';
+    btn.style.color=t===tab?'#6e7dbb':'#6b7280';
+    btn.style.borderBottom=t===tab?'2px solid #6e7dbb':'2px solid transparent';
   });
   if(tab==='diligencias')loadDiligencias();
 }
@@ -4078,7 +4078,7 @@ function _syncProgressShow(){
   if(!el){
     el=document.createElement('div');
     el.id='_syncProg';
-    el.style.cssText='position:fixed;right:24px;bottom:24px;width:min(420px,calc(100vw - 48px));background:#15181e;color:#f4f7fb;padding:14px 16px;border:1px solid rgba(88,183,255,.26);border-radius:10px;z-index:9998;font-size:12px;display:grid;gap:9px;box-shadow:0 22px 60px rgba(0,0,0,.38),0 0 0 1px rgba(0,119,255,.08);overflow:hidden';
+    el.style.cssText='position:fixed;right:24px;bottom:24px;width:min(420px,calc(100vw - 48px));background:#15181e;color:#f4f7fb;padding:14px 16px;border:1px solid rgba(140,154,208,.26);border-radius:10px;z-index:9998;font-size:12px;display:grid;gap:9px;box-shadow:0 22px 60px rgba(0,0,0,.38),0 0 0 1px rgba(110,125,187,.08);overflow:hidden';
     document.body.appendChild(el);
   }
   return el;
@@ -4086,13 +4086,13 @@ function _syncProgressShow(){
 function _syncProgressUpdate(el,{label,pct,sub}){
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:14px">
     <div style="display:flex;align-items:center;gap:9px;min-width:0">
-      <span style="width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(0,119,255,.18);color:#8fd0ff;font-size:11px;flex-shrink:0">↻</span>
+      <span style="width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(110,125,187,.18);color:#8fd0ff;font-size:11px;flex-shrink:0">↻</span>
       <b style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</b>
     </div>
     <span style="color:#8fd0ff;font-size:12px;font-weight:800;flex-shrink:0">${pct}%</span>
   </div>
   ${sub?`<div style="color:#8793a3;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:27px">${sub}</div>`:''}
-  <div style="background:#242a35;border-radius:999px;height:5px;overflow:hidden"><div style="background:#0077ff;height:100%;width:${pct}%;transition:width .35s ease;border-radius:999px"></div></div>`;
+  <div style="background:#242a35;border-radius:999px;height:5px;overflow:hidden"><div style="background:#6e7dbb;height:100%;width:${pct}%;transition:width .35s ease;border-radius:999px"></div></div>`;
 }
 function _syncProgressHide(el){el?.remove();}
 
