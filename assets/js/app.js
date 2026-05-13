@@ -2570,6 +2570,16 @@ document.addEventListener('keydown',e=>{
 
 function _normProcNum(s){return String(s||'').replace(/\D/g,'');}
 
+// Decodifica entidades HTML (&eacute; -> é, &sect; -> §, etc.) usando o parser
+// nativo do navegador via <textarea> — RCDATA decodifica entidades mas não
+// interpreta tags, então é seguro contra XSS.
+function _decodeHtmlEntities(s){
+  if(!s)return'';
+  const ta=document.createElement('textarea');
+  ta.innerHTML=String(s);
+  return ta.value;
+}
+
 function _djenDateRange(){
   const fim=todayStr();
   const past=new Date(); past.setHours(0,0,0,0); past.setDate(past.getDate()-30);
@@ -2680,7 +2690,7 @@ async function _renderPubs(){
     const dataDisp=fmtDate(String(it.data_disponibilizacao||'').slice(0,10));
     const tipo=it.tipoComunicacao||'';
     const orgao=it.nomeOrgao||'';
-    const texto=String(it.texto||'').trim();
+    const texto=_decodeHtmlEntities(it.texto||'').trim();
     const isLong=texto.length>150;
     const textoShort=isLong?texto.slice(0,150)+'…':texto;
     const destArr=Array.isArray(it.destinatarios)?it.destinatarios:[];
