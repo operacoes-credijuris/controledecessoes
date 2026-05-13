@@ -963,6 +963,20 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .cal-nav button:hover:not(:disabled){border-color:rgba(0,119,255,.55);color:#fff;background:#252b35}
 .cal-nav button:disabled{opacity:.35;cursor:not-allowed}
 
+.cal-empty-hint{
+  margin:4px 4px 10px;
+  padding:10px 12px;
+  background:#15181e;
+  border:1px solid rgba(0,119,255,.18);
+  border-left:3px solid #0077ff;
+  border-radius:8px;
+  font-size:11px;
+  color:#a8b3c2;
+  line-height:1.5;
+  flex-shrink:0;
+}
+.cal-empty-hint strong{color:#dceaff;font-weight:700}
+
 /* CALENDÁRIO VERTICAL — lista de dias a partir de hoje */
 .cal-vlist{
   flex:1;

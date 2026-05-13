@@ -1633,13 +1633,19 @@ function renderCalendario() {
   // Diligências com deadline < hoje são ignoradas no calendário (não acumula
   // em "hoje"); elas continuam visíveis dentro do histórico de cada processo.
   const prazosByDay = {};
+  let totalDils = 0;
+  let recsWithDilsField = 0;
+  let totalRecs = 0;
   [['cessoes',load('cessoes')],['rpv',load('rpv')],['requerimentos',load('requerimentos')]].forEach(([mod,recs])=>{
     recs.forEach(r=>{
       if(r.vinculoPai) return;
+      totalRecs++;
+      if(Object.prototype.hasOwnProperty.call(r,'_advboxDiligencias')) recsWithDilsField++;
       const dils = r._advboxDiligencias || [];
       dils.forEach(d => {
         if(!d.deadline) return;
         const ddl = normDate(d.deadline); if(!ddl) return;
+        totalDils++;
         if(ddl < hojeStr) return;
         (prazosByDay[ddl] = prazosByDay[ddl] || []).push({
           _mod:mod, _id:r.id,
@@ -1689,6 +1695,15 @@ function renderCalendario() {
     </div>`;
   }
 
+  let emptyHint = '';
+  if(Object.keys(prazosByDay).length === 0){
+    if(totalRecs > 0 && recsWithDilsField === 0){
+      emptyHint = `<div class="cal-empty-hint">Diligências do Advbox ainda não foram sincronizadas. Clique em <strong>↺ Sincronizar</strong> no topo para puxá-las.</div>`;
+    } else if(recsWithDilsField > 0 && totalDils === 0){
+      emptyHint = `<div class="cal-empty-hint">Nenhuma diligência aberta com prazo registrado no Advbox.</div>`;
+    }
+  }
+
   cal.innerHTML = `
     <div class="cal-head">
       <div class="cal-title">${meses[calMes]} <span>${calAno}</span></div>
@@ -1697,6 +1712,7 @@ function renderCalendario() {
         <button type="button" onclick="calNav(1)" aria-label="Próximo mês">›</button>
       </div>
     </div>
+    ${emptyHint}
     <div class="cal-vlist" id="cal-vlist">${rows}</div>`;
 }
 
