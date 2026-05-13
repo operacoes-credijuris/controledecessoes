@@ -1608,7 +1608,7 @@ function updateDash(){
   const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
   const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
   selectUrgency(dashUrgencyType||'prazos');
-  selectActivity(dashActivityType||'movimentacoes');
+  selectActivity(dashActivityType||'publicacoes');
 
   renderCalendario();
 }
@@ -2502,7 +2502,7 @@ function openDashPanel(tipo){ selectUrgency(tipo); }
 /* ======================================================
    COLUNA DE ATIVIDADE — dropdown e Publicações DJEN
 ====================================================== */
-let dashActivityType='movimentacoes';
+let dashActivityType='publicacoes';
 let _pubsCache={data:null,ts:0};
 const _PUB_CACHE_MS=15*60*1000;
 const _DJEN_OABS=[
