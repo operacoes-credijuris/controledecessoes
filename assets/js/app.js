@@ -473,8 +473,11 @@ function _sbShowConfig(){
 
 /* ======================================================
    AUTO-SYNC — disparo diário automático
+   Fonte da verdade: tabela `configuracoes` (Supabase), chave `autosync_config`.
+   localStorage `cj-autosync` é cache local — repopulado a cada login/abertura.
 ====================================================== */
 const _AUTOSYNC_KEY = 'cj-autosync';
+const _AUTOSYNC_SB_KEY = 'autosync_config';
 let _autoSyncTimer = null;
 
 function _cfgAutosyncRead(){
@@ -482,10 +485,40 @@ function _cfgAutosyncRead(){
 }
 function _cfgAutosyncWrite(cfg){
   localStorage.setItem(_AUTOSYNC_KEY, JSON.stringify(cfg));
+  // Espelha pro Supabase (fire-and-forget — nao bloqueia UI; logs erro se houver)
+  if(sb){
+    sb.from('configuracoes').upsert(
+      {chave:_AUTOSYNC_SB_KEY,valor:JSON.stringify(cfg)},
+      {onConflict:'chave'}
+    ).then(({error})=>{if(error)console.warn('[Credijuris] autosync save:',error);});
+  }
 }
 
-function _cfgAutosyncLoad(){
-  const cfg = _cfgAutosyncRead();
+async function _cfgAutosyncFetchRemote(){
+  if(!sb)return null;
+  try{
+    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave',_AUTOSYNC_SB_KEY).maybeSingle();
+    if(!error&&data?.valor)return JSON.parse(data.valor);
+  }catch(e){console.warn('[Credijuris] autosync load:',e);}
+  return null;
+}
+
+// Mescla cache local e remoto, mantendo o lastRun mais recente. Persiste merge no
+// localStorage. Retorna o objeto mesclado (ou null se Supabase indisponivel).
+async function _cfgAutosyncMergeFromRemote(){
+  const remote = await _cfgAutosyncFetchRemote();
+  if(!remote) return null;
+  const local = _cfgAutosyncRead();
+  const localTime = local.lastRun ? new Date(local.lastRun).getTime() : 0;
+  const remoteTime = remote.lastRun ? new Date(remote.lastRun).getTime() : 0;
+  const merged = {...remote};
+  if(localTime > remoteTime) merged.lastRun = local.lastRun;
+  localStorage.setItem(_AUTOSYNC_KEY, JSON.stringify(merged));
+  return merged;
+}
+
+function _cfgAutosyncRenderUI(cfg){
+  cfg = cfg || {};
   const en = document.getElementById('cfg-autosync-en');
   const time = document.getElementById('cfg-autosync-time');
   const last = document.getElementById('cfg-autosync-last');
@@ -499,6 +532,14 @@ function _cfgAutosyncLoad(){
       last.textContent = 'Nunca';
     }
   }
+}
+
+async function _cfgAutosyncLoad(){
+  // Render imediato com cache local (resposta rapida)
+  _cfgAutosyncRenderUI(_cfgAutosyncRead());
+  // Em paralelo, busca Supabase e re-renderiza com merge se vier algo
+  const merged = await _cfgAutosyncMergeFromRemote();
+  if(merged) _cfgAutosyncRenderUI(merged);
 }
 
 function _cfgAutosyncSave(){
@@ -545,8 +586,11 @@ function _autoSyncCheck(){
   }
 }
 
-function _autoSyncInit(){
+async function _autoSyncInit(){
   if(_autoSyncTimer) clearInterval(_autoSyncTimer);
+  // Carrega config do Supabase ANTES do primeiro check — dispositivo fresh pode ter
+  // localStorage vazio mas Supabase tem lastRun de outro dispositivo (cross-device).
+  await _cfgAutosyncMergeFromRemote();
   // Checagem inicial + a cada 60s. Browsers throttlam timers em abas inativas,
   // mas o check é leve e idempotente (lastRun garante no-op duplo).
   _autoSyncCheck();
