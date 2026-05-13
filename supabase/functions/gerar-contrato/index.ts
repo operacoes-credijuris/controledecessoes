@@ -291,22 +291,25 @@ async function readSharedStrings(zip: JSZip): Promise<string[]> {
   return ss;
 }
 
-// Lê as 3 checkboxes do quadro "Vai ser negociado aqui quais créditos?" DIRETO do
-// XML, sem depender da IA. Pra cada row do worksheet, procura a célula t="s" com
-// label "Crédito principal:" / "Honorários contratuais:" / "Honorários sucumbenciais:"
-// e a célula t="b" da mesma row → retorna 'true'/'false' string.
+// Lê as 3 marcações do quadro "Vai ser negociado aqui quais créditos?" DIRETO do
+// XML, sem depender da IA. Para cada row do worksheet, procura a célula com
+// label ("Crédito principal:", "Honorários contratuais:", "Honorários
+// sucumbenciais:") e lê a célula de valor (geralmente coluna D) → retorna
+// 'true'/'false' string.
 //
-// Existe porque a IA, mesmo recebendo texto formatado claro tipo "D=TRUE", às
-// vezes retorna "false" pra todas (provavelmente porque sheet2/sheet3 da análise
-// têm muitas células sim/não que confundem o contexto). Esta função sobrescreve
-// o que a IA respondeu pras 3 variáveis NEGOCIAR_*.
+// Suporta dois formatos de marcação:
+//   1. Texto: "x" / "X" / "✓" / qualquer texto não-vazio na célula = MARCADA
+//   2. Checkbox booleana (formato antigo do Google Sheets): t="b" com v=1 = MARCADA
+//
+// Existe porque a IA não é confiável para isso (sheet2/sheet3 grandes confundem
+// o contexto). Esta função sobrescreve o que a IA respondeu pras NEGOCIAR_*.
 async function detectCheckboxesFromXlsx(bytes: Uint8Array): Promise<Vars> {
   const result: Vars = {};
   try {
     const zip = await JSZip.loadAsync(bytes);
     const ss = await readSharedStrings(zip);
 
-    // Acha índices dos labels (busca normalizada — sobrevive a variações tipo ":")
+    // Acha índices dos labels nos shared strings
     const findSsIdx = (needle: string): number => {
       const n = normalizar(needle);
       return ss.findIndex(s => normalizar(s).includes(n));
@@ -315,32 +318,66 @@ async function detectCheckboxesFromXlsx(bytes: Uint8Array): Promise<Vars> {
     const idxContratuais    = findSsIdx('honorarios contratuais');
     const idxSucumbenciais  = findSsIdx('honorarios sucumbenciais');
 
+    type Cell = { col: string; type: string; raw: string };
+
+    // Determina se uma cell tem "marca" (qualquer texto não-vazio ≠ 0/false/-, ou bool 1)
+    const cellMarcada = (c: Cell | undefined): boolean => {
+      if (!c) return false;
+      if (c.type === 'b') return c.raw === '1';
+      let txt = '';
+      if (c.type === 's') txt = ss[parseInt(c.raw, 10)] || '';
+      else                txt = c.raw;
+      const norm = txt.trim().toLowerCase();
+      if (norm === '' || norm === '0' || norm === 'false' || norm === 'nao' || norm === 'não' || norm === '-') return false;
+      return true;
+    };
+
     for (const name of Object.keys(zip.files)) {
       if (!name.match(/^xl\/worksheets\/sheet\d+\.xml$/)) continue;
       const sx = await zip.file(name)?.async('string') || '';
       const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
       let rm: RegExpExecArray | null;
       while ((rm = rowRe.exec(sx)) !== null) {
-        // Pra cada row, coleta: último ssRefIdx visto (label) + qualquer t="b" (valor)
+        // Coleta TODAS as cells da row (em ordem) — indexadas por coluna
+        const cells: Cell[] = [];
+        const cellsByCol: Record<string, Cell> = {};
         const cRe = /<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
         let cm: RegExpExecArray | null;
-        let lastSsIdx = -1;
-        let boolValue: string | null = null;
         while ((cm = cRe.exec(rm[1])) !== null) {
           const attrs = (cm[1] ?? cm[2]) || '';
           const inner = cm[3] ?? '';
+          const refMatch = attrs.match(/\br="([A-Z]+)\d+"/);
+          const col = refMatch ? refMatch[1] : '';
           const typeMatch = attrs.match(/\bt="([^"]+)"/);
           const type = typeMatch ? typeMatch[1] : '';
           const vMatch = inner.match(/<v>([^<]*)<\/v>/);
-          if (!vMatch) continue;
-          if (type === 's') lastSsIdx = parseInt(vMatch[1], 10);
-          else if (type === 'b') boolValue = vMatch[1];
+          const isMatch = inner.match(/<is>[\s\S]*?<t[^>]*>([^<]*)<\/t>/);
+          let raw = '';
+          if (isMatch) raw = isMatch[1];
+          else if (vMatch) raw = vMatch[1];
+          else continue; // célula sem valor — pula
+          const c: Cell = { col, type, raw };
+          cells.push(c);
+          if (col) cellsByCol[col] = c;
         }
-        if (boolValue == null || lastSsIdx < 0) continue;
-        const v = boolValue === '1' ? 'true' : 'false';
-        if (lastSsIdx === idxPrincipal)          result.NEGOCIAR_CREDITO_PRINCIPAL      = v;
-        else if (lastSsIdx === idxContratuais)   result.NEGOCIAR_HONORARIOS_CONTRATUAIS = v;
-        else if (lastSsIdx === idxSucumbenciais) result.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS = v;
+        if (cells.length === 0) continue;
+
+        // Identifica se essa row tem algum dos 3 labels
+        let labelTarget: keyof Vars | null = null;
+        let labelIdxInRow = -1;
+        for (let i = 0; i < cells.length; i++) {
+          const c = cells[i];
+          if (c.type !== 's') continue;
+          const ssIdx = parseInt(c.raw, 10);
+          if      (ssIdx === idxPrincipal)      { labelTarget = 'NEGOCIAR_CREDITO_PRINCIPAL';      labelIdxInRow = i; break; }
+          else if (ssIdx === idxContratuais)    { labelTarget = 'NEGOCIAR_HONORARIOS_CONTRATUAIS'; labelIdxInRow = i; break; }
+          else if (ssIdx === idxSucumbenciais)  { labelTarget = 'NEGOCIAR_HONORARIOS_SUCUMBENCIAIS'; labelIdxInRow = i; break; }
+        }
+        if (!labelTarget) continue;
+
+        // Acha a célula de valor: 1) coluna D preferencialmente, 2) primeira cell após o label
+        const valorCell = cellsByCol['D'] ?? cells[labelIdxInRow + 1];
+        result[labelTarget] = cellMarcada(valorCell) ? 'true' : 'false';
       }
     }
   } catch (e) {
