@@ -4241,6 +4241,14 @@ async function syncAdvbox(){
   btn.disabled=false;
   btn.innerHTML='↺ Sincronizar';
 
+  // Registra "Última execução" — manual ou automática
+  try {
+    const cfg = _cfgAutosyncRead();
+    cfg.lastRun = new Date().toISOString();
+    _cfgAutosyncWrite(cfg);
+    _cfgAutosyncLoad();
+  } catch(e) { console.warn('[Credijuris] não foi possível registrar última execução:', e); }
+
   const todosAuthErr=st.failed>0&&erros.every(e=>e.includes('Token Advbox expirado'));
   let msg=`Sincronização concluída: ${st.synced} processo(s) atualizado(s)`;
   if(st.failed){
