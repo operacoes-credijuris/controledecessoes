@@ -1309,7 +1309,14 @@ async function gcSubmit(){
         if(error.context&&typeof error.context.json==='function'){
           const j=await error.context.json();
           if(j?.error)detail=j.error;
-          if(j?.intermediadores_disponiveis)detail+='\n\nIntermediadores disponíveis no Drive:\n• '+j.intermediadores_disponiveis.join('\n• ');
+          if(j?.intermediadores_disponiveis){
+            if(j.intermediadores_disponiveis.length>0){
+              detail+='\n\nIntermediadores disponíveis no Drive:\n• '+j.intermediadores_disponiveis.join('\n• ');
+            }else{
+              detail+='\n\n(Lista de intermediadores veio vazia)';
+            }
+          }
+          if(j?.debug)detail+='\n\nDebug:\n'+JSON.stringify(j.debug,null,2);
         }
       }catch(_){}
       throw new Error(detail);
@@ -3186,7 +3193,7 @@ async function _prmInit(){
   /* carregar do Supabase (fonte de verdade); fallback para localStorage */
   let saved=_prmLoad();
   try{
-    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave','parametros_atualizacao').single();
+    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave','parametros_atualizacao').maybeSingle();
     if(!error&&data?.valor){
       const remote=JSON.parse(data.valor);
       saved=remote;
