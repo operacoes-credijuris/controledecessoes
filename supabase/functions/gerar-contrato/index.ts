@@ -263,6 +263,14 @@ async function extractDocxText(bytes: Uint8Array): Promise<string> {
   return tags.map(t => t.replace(/<w:t[^>]*>/, '').replace(/<\/w:t>/, '')).join(' ');
 }
 
+// Extrai a letra da coluna do atributo r="A12" → "A". Usado pra preservar a
+// posição relativa das células em cada linha (importante pra mapear o quadro
+// de checkboxes da análise de RPV, onde a coluna D tem TRUE/FALSE).
+function colLetterFromRef(ref: string): string {
+  const m = ref.match(/^([A-Z]+)/);
+  return m ? m[1] : '';
+}
+
 async function extractXlsxText(bytes: Uint8Array): Promise<string> {
   const zip = await JSZip.loadAsync(bytes);
   // Lê shared strings — cada <si> pode ter múltiplos <t> (rich text); concatena
@@ -286,26 +294,36 @@ async function extractXlsxText(bytes: Uint8Array): Promise<string> {
     const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
     let rm: RegExpExecArray | null;
     while ((rm = rowRe.exec(sx)) !== null) {
+      // Match cells: ou auto-fechadas (<c .../>) ou com conteúdo (<c ...>...</c>)
+      // A alternância garante que self-closing não engula a próxima célula.
+      const cRe = /<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
       const cells: string[] = [];
-      const cRe = /<c\b([^>]*)>([\s\S]*?)<\/c>/g;
       let cm: RegExpExecArray | null;
       while ((cm = cRe.exec(rm[1])) !== null) {
-        const attrs = cm[1];
-        const inner = cm[2];
+        const attrs = (cm[1] ?? cm[2]) || '';
+        const inner = cm[3] ?? '';
+        const refMatch = attrs.match(/\br="([A-Z]+\d+)"/);
+        const col = refMatch ? colLetterFromRef(refMatch[1]) : '';
         const typeMatch = attrs.match(/\bt="([^"]+)"/);
         const type = typeMatch ? typeMatch[1] : '';
         const vMatch = inner.match(/<v>([^<]*)<\/v>/);
         const isMatch = inner.match(/<is>[\s\S]*?<t[^>]*>([^<]*)<\/t>/);
+        let value = '';
         if (isMatch) {
-          cells.push(isMatch[1]);
+          value = isMatch[1];
         } else if (type === 's' && vMatch) {
-          cells.push(ss[parseInt(vMatch[1], 10)] || '');
+          value = ss[parseInt(vMatch[1], 10)] || '';
         } else if (type === 'b' && vMatch) {
           // Checkboxes do Google Sheets / Excel: 1 = TRUE, 0 = FALSE
-          cells.push(vMatch[1] === '1' ? 'TRUE' : 'FALSE');
+          value = vMatch[1] === '1' ? 'TRUE' : 'FALSE';
         } else if (vMatch) {
-          cells.push(vMatch[1]);
+          value = vMatch[1];
+        } else {
+          // Célula vazia (auto-fechada sem valor) — pula
+          continue;
         }
+        // Prefixa coluna pra Claude conseguir mapear "coluna D = TRUE" → checkbox marcada
+        cells.push(col ? `${col}=${value}` : value);
       }
       if (cells.length) lines.push(cells.join(' | '));
     }
