@@ -90,7 +90,10 @@ function _rtSchedule(mod){
     updateDash();
     /* Não interrompe edição inline ativa */
     const editing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
-    if(!editing&&mods.includes(curTab))render(curTab);
+    if(!editing){
+      if(topTab==='acompanhamento'&&mods.includes(subTab))render(subTab);
+      else if(topTab==='contatos'&&mods.includes('contatos'))render('contatos');
+    }
     const consPaneVisible=document.getElementById('crt-pane-consolidado')?.classList.contains('on')
       &&document.getElementById('pane-carteiras')?.classList.contains('on');
     if(consPaneVisible&&!editing)_crtRenderConsolidado();
@@ -206,7 +209,7 @@ async function _initApp(){
       Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
       /* Limpa todas as chaves cj-* per-session, exceto preferências persistentes
          (cj-theme, cj-sidebar-state que devem sobreviver ao logout). */
-      ['cj-user-filters','cj-sidebar-lasttab','cj-sidebar-active','cj-parametros']
+      ['cj-user-filters','cj-sidebar-lasttab','cj-sub-tab','cj-sidebar-active','cj-parametros']
         .forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
       if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
       document.getElementById('logout-btn').style.display='none';
@@ -329,7 +332,23 @@ function fmtBRL(v){
 /* ======================================================
    NAV
 ====================================================== */
-let curTab='dashboard';
+// topTab: 'dashboard' | 'acompanhamento' | 'contatos'
+// subTab: 'cessoes' | 'rpv' | 'encerrados' | 'requerimentos' — apenas relevante quando topTab==='acompanhamento'
+const _SUB_TABS=['cessoes','rpv','encerrados','requerimentos'];
+const _SUB_LABELS={cessoes:'Cessões Ativas',rpv:'RPV Complementar',encerrados:'Encerrados',requerimentos:'Diversos'};
+
+// Migração de `cj-sidebar-lasttab`: valores antigos podiam ser cessoes/rpv/encerrados/requerimentos.
+// Hoje esses representam Acompanhamento + sub-tab. Roda ANTES de ler topTab/subTab abaixo.
+(function _migrateLastExecTab(){
+  const v=localStorage.getItem('cj-sidebar-lasttab');
+  if(v&&_SUB_TABS.includes(v)){
+    localStorage.setItem('cj-sub-tab',v);
+    localStorage.setItem('cj-sidebar-lasttab','acompanhamento');
+  }
+})();
+let topTab='dashboard';
+let subTab=localStorage.getItem('cj-sub-tab')||'cessoes';
+if(!_SUB_TABS.includes(subTab))subTab='cessoes';
 let lastExecTab=localStorage.getItem('cj-sidebar-lasttab')||'dashboard';
 let _execWasActive=false; // true quando exec já foi visitado nesta sessão
 
@@ -1119,10 +1138,12 @@ function sbNav(item){
     if(tEl)tEl.classList.add('on');
     const pEl=document.getElementById('pane-'+target);
     if(pEl)pEl.classList.add('on');
-    curTab=target;
+    topTab=target;
     // Usar requestAnimationFrame para garantir que o DOM foi aplicado antes de renderizar
     requestAnimationFrame(()=>{
-      if(curTab==='dashboard')updateDash();else render(curTab);
+      if(topTab==='dashboard')updateDash();
+      else if(topTab==='acompanhamento')selectSubpane(subTab||'cessoes');
+      else render(topTab);
     });
   }else if(item==='credito'){
     _sbShowCredito();
@@ -1343,14 +1364,15 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
     t.classList.add('on');
     document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
-    curTab=t.dataset.tab;
-    lastExecTab=curTab;
+    topTab=t.dataset.tab;
+    lastExecTab=topTab;
     _execWasActive=true;
-    localStorage.setItem('cj-sidebar-lasttab',curTab);
-    document.getElementById('pane-'+curTab).classList.add('on');
+    localStorage.setItem('cj-sidebar-lasttab',topTab);
+    document.getElementById('pane-'+topTab).classList.add('on');
     _gsClose();
-    if(curTab==='dashboard')updateDash();
-    else render(curTab);
+    if(topTab==='dashboard')updateDash();
+    else if(topTab==='acompanhamento')selectSubpane(subTab||'cessoes');
+    else render(topTab);
   });
 });
 
@@ -2569,6 +2591,61 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape') closeActDD();
 });
 
+/* ======================================================
+   ACOMPANHAMENTO PROCESSUAL — dropdown de sub-aba
+====================================================== */
+function selectSubpane(mod,opts){
+  if(!_SUB_TABS.includes(mod))return;
+  subTab=mod;
+  localStorage.setItem('cj-sub-tab',mod);
+  // Alterna visibilidade dos sub-panes
+  _SUB_TABS.forEach(m=>{
+    const el=document.getElementById('pane-'+m);
+    if(el)el.classList.toggle('on',m===mod);
+  });
+  // Atualiza estado do dropdown
+  document.querySelectorAll('.urg-dd-item[data-subtab]').forEach(el=>{
+    el.classList.toggle('on',el.dataset.subtab===mod);
+  });
+  const titleEl=document.getElementById('sub-current-title');
+  if(titleEl)titleEl.textContent=_SUB_LABELS[mod];
+  closeSubDD();
+  // Renderiza apenas se topTab==='acompanhamento' (não tem efeito visual se outro top tab ativo,
+  // mas o render é necessário pra ter dados prontos quando o usuário voltar).
+  if(!opts||!opts.skipRender){
+    render(mod);
+  }
+}
+
+function toggleSubDD(e){
+  e&&e.stopPropagation();
+  const menu=document.getElementById('sub-dd-menu');
+  if(!menu)return;
+  if(menu.hidden) openSubDD(); else closeSubDD();
+}
+function openSubDD(){
+  const btn=document.getElementById('sub-dd-btn');
+  const menu=document.getElementById('sub-dd-menu');
+  if(menu) menu.hidden=false;
+  if(btn) btn.setAttribute('aria-expanded','true');
+}
+function closeSubDD(){
+  const btn=document.getElementById('sub-dd-btn');
+  const menu=document.getElementById('sub-dd-menu');
+  if(menu) menu.hidden=true;
+  if(btn) btn.setAttribute('aria-expanded','false');
+}
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('sub-dd-menu');
+  if(!menu||menu.hidden) return;
+  const btn=document.getElementById('sub-dd-btn');
+  if(menu.contains(e.target)||(btn&&btn.contains(e.target))) return;
+  closeSubDD();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeSubDD();
+});
+
 function _normProcNum(s){return String(s||'').replace(/\D/g,'');}
 
 // Decodifica entidades HTML (&eacute; -> é, &sect; -> §, etc.) usando o parser
@@ -2758,7 +2835,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov','parametros-ov'].forEach(closeModal);_crtTxtClose();}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
-    const elId=mp[curTab];
+    const target=topTab==='acompanhamento'?subTab:topTab;
+    const elId=mp[target];
     if(elId){e.preventDefault();const el=document.getElementById(elId);if(el){el.focus();el.select();}}
   }
 });
@@ -3561,12 +3639,16 @@ function goToProcess(mod,id){
   const rec=data.find(r=>r.id===id);
   const num=rec?(rec.numeroProcesso||''):'';
   if(!document.querySelector('.nav')?.style.display||document.querySelector('.nav').style.display==='none')_sbShowExec();
+  // Os 4 mods de processo vivem dentro de pane-acompanhamento — ativamos o top tab e delegamos
+  // a sub-aba para selectSubpane.
+  const _topMod=_SUB_TABS.includes(mod)?'acompanhamento':mod;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  const _tabEl=document.querySelector(`.tab[data-tab="${mod}"]`);
+  const _tabEl=document.querySelector(`.tab[data-tab="${_topMod}"]`);
   if(_tabEl)_tabEl.classList.add('on');
   document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
-  curTab=mod;
-  document.getElementById('pane-'+mod).classList.add('on');
+  topTab=_topMod;
+  document.getElementById('pane-'+_topMod).classList.add('on');
+  if(_topMod==='acompanhamento')selectSubpane(mod,{skipRender:true});
   const procId={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
   if(procId)document.getElementById(procId).value=num;
   highlightIds.add(id);
@@ -3616,11 +3698,13 @@ function moveItem(mod,id,toMod){
   /* 3) Remove o próprio registro da origem */
   save(mod,updatedSrc.filter(r=>r.id!==id));
   highlightIds.add(copy.id);
+  // toMod sempre é um sub-tab (cessoes/rpv/encerrados/requerimentos) — abre pane-acompanhamento.
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  document.querySelector(`.tab[data-tab="${toMod}"]`)?.classList.add('on');
+  document.querySelector('.tab[data-tab="acompanhamento"]')?.classList.add('on');
   document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
-  curTab=toMod;
-  document.getElementById('pane-'+toMod).classList.add('on');
+  topTab='acompanhamento';
+  document.getElementById('pane-acompanhamento').classList.add('on');
+  selectSubpane(toMod,{skipRender:true});
   render(toMod);
   setTimeout(()=>{highlightIds.delete(copy.id);render(toMod);},3000);
   showToast(`Processo movido para ${{cessoes:'Cessões Ativas',rpv:'RPV Complementar',encerrados:'Encerrados',requerimentos:'Diversos'}[toMod]} com sucesso`);
@@ -4579,7 +4663,8 @@ async function syncAdvbox(opts){
     erros.forEach(e=>console.warn(e));
     console.groupEnd();
   }
-  render(curTab);
+  if(topTab==='acompanhamento')render(subTab);
+  else if(topTab!=='dashboard')render(topTab);
   updateDash();
 }
 

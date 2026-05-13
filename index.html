@@ -95,13 +95,7 @@
 <nav class="nav">
   <div class="tab on" data-tab="dashboard">Dashboard</div>
   <span class="nav-sep">|</span>
-  <div class="tab" data-tab="cessoes">Cessões Ativas</div>
-  <span class="nav-dot">·</span>
-  <div class="tab" data-tab="rpv">RPV Complementar</div>
-  <span class="nav-dot">·</span>
-  <div class="tab" data-tab="encerrados">Encerrados</div>
-  <span class="nav-sep">|</span>
-  <div class="tab" data-tab="requerimentos">Diversos</div>
+  <div class="tab" data-tab="acompanhamento">Acompanhamento Processual</div>
   <span class="nav-sep">|</span>
   <div class="tab" data-tab="contatos">Telefones e Contatos</div>
 </nav>
@@ -204,8 +198,37 @@
     </div>
   </div>
 
+  <!-- ACOMPANHAMENTO PROCESSUAL — wrapper unificado de 4 sub-abas -->
+  <div id="pane-acompanhamento" class="pane">
+    <div class="sh sh-sub-dd">
+      <div class="urg-dd-wrap">
+        <button type="button" id="sub-dd-btn" class="urg-dd-btn sub-dd-btn" aria-haspopup="menu" aria-expanded="false" onclick="toggleSubDD(event)">
+          <span class="urg-dd-lbl" id="sub-current-title">Cessões Ativas</span>
+          <span class="urg-dd-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="urg-dd-menu" id="sub-dd-menu" role="menu" hidden>
+          <button type="button" class="urg-dd-item on" role="menuitem" data-subtab="cessoes" onclick="selectSubpane('cessoes')">
+            <span class="urg-dot urg-dot-blue"></span>
+            <span class="urg-dd-item-lbl">Cessões Ativas</span>
+          </button>
+          <button type="button" class="urg-dd-item" role="menuitem" data-subtab="rpv" onclick="selectSubpane('rpv')">
+            <span class="urg-dot urg-dot-green"></span>
+            <span class="urg-dd-item-lbl">RPV Complementar</span>
+          </button>
+          <button type="button" class="urg-dd-item" role="menuitem" data-subtab="encerrados" onclick="selectSubpane('encerrados')">
+            <span class="urg-dot urg-dot-gray"></span>
+            <span class="urg-dd-item-lbl">Encerrados</span>
+          </button>
+          <button type="button" class="urg-dd-item" role="menuitem" data-subtab="requerimentos" onclick="selectSubpane('requerimentos')">
+            <span class="urg-dot urg-dot-yellow"></span>
+            <span class="urg-dd-item-lbl">Diversos</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   <!-- CESSÕES ATIVAS -->
-  <div id="pane-cessoes" class="pane">
+  <div id="pane-cessoes" class="subpane on">
     <div class="sh">
       <div class="sh-title">Cessões Ativas</div>
       <button class="btn btn-gold" onclick="openForm('cessoes')">+ Adicionar</button>
@@ -245,7 +268,7 @@
   </div>
 
   <!-- RPV COMPLEMENTAR -->
-  <div id="pane-rpv" class="pane">
+  <div id="pane-rpv" class="subpane">
     <div class="sh">
       <div class="sh-title">RPV Complementar</div>
       <button class="btn btn-gold" onclick="openForm('rpv')">+ Adicionar</button>
@@ -283,7 +306,7 @@
   </div>
 
   <!-- REQUERIMENTOS -->
-  <div id="pane-requerimentos" class="pane">
+  <div id="pane-requerimentos" class="subpane">
     <div class="sh">
       <div class="sh-title">Diversos</div>
       <button class="btn btn-gold" onclick="openForm('requerimentos')">+ Adicionar</button>
@@ -311,6 +334,41 @@
       <div id="pg-requerimentos" class="pgn"></div>
     </div>
   </div>
+
+  <!-- ENCERRADOS DEFINITIVAMENTE -->
+  <div id="pane-encerrados" class="subpane">
+    <div class="sh">
+      <div class="sh-title">Encerrados Definitivamente</div>
+      <button class="btn btn-gold" onclick="openForm('encerrados')">+ Adicionar</button>
+    </div>
+    <div class="fb">
+      <div class="srch-wrap"><input id="fen-proc" placeholder="Buscar na aba" oninput="render('encerrados')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+      <button class="btn btn-blue btn-sm" onclick="clearF('encerrados')">Limpar</button>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr>
+            <th>Ações</th>
+            <th style="min-width:120px">Processo</th>
+            <th style="min-width:48px"><div class="col-hdr"><span>Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('encerrados','dataAquisicao',this)">↕</button></div></th>
+            <th style="min-width:48px"><div class="col-hdr"><span>Liquid.</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('encerrados','dataLiquidacao',this)">↕</button></div></th>
+            <th style="min-width:56px"><div class="col-hdr"><span>Tempo até Liq.</span><button class="col-sbtn" data-field="_dur_enc" onclick="toggleSort('encerrados','_dur_enc',this)">↕</button></div></th>
+            <th style="min-width:0;width:1%;white-space:nowrap">Objeto</th>
+            <th style="min-width:112px"><div class="col-hdr"><span>Advogado</span><button class="col-fbtn" data-field="advogado" onclick="openColFilter(event,'encerrados','advogado',this)">▾</button></div></th>
+            <th style="min-width:112px"><div class="col-hdr"><span>Cedente</span><button class="col-fbtn" data-field="cedente" onclick="openColFilter(event,'encerrados','cedente',this)">▾</button></div></th>
+            <th style="min-width:128px"><div class="col-hdr"><span>Cessionário</span><button class="col-fbtn" data-field="cessionario" onclick="openColFilter(event,'encerrados','cessionario',this)">▾</button></div></th>
+            <th style="min-width:88px"><div class="col-hdr"><span>Devedor</span><button class="col-fbtn" data-field="devedor" onclick="openColFilter(event,'encerrados','devedor',this)">▾</button></div></th>
+            <th style="width:1%;white-space:nowrap;text-align:center">Motivo</th>
+          </tr></thead>
+          <tbody id="tb-encerrados"></tbody>
+        </table>
+      </div>
+      <div id="pg-encerrados" class="pgn"></div>
+    </div>
+  </div>
+
+  </div><!-- /pane-acompanhamento -->
 
   <!-- CONTATOS -->
   <div id="pane-contatos" class="pane">
@@ -369,39 +427,6 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- ENCERRADOS -->
-  <div id="pane-encerrados" class="pane">
-    <div class="sh">
-      <div class="sh-title">Encerrados Definitivamente</div>
-      <button class="btn btn-gold" onclick="openForm('encerrados')">+ Adicionar</button>
-    </div>
-    <div class="fb">
-      <div class="srch-wrap"><input id="fen-proc" placeholder="Buscar na aba" oninput="render('encerrados')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
-      <button class="btn btn-blue btn-sm" onclick="clearF('encerrados')">Limpar</button>
-    </div>
-    <div class="tbl-wrap">
-      <div class="tbl-scroll">
-        <table>
-          <thead><tr>
-            <th>Ações</th>
-            <th style="min-width:120px">Processo</th>
-            <th style="min-width:48px"><div class="col-hdr"><span>Aquisição</span><button class="col-sbtn" data-field="dataAquisicao" onclick="toggleSort('encerrados','dataAquisicao',this)">↕</button></div></th>
-            <th style="min-width:48px"><div class="col-hdr"><span>Liquid.</span><button class="col-sbtn" data-field="dataLiquidacao" onclick="toggleSort('encerrados','dataLiquidacao',this)">↕</button></div></th>
-            <th style="min-width:56px"><div class="col-hdr"><span>Tempo até Liq.</span><button class="col-sbtn" data-field="_dur_enc" onclick="toggleSort('encerrados','_dur_enc',this)">↕</button></div></th>
-            <th style="min-width:0;width:1%;white-space:nowrap">Objeto</th>
-            <th style="min-width:112px"><div class="col-hdr"><span>Advogado</span><button class="col-fbtn" data-field="advogado" onclick="openColFilter(event,'encerrados','advogado',this)">▾</button></div></th>
-            <th style="min-width:112px"><div class="col-hdr"><span>Cedente</span><button class="col-fbtn" data-field="cedente" onclick="openColFilter(event,'encerrados','cedente',this)">▾</button></div></th>
-            <th style="min-width:128px"><div class="col-hdr"><span>Cessionário</span><button class="col-fbtn" data-field="cessionario" onclick="openColFilter(event,'encerrados','cessionario',this)">▾</button></div></th>
-            <th style="min-width:88px"><div class="col-hdr"><span>Devedor</span><button class="col-fbtn" data-field="devedor" onclick="openColFilter(event,'encerrados','devedor',this)">▾</button></div></th>
-            <th style="width:1%;white-space:nowrap;text-align:center">Motivo</th>
-          </tr></thead>
-          <tbody id="tb-encerrados"></tbody>
-        </table>
-      </div>
-      <div id="pg-encerrados" class="pgn"></div>
     </div>
   </div>
 
