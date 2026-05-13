@@ -1506,7 +1506,7 @@ function updateDash(){
   const _uPraz=document.getElementById('urg-count-prazos');if(_uPraz)_uPraz.textContent=alertRecs.length||'0';
   const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
   const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
-  if(dashUrgencyType)openDashPanel(dashUrgencyType,true);
+  selectUrgency(dashUrgencyType||'prazos');
 
   renderCalendario();
 }
@@ -1528,13 +1528,10 @@ function renderCalendario() {
   const cal = document.getElementById('cal-container');
   if(!cal) return;
   const hoje = new Date();
-  const primeiroDia = new Date(calAno, calMes, 1).getDay();
   const diasNoMes = new Date(calAno, calMes + 1, 0).getDate();
-  const diasMesAnterior = new Date(calAno, calMes, 0).getDate();
   const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const nomes = ['D','S','T','Q','Q','S','S'];
+  const nomesSem = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
-  const todosPrazos = new Set();
   const prazosNivel = {};
   const prazosQtd = {};
   const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
@@ -1546,57 +1543,59 @@ function renderCalendario() {
         if(d < hojeStr) {
           overdueQtd++; // vencido: acumula no dia de hoje
         } else {
-          todosPrazos.add(d);
           prazosNivel[d] = fatalLevel(d);
           prazosQtd[d] = (prazosQtd[d] || 0) + 1;
         }
       }
     }
   });
-  // injeta vencidos no dia de hoje
   if(overdueQtd > 0) {
-    todosPrazos.add(hojeStr);
     prazosNivel[hojeStr] = 'red';
     prazosQtd[hojeStr] = (prazosQtd[hojeStr] || 0) + overdueQtd;
   }
 
-  let html = `
-    <div class="cal-head">
-      <div class="cal-title">${meses[calMes]} <span>${calAno}</span></div>
-      <div class="cal-nav">
-        <button onclick="calNav(-1)">‹</button>
-        <button onclick="calNav(1)">›</button>
-      </div>
-    </div>
-    <div class="cal-week">
-      ${nomes.map(n=>`<div>${n}</div>`).join('')}
-    </div>
-    <div class="cal-days">`;
-
-  for(let i = primeiroDia - 1; i >= 0; i--) {
-    html += `<div class="cal-cell"><div class="cal-day cal-muted">${diasMesAnterior - i}</div></div>`;
-  }
-
+  let cells = '';
   for(let d = 1; d <= diasNoMes; d++) {
+    const dt = new Date(calAno, calMes, d);
+    const dow = dt.getDay();
     const dateStr = `${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isHoje = d === hoje.getDate() && calMes === hoje.getMonth() && calAno === hoje.getFullYear();
     const temPrazo = !!prazosNivel[dateStr];
     const qtdPrazo = prazosQtd[dateStr] || 0;
-    const cls=['cal-day'];
-    if(isHoje)cls.push('cal-today');
-    if(temPrazo)cls.push('cal-has-deadline');
-    const dot = temPrazo ? `<div class="cal-dot"></div><div class="cal-qtd">${qtdPrazo}</div>` : '';
-    html += `<div class="cal-cell"><div class="${cls.join(' ')}">${d}${dot}</div></div>`;
+    const cls = ['cal-hcell'];
+    if(isHoje) cls.push('cal-today');
+    if(temPrazo) cls.push('cal-has-deadline');
+    if(dow===0 || dow===6) cls.push('cal-weekend');
+    const badge = temPrazo
+      ? `<div class="cal-hbadge">${qtdPrazo}</div>`
+      : '<div class="cal-hbadge-ph"></div>';
+    cells += `<div class="${cls.join(' ')}" data-day="${d}">
+      <div class="cal-hwd">${nomesSem[dow]}</div>
+      <div class="cal-hday">${d}</div>
+      ${badge}
+    </div>`;
   }
 
-  const totalCells = primeiroDia + diasNoMes;
-  const restantes = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-  for(let i = 1; i <= restantes; i++) {
-    html += `<div class="cal-cell"><div class="cal-day cal-muted">${i}</div></div>`;
-  }
+  cal.innerHTML = `
+    <div class="cal-head">
+      <div class="cal-title">${meses[calMes]} <span>${calAno}</span></div>
+      <div class="cal-nav">
+        <button type="button" onclick="calNav(-1)" aria-label="Mês anterior">‹</button>
+        <button type="button" onclick="calNav(1)" aria-label="Próximo mês">›</button>
+      </div>
+    </div>
+    <div class="cal-hstrip" id="cal-hstrip">${cells}</div>`;
 
-  html += `</div>`;
-  cal.innerHTML = html;
+  // Centralizar dia de hoje (ou dia 1 quando navegando para outro mês)
+  const strip = document.getElementById('cal-hstrip');
+  if(strip) {
+    const ehMesCorrente = calMes === hoje.getMonth() && calAno === hoje.getFullYear();
+    const alvo = ehMesCorrente ? hoje.getDate() : 1;
+    const cell = strip.querySelector(`[data-day="${alvo}"]`);
+    if(cell) {
+      strip.scrollLeft = Math.max(0, cell.offsetLeft - strip.offsetWidth/2 + cell.offsetWidth/2);
+    }
+  }
 }
 
 /* ======================================================
@@ -2298,40 +2297,33 @@ function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
 
-let dashUrgencyType='';
-function openDashPanel(tipo,refresh=false){
-  if(!refresh && dashUrgencyType===tipo){closeDashPanel();return;}
+let dashUrgencyType='prazos';
+function selectUrgency(tipo){
   const map={
-    prazos:      {srcId:'ds-alerts-body', title:'Prazos Fatais',                cntId:'ds-cnt-alerts'},
-    liquidacao:  {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida', cntId:'ds-cnt-liq'},
-    paralisados: {srcId:'ds-par-body',    title:'Paralisados',                  cntId:'ds-cnt-par'},
+    prazos:      {srcId:'ds-alerts-body', title:'Prazos Fatais',                 cntId:'urg-count-prazos'},
+    liquidacao:  {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida', cntId:'urg-count-liq'},
+    paralisados: {srcId:'ds-par-body',    title:'Paralisados',                   cntId:'urg-count-par'},
   };
   const cfg=map[tipo]; if(!cfg)return;
   dashUrgencyType=tipo;
-  const grid=document.querySelector('#pane-dashboard .db-grid');
-  const panel=document.getElementById('dash-urgency-detail');
   const src=document.getElementById(cfg.srcId);
   const body=document.getElementById('dash-urgency-body');
-  const cnt=(document.getElementById(cfg.cntId).textContent||'').replace('· ','');
-  document.getElementById('dash-urgency-title').textContent=cfg.title;
-  document.getElementById('dash-urgency-count').textContent=cnt||'';
+  if(!src||!body)return;
+  const cnt=(document.getElementById(cfg.cntId)?.textContent||'').trim();
+  const titleEl=document.getElementById('urg-current-title');
+  const cntEl=document.getElementById('urg-current-count');
+  if(titleEl)titleEl.textContent=cfg.title;
+  if(cntEl)cntEl.textContent=(cnt&&cnt!=='0')?cnt:'';
   body.innerHTML='';
   const clone=src.cloneNode(true);
   clone.removeAttribute('id');
   clone.classList.add('dash-side-list');
   clone.style.cssText='';
   body.appendChild(clone);
-  panel.hidden=false;
-  grid.classList.add('urgency-open');
-  document.querySelectorAll('.urg-card').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
-  if(!refresh)panel.scrollIntoView({block:'nearest',inline:'nearest'});
+  document.querySelectorAll('.urg-tab').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
 }
-function closeDashPanel(){
-  dashUrgencyType='';
-  document.getElementById('dash-urgency-detail').hidden=true;
-  document.querySelector('#pane-dashboard .db-grid')?.classList.remove('urgency-open');
-  document.querySelectorAll('.urg-card').forEach(el=>el.classList.remove('on'));
-}
+// Compatibilidade: chamadas antigas a openDashPanel ainda funcionam como seleção.
+function openDashPanel(tipo){ selectUrgency(tipo); }
 
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov'].forEach(closeModal);_crtTxtClose();}
