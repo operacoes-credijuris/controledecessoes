@@ -1191,6 +1191,18 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   overflow-x:hidden;
   background:transparent;
 }
+.urg-footer{
+  flex-shrink:0;
+  padding:8px 16px;
+  background:#15181e;
+  border-top:1px solid rgba(255,255,255,.055);
+  font-size:10px;
+  color:#7f8a99;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.urg-footer[hidden]{display:none}
 .dash-side-list{
   display:flex;
   flex-direction:column;

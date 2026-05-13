@@ -1357,7 +1357,7 @@ function updateDash(){
   if(!liqRecs.length){
     lb.innerHTML='<div class="db-empty">Nenhum processo com liquidação próxima ou vencida</div>';
   } else {
-    lb.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;color:#4b5563;border-bottom:1px solid rgba(255,255,255,.04);margin-bottom:4px"><span class="prio-badge" style="font-size:9px;padding:1px 6px;margin-left:0;margin-right:5px">Prioritário</span>cessionário c/ 2+ processos sem recebimento</div>`+liqRecs.map(r=>{
+    lb.innerHTML=liqRecs.map(r=>{
       const d=r._diff;
       const sub=d<0?'vencida':'próxima';
       const col=d<0?'var(--red2)':d<60?'var(--ylw2)':'var(--grn2)';
@@ -1540,21 +1540,31 @@ function renderCalendario() {
   const curAno = hoje.getFullYear();
   const isCurMonth = (calMes === curMes && calAno === curAno);
 
-  // Coleta registros agrupados por dia (com módulo)
+  // Coleta diligências abertas (Advbox /history) agrupadas pelo dia do prazo
   const prazosByDay = {};
-  const overdueRecs = [];
+  const overdueItems = [];
   [['cessoes',load('cessoes')],['rpv',load('rpv')],['requerimentos',load('requerimentos')]].forEach(([mod,recs])=>{
     recs.forEach(r=>{
-      if(!r.prazoFatal || r.vinculoPai) return;
-      const d = normDate(r.prazoFatal); if(!d) return;
-      const item = {...r, _mod:mod};
-      if(d < hojeStr) overdueRecs.push(item);
-      else (prazosByDay[d] = prazosByDay[d] || []).push(item);
+      if(r.vinculoPai) return;
+      const dils = r._advboxDiligencias || [];
+      dils.forEach(d => {
+        if(!d.deadline) return;
+        const ddl = normDate(d.deadline); if(!ddl) return;
+        const item = {
+          _mod:mod, _id:r.id,
+          numeroProcesso:r.numeroProcesso||'',
+          task:d.task||'',
+          deadline:ddl,
+          responsible:d.responsible||''
+        };
+        if(ddl < hojeStr) overdueItems.push(item);
+        else (prazosByDay[ddl] = prazosByDay[ddl] || []).push(item);
+      });
     });
   });
-  // Vencidos contam no dia de hoje
-  if(overdueRecs.length){
-    prazosByDay[hojeStr] = (prazosByDay[hojeStr] || []).concat(overdueRecs);
+  // Vencidos (deadline anterior a hoje, ainda em aberto) caem no dia de hoje
+  if(overdueItems.length){
+    prazosByDay[hojeStr] = (prazosByDay[hojeStr] || []).concat(overdueItems);
   }
 
   const diasNoMes = new Date(calAno, calMes + 1, 0).getDate();
@@ -1574,13 +1584,13 @@ function renderCalendario() {
     if(dow === 0 || dow === 6) cls.push('cal-row-weekend');
     const tag = isHoje ? '<span class="cal-row-tag">hoje</span>' : '';
     const tasksHtml = temPrazo
-      ? `<div class="cal-row-tasks">${recs.map(r=>{
-          const partes = (r.cedente || r.cessionario)
-            ? `<span class="cal-task-sub">${esc(r.cedente||'')}${r.cedente && r.cessionario ? ' v. ' : ''}${esc(r.cessionario||'')}</span>`
-            : '';
-          return `<div class="cal-task" title="${esc(r.numeroProcesso||'')}">
-            <span class="cal-task-proc">${esc(r.numeroProcesso||'')}</span>
-            ${partes}
+      ? `<div class="cal-row-tasks">${recs.map(t=>{
+          const taskTxt = t.task ? esc(t.task) : '<span style="color:#6b7280">(sem descrição)</span>';
+          const procTxt = t.numeroProcesso ? esc(t.numeroProcesso) : '';
+          const ttl = `${t.task||''} — ${t.numeroProcesso||''}`.trim();
+          return `<div class="cal-task" title="${esc(ttl)}">
+            <span class="cal-task-proc">${taskTxt}</span>
+            ${procTxt ? `<span class="cal-task-sub">${procTxt}</span>` : ''}
           </div>`;
         }).join('')}</div>`
       : '';
@@ -2328,6 +2338,16 @@ function selectUrgency(tipo){
   clone.style.cssText='';
   body.appendChild(clone);
   document.querySelectorAll('.urg-dd-item').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
+  // Rodapé fixo: legenda do tipo 'liquidacao' (cessionário c/ 2+ processos)
+  const footer=document.getElementById('urg-footer');
+  if(footer){
+    if(tipo==='liquidacao'){
+      footer.innerHTML='<span class="prio-badge" style="font-size:9px;padding:1px 6px">Prioritário</span><span>cessionário c/ 2+ processos sem recebimento</span>';
+      footer.hidden=false;
+    } else {
+      footer.hidden=true;
+    }
+  }
   closeUrgDD();
 }
 
@@ -4044,19 +4064,37 @@ async function syncAdvbox(){
       await _sleep(2000);return;
     }
     const movs=Array.isArray(mr.data)?mr.data:(mr.data.results||mr.data.data||[]);
-    if(!movs.length){if(tentativa===1)st.done++;await _sleep(2000);return;}
+    // Não retorna mais cedo quando movs vazio: ainda queremos tentar diligências
+
+    // Diligências (history) — best effort, falha não derruba processo
+    const hr=await _advboxGet(`${_PROXY}?action=history&lawsuit_id=${lawsuits[0].id}`,'history');
+    let openDils=null;
+    if(!hr.skip && !hr.err){
+      const histAll=Array.isArray(hr.data)?hr.data:(hr.data.data||hr.data.results||[]);
+      openDils=histAll
+        .filter(p=>p.date_deadline && !(p.status==='completed' || (p.completed!=null && p.completed!==false)))
+        .map(p=>({
+          task:String(p.task||'').slice(0,200),
+          deadline:String(p.date_deadline).slice(0,10),
+          responsible:String(p.responsible||p.author||'').slice(0,80)
+        }));
+    }
 
     const arr=load(mod);
     const idx=arr.findIndex(r=>r.id===rec.id);
     const histAtual=idx!==-1?(arr[idx].historicoProcessual||[]):[];
     const savedCount=idx!==-1?(arr[idx]._advboxMovCount||0):0;
-    if(movs.length===savedCount&&histAtual.length){
+    const movsChanged=movs.length>0 && !(movs.length===savedCount && histAtual.length);
+    const curDils=idx!==-1?JSON.stringify(arr[idx]._advboxDiligencias||[]):'[]';
+    const dilsChanged=openDils!==null && JSON.stringify(openDils)!==curDils;
+
+    if(!movsChanged && !dilsChanged){
       if(tentativa===1)st.done++;
       await _sleep(2000);
       return;
     }
 
-    pendentes.push({mod,rec,arr,idx,movs,pi:pendentes.length});
+    pendentes.push({mod,rec,arr,idx,movs,openDils,movsChanged,pi:pendentes.length});
     if(tentativa===1)st.done++;
     _upd(rec.numeroProcesso);
     await _sleep(2000);
@@ -4075,17 +4113,24 @@ async function syncAdvbox(){
     for(const{mod,rec,tentativa}of lote) await _buscarProcesso({mod,rec},tentativa);
   }
 
-  // FASE 2 — Salvar movimentações com descrição original do Advbox
+  // FASE 2 — Salvar movimentações + diligências abertas
   if(pendentes.length){
-    for(const[i,{mod,arr,idx,movs}]of pendentes.entries()){
+    for(const[i,{mod,arr,idx,movs,openDils,movsChanged}]of pendentes.entries()){
       _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
       if(idx===-1){st.synced++;continue;}
-      const hist=movs.map(mv=>{
-        const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
-        const descricao=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1000));
-        return{data,descricao};
-      }).sort((a,b)=>a.data.localeCompare(b.data));
-      arr[idx]={...arr[idx],historicoProcessual:hist,_advboxMovCount:movs.length};
+      let updated=arr[idx];
+      if(movsChanged){
+        const hist=movs.map(mv=>{
+          const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
+          const descricao=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1000));
+          return{data,descricao};
+        }).sort((a,b)=>a.data.localeCompare(b.data));
+        updated={...updated,historicoProcessual:hist,_advboxMovCount:movs.length};
+      }
+      if(openDils!==null){
+        updated={...updated,_advboxDiligencias:openDils};
+      }
+      arr[idx]=updated;
       save(mod,arr);
       st.synced++;
     }
