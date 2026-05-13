@@ -164,20 +164,37 @@
         <div id="urg-footer" class="urg-footer" hidden></div>
       </div>
 
-      <!-- COLUNA 3 — Últimas Movimentações -->
-      <div class="dash-panel dash-movements">
+      <!-- COLUNA 3 — Atividade (dropdown + lista) -->
+      <div class="dash-panel dash-activity-panel">
         <div class="dash-panel-hdr">
-          <div>
+          <div class="urg-dd-wrap">
             <div class="dash-panel-kicker blue">Atividade</div>
-            <div class="dash-panel-title">Últimas movimentações <span style="font-size:10px;font-weight:500;color:#4b5563;letter-spacing:.2px">últimos 20 dias</span></div>
+            <button type="button" id="act-dd-btn" class="urg-dd-btn" aria-haspopup="menu" aria-expanded="false" onclick="toggleActDD(event)">
+              <span class="urg-dd-lbl" id="act-current-title">Últimas Movimentações</span>
+              <span class="urg-dd-chevron" aria-hidden="true">▾</span>
+            </button>
+            <div class="urg-dd-menu" id="act-dd-menu" role="menu" hidden>
+              <button type="button" class="urg-dd-item on" role="menuitem" data-activity="movimentacoes" onclick="selectActivity('movimentacoes')">
+                <span class="urg-dot urg-dot-blue"></span>
+                <span class="urg-dd-item-lbl">Últimas Movimentações</span>
+                <span class="urg-dd-item-count" id="act-count-mov">0</span>
+              </button>
+              <button type="button" class="urg-dd-item" role="menuitem" data-activity="publicacoes" onclick="selectActivity('publicacoes')">
+                <span class="urg-dot urg-dot-purple"></span>
+                <span class="urg-dd-item-lbl">Publicações</span>
+                <span class="urg-dd-item-count" id="act-count-pub"></span>
+              </button>
+            </div>
           </div>
-          <span id="ds-cnt-mov" class="dash-count"></span>
+          <span id="act-current-count" class="dash-count"></span>
         </div>
         <div id="ds-mov-body" class="dash-mov-body"></div>
+        <div id="ds-pub-body" class="dash-pub-body" hidden></div>
       </div>
     </div>
     <!-- Elementos ocultos usados pelos modais expandidos -->
     <div style="display:none">
+      <span id="ds-cnt-mov"></span>
       <span id="ds-cnt-alerts"></span>
       <span id="ds-cnt-liq"></span>
       <span id="ds-cnt-par"></span>

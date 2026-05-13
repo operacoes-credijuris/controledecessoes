@@ -1573,6 +1573,7 @@ function updateDash(){
   const gruposArr=[...grupos.values()].sort((a,b)=>b.movs[0].data.localeCompare(a.movs[0].data));
   const totalMovs=movRows.length;
   document.getElementById('ds-cnt-mov').textContent=totalMovs?`${totalMovs}`:'';
+  const _amc=document.getElementById('act-count-mov');if(_amc)_amc.textContent=totalMovs||'0';
   const mb=document.getElementById('ds-mov-body');
   if(!gruposArr.length){
     mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 20 dias</div>';
@@ -1607,6 +1608,7 @@ function updateDash(){
   const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
   const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
   selectUrgency(dashUrgencyType||'prazos');
+  selectActivity(dashActivityType||'movimentacoes');
 
   renderCalendario();
 }
@@ -2496,6 +2498,235 @@ document.addEventListener('keydown',e=>{
 
 // Compatibilidade: chamadas antigas a openDashPanel ainda funcionam como seleção.
 function openDashPanel(tipo){ selectUrgency(tipo); }
+
+/* ======================================================
+   COLUNA DE ATIVIDADE — dropdown e Publicações DJEN
+====================================================== */
+let dashActivityType='movimentacoes';
+let _pubsCache={data:null,ts:0};
+const _PUB_CACHE_MS=15*60*1000;
+const _DJEN_OABS=[
+  {numeroOab:'230939',ufOab:'MG'},
+  {numeroOab:'76236', ufOab:'GO'},
+  {numeroOab:'168902',ufOab:'MG'},
+  {numeroOab:'215051',ufOab:'MG'}
+];
+
+function selectActivity(tipo){
+  if(tipo!=='movimentacoes'&&tipo!=='publicacoes')return;
+  dashActivityType=tipo;
+  const mb=document.getElementById('ds-mov-body');
+  const pb=document.getElementById('ds-pub-body');
+  const titleEl=document.getElementById('act-current-title');
+  const cntEl=document.getElementById('act-current-count');
+  document.querySelectorAll('.urg-dd-item[data-activity]').forEach(el=>{
+    el.classList.toggle('on',el.dataset.activity===tipo);
+  });
+  if(tipo==='movimentacoes'){
+    if(mb)mb.hidden=false;
+    if(pb)pb.hidden=true;
+    if(titleEl)titleEl.textContent='Últimas Movimentações';
+    const cnt=(document.getElementById('act-count-mov')?.textContent||'').trim();
+    if(cntEl)cntEl.textContent=(cnt&&cnt!=='0')?cnt:'';
+  } else {
+    if(mb)mb.hidden=true;
+    if(pb)pb.hidden=false;
+    if(titleEl)titleEl.textContent='Publicações';
+    const cnt=(document.getElementById('act-count-pub')?.textContent||'').trim();
+    if(cntEl)cntEl.textContent=(cnt&&cnt!=='0')?cnt:'';
+    _renderPubs();
+  }
+  closeActDD();
+}
+
+function toggleActDD(e){
+  e&&e.stopPropagation();
+  const menu=document.getElementById('act-dd-menu');
+  if(!menu)return;
+  if(menu.hidden) openActDD(); else closeActDD();
+}
+function openActDD(){
+  const btn=document.getElementById('act-dd-btn');
+  const menu=document.getElementById('act-dd-menu');
+  if(menu) menu.hidden=false;
+  if(btn) btn.setAttribute('aria-expanded','true');
+}
+function closeActDD(){
+  const btn=document.getElementById('act-dd-btn');
+  const menu=document.getElementById('act-dd-menu');
+  if(menu) menu.hidden=true;
+  if(btn) btn.setAttribute('aria-expanded','false');
+}
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('act-dd-menu');
+  if(!menu||menu.hidden) return;
+  const btn=document.getElementById('act-dd-btn');
+  if(menu.contains(e.target)||(btn&&btn.contains(e.target))) return;
+  closeActDD();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeActDD();
+});
+
+function _normProcNum(s){return String(s||'').replace(/\D/g,'');}
+
+function _djenDateRange(){
+  const fim=todayStr();
+  const past=new Date(); past.setHours(0,0,0,0); past.setDate(past.getDate()-30);
+  const inicio=past.getFullYear()+'-'+String(past.getMonth()+1).padStart(2,'0')+'-'+String(past.getDate()).padStart(2,'0');
+  return {inicio,fim};
+}
+
+async function _fetchDJEN(numeroOab,ufOab,inicio,fim){
+  const params=new URLSearchParams({
+    numeroOab,ufOab,
+    dataDisponibilizacaoInicio:inicio,
+    dataDisponibilizacaoFim:fim,
+    itensPorPagina:'100',
+    pagina:'1'
+  });
+  const url='https://comunicaapi.pje.jus.br/api/v1/comunicacao?'+params.toString();
+  const doFetch=()=>fetch(url,{method:'GET',headers:{'Accept':'application/json'}});
+  let resp;
+  try{ resp=await doFetch(); } catch(_){ throw new Error('network'); }
+  if(resp.status===429){
+    await new Promise(r=>setTimeout(r,60000));
+    try{ resp=await doFetch(); } catch(_){ throw new Error('network'); }
+  }
+  if(!resp.ok) throw new Error('http:'+resp.status);
+  const j=await resp.json().catch(()=>({}));
+  return Array.isArray(j.items)?j.items:[];
+}
+
+async function _fetchAllPubs(){
+  const {inicio,fim}=_djenDateRange();
+  const all=[];
+  for(const {numeroOab,ufOab} of _DJEN_OABS){
+    const items=await _fetchDJEN(numeroOab,ufOab,inicio,fim);
+    all.push(...items);
+  }
+  const seen=new Set();
+  const uniq=[];
+  for(const it of all){
+    const id=it&&it.id;
+    if(id==null){ uniq.push(it); continue; }
+    if(seen.has(id)) continue;
+    seen.add(id);
+    uniq.push(it);
+  }
+  return uniq;
+}
+
+function _processosCadastrados(){
+  const ce=load('cessoes'),rp=load('rpv'),re=load('requerimentos');
+  const m=new Map();
+  [['cessoes',ce,'Cessões Ativas','bdg-blue'],
+   ['rpv',rp,'RPV Complementar','bdg-grn'],
+   ['requerimentos',re,'Diversos','bdg-ylw']].forEach(([mod,recs,label,bdg])=>{
+    recs.forEach(r=>{
+      const n=_normProcNum(r.numeroProcesso);
+      if(!n)return;
+      if(!m.has(n))m.set(n,{mod,r,label,bdg});
+    });
+  });
+  return m;
+}
+
+async function _renderPubs(){
+  const pb=document.getElementById('ds-pub-body');
+  const cntDD=document.getElementById('act-count-pub');
+  const cntCurEl=document.getElementById('act-current-count');
+  if(!pb)return;
+
+  const now=Date.now();
+  let items;
+  if(_pubsCache.data&&(now-_pubsCache.ts<_PUB_CACHE_MS)){
+    items=_pubsCache.data;
+  } else {
+    pb.innerHTML='<div class="pub-loading"><span class="pub-spinner"></span>Buscando publicações no DJEN…</div>';
+    if(cntDD)cntDD.textContent='';
+    if(cntCurEl&&dashActivityType==='publicacoes')cntCurEl.textContent='';
+    try{
+      items=await _fetchAllPubs();
+      _pubsCache={data:items,ts:Date.now()};
+    } catch(e){
+      pb.innerHTML='<div class="pub-error">Erro ao consultar o DJEN. Tente novamente em instantes.</div>';
+      if(cntDD)cntDD.textContent='';
+      if(cntCurEl&&dashActivityType==='publicacoes')cntCurEl.textContent='';
+      return;
+    }
+  }
+
+  const procs=_processosCadastrados();
+  const matched=items.filter(it=>{
+    const n=_normProcNum(it&&(it.numero_processo||it.numeroprocessocommascara)||'');
+    return n&&procs.has(n);
+  });
+  matched.sort((a,b)=>String(b.data_disponibilizacao||'').localeCompare(String(a.data_disponibilizacao||'')));
+
+  if(cntDD)cntDD.textContent=String(matched.length||0);
+  if(cntCurEl&&dashActivityType==='publicacoes')cntCurEl.textContent=matched.length?String(matched.length):'';
+
+  if(!matched.length){
+    pb.innerHTML='<div class="db-empty">Nenhuma publicação encontrada nos últimos 30 dias para os processos cadastrados.</div>';
+    return;
+  }
+  pb.innerHTML=matched.map(it=>{
+    const n=_normProcNum(it.numero_processo||it.numeroprocessocommascara||'');
+    const ctx=procs.get(n);
+    const numMasc=it.numeroprocessocommascara||it.numero_processo||'';
+    const link=it.link||'';
+    const trib=it.siglaTribunal||'';
+    const dataDisp=fmtDate(String(it.data_disponibilizacao||'').slice(0,10));
+    const tipo=it.tipoComunicacao||'';
+    const orgao=it.nomeOrgao||'';
+    const texto=String(it.texto||'').trim();
+    const isLong=texto.length>150;
+    const textoShort=isLong?texto.slice(0,150)+'…':texto;
+    const destArr=Array.isArray(it.destinatarios)?it.destinatarios:[];
+    const destHtml=destArr.length
+      ?destArr.map(d=>`${esc(d.nome||'')}${d.polo?` <span class="pub-polo">(${esc(d.polo)})</span>`:''}`).join(' · ')
+      :'';
+    const tribBadge=trib?`<span class="bdg bdg-gray">${esc(trib)}</span>`:'';
+    const modBadge=ctx?`<span class="bdg ${ctx.bdg}">${esc(ctx.label)}</span>`:'';
+    const tituloHtml=link
+      ?`<a href="${esc(link)}" target="_blank" rel="noopener" class="pub-title-link">${esc(numMasc)}</a>`
+      :`<span class="pub-title">${esc(numMasc)}</span>`;
+    const navB=ctx?navBtn(ctx.mod,ctx.r.id):'';
+    const inteiroBtn=isLong?`<button type="button" class="pub-inteiro-btn" onclick="togglePubText(this)">Ver inteiro teor</button>`:'';
+    return`<div class="pub-item">
+      <div class="pub-item-hdr">
+        <div class="pub-item-titulo">${tituloHtml}${cpyBtn(numMasc)}${navB}</div>
+        <div class="pub-item-badges">${tribBadge}${modBadge}</div>
+      </div>
+      <div class="pub-item-meta">
+        <span class="pub-data">${dataDisp}</span>
+        ${tipo?`<span class="pub-tipo">${esc(tipo)}</span>`:''}
+        ${orgao?`<span class="pub-orgao">${esc(orgao)}</span>`:''}
+      </div>
+      ${texto?`<div class="pub-text" data-full="${esc(texto)}" data-short="${esc(textoShort)}">${esc(textoShort)}</div>`:''}
+      ${inteiroBtn}
+      ${destHtml?`<div class="pub-dest"><span class="pub-dest-lbl">Destinatários:</span> ${destHtml}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function togglePubText(btn){
+  const item=btn.closest('.pub-item');
+  if(!item)return;
+  const txt=item.querySelector('.pub-text');
+  if(!txt)return;
+  const isExpanded=txt.classList.contains('expanded');
+  if(isExpanded){
+    txt.textContent=txt.dataset.short||'';
+    txt.classList.remove('expanded');
+    btn.textContent='Ver inteiro teor';
+  } else {
+    txt.textContent=txt.dataset.full||'';
+    txt.classList.add('expanded');
+    btn.textContent='Recolher';
+  }
+}
 
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov','parametros-ov'].forEach(closeModal);_crtTxtClose();}
