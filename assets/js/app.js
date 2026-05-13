@@ -1512,69 +1512,111 @@ function updateDash(){
 }
 
 /* ======================================================
-   CALENDÁRIO DE PRAZOS — lista vertical a partir de hoje
+   CALENDÁRIO DE PRAZOS — lista vertical com nav por mês
 ====================================================== */
-const CAL_DAYS_AHEAD = 90;
+let calAno = new Date().getFullYear();
+let calMes = new Date().getMonth();
+
+function calNav(dir){
+  calMes += dir;
+  if(calMes > 11){calMes=0; calAno++;}
+  if(calMes < 0){calMes=11; calAno--;}
+  renderCalendario();
+}
 
 function renderCalendario() {
   const cal = document.getElementById('cal-container');
   if(!cal) return;
   const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const nomesSem = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const modLabel = {cessoes:'Cessões',rpv:'RPV',requerimentos:'Diversos'};
+  const modBdg = {cessoes:'bdg-blue',rpv:'bdg-grn',requerimentos:'bdg-ylw'};
+
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const hojeStr = todayStr();
+  const curMes = hoje.getMonth();
+  const curAno = hoje.getFullYear();
+  const isCurMonth = (calMes === curMes && calAno === curAno);
 
-  // Agrega prazos por dia
-  const prazosQtd = {};
-  let overdueQtd = 0;
-  [...load('cessoes'),...load('rpv'),...load('requerimentos')].forEach(r => {
-    if(!r.prazoFatal) return;
-    const d = normDate(r.prazoFatal);
-    if(!d) return;
-    if(d < hojeStr) overdueQtd++;
-    else prazosQtd[d] = (prazosQtd[d] || 0) + 1;
+  // Coleta registros agrupados por dia (com módulo)
+  const prazosByDay = {};
+  const overdueRecs = [];
+  [['cessoes',load('cessoes')],['rpv',load('rpv')],['requerimentos',load('requerimentos')]].forEach(([mod,recs])=>{
+    recs.forEach(r=>{
+      if(!r.prazoFatal || r.vinculoPai) return;
+      const d = normDate(r.prazoFatal); if(!d) return;
+      const item = {...r, _mod:mod};
+      if(d < hojeStr) overdueRecs.push(item);
+      else (prazosByDay[d] = prazosByDay[d] || []).push(item);
+    });
   });
   // Vencidos contam no dia de hoje
-  if(overdueQtd > 0) prazosQtd[hojeStr] = (prazosQtd[hojeStr] || 0) + overdueQtd;
+  if(overdueRecs.length){
+    prazosByDay[hojeStr] = (prazosByDay[hojeStr] || []).concat(overdueRecs);
+  }
 
-  let html = '';
-  let lastMonth = -1;
-  let lastYear = -1;
-  for(let i = 0; i <= CAL_DAYS_AHEAD; i++) {
-    const dt = new Date(hoje);
-    dt.setDate(dt.getDate() + i);
-    const y = dt.getFullYear();
-    const m = dt.getMonth();
-    const dd = dt.getDate();
+  const diasNoMes = new Date(calAno, calMes + 1, 0).getDate();
+  const firstDay = isCurMonth ? hoje.getDate() : 1;
+
+  let rows = '';
+  for(let d = firstDay; d <= diasNoMes; d++) {
+    const dt = new Date(calAno, calMes, d);
     const dow = dt.getDay();
-    if(m !== lastMonth || y !== lastYear) {
-      html += `<div class="cal-month-sep">${meses[m]} ${y}</div>`;
-      lastMonth = m;
-      lastYear = y;
-    }
-    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-    const isHoje = (i === 0);
-    const qtd = prazosQtd[dateStr] || 0;
+    const dateStr = `${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isHoje = (d === hoje.getDate() && isCurMonth);
+    const recs = prazosByDay[dateStr] || [];
+    const qtd = recs.length;
     const temPrazo = qtd > 0;
     const cls = ['cal-row'];
     if(isHoje) cls.push('cal-row-today');
     if(temPrazo) cls.push('cal-row-has-deadline');
     if(dow === 0 || dow === 6) cls.push('cal-row-weekend');
-    const badge = temPrazo
-      ? `<div class="cal-row-badge">${qtd}</div>`
-      : '<div class="cal-row-badge-ph"></div>';
     const tag = isHoje ? '<span class="cal-row-tag">hoje</span>' : '';
-    html += `<div class="${cls.join(' ')}">
-      <div class="cal-row-left">
-        <span class="cal-row-day">${dd}</span>
-        <span class="cal-row-wd">${nomesSem[dow]}</span>
-        ${tag}
-      </div>
-      ${badge}
+    const leftHtml = `<div class="cal-row-left">
+      <span class="cal-row-day">${d}</span>
+      <span class="cal-row-wd">${nomesSem[dow]}</span>
+      ${tag}
     </div>`;
+
+    if(temPrazo){
+      const itemsHtml = recs.map(r=>{
+        const partes = (r.cedente || r.cessionario)
+          ? `<div class="cal-item-sub">${esc(r.cedente||'')}${r.cedente && r.cessionario ? ' v. ' : ''}${esc(r.cessionario||'')}</div>`
+          : '';
+        return `<div class="cal-item">
+          <div class="cal-item-main">
+            <div class="cal-item-proc"><span>${esc(r.numeroProcesso||'')}</span>${navBtn(r._mod, r.id)}</div>
+            ${partes}
+          </div>
+          <span class="bdg ${modBdg[r._mod]}">${modLabel[r._mod]}</span>
+        </div>`;
+      }).join('');
+      rows += `<div class="cal-group">
+        <div class="${cls.join(' ')}">
+          ${leftHtml}
+          <div class="cal-row-right">
+            <div class="cal-row-badge">${qtd}</div>
+          </div>
+        </div>
+        <div class="cal-group-body">${itemsHtml}</div>
+      </div>`;
+    } else {
+      rows += `<div class="${cls.join(' ')}">
+        ${leftHtml}
+        <div class="cal-row-badge-ph"></div>
+      </div>`;
+    }
   }
 
-  cal.innerHTML = `<div class="cal-vlist" id="cal-vlist">${html}</div>`;
+  cal.innerHTML = `
+    <div class="cal-head">
+      <div class="cal-title">${meses[calMes]} <span>${calAno}</span></div>
+      <div class="cal-nav">
+        <button type="button" onclick="calNav(-1)" aria-label="Mês anterior" ${isCurMonth?'disabled':''}>‹</button>
+        <button type="button" onclick="calNav(1)" aria-label="Próximo mês">›</button>
+      </div>
+    </div>
+    <div class="cal-vlist" id="cal-vlist">${rows}</div>`;
 }
 
 /* ======================================================

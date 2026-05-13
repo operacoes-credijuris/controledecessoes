@@ -923,6 +923,44 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   display:flex;
   flex-direction:column;
 }
+.cal-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:6px 8px 10px;
+  flex-shrink:0;
+}
+.cal-title{
+  color:#f7fbff;
+  font-family:var(--font-head);
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:-.2px;
+}
+.cal-title span{
+  color:#788599;
+  font-family:var(--font-body);
+  font-size:13px;
+  font-weight:600;
+  margin-left:4px;
+}
+.cal-nav{display:flex;gap:7px}
+.cal-nav button{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.08);
+  background:#20242b;
+  color:#b4bfcd;
+  cursor:pointer;
+  font-size:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:border-color .15s,background .15s,color .15s,opacity .15s;
+}
+.cal-nav button:hover:not(:disabled){border-color:rgba(0,119,255,.55);color:#fff;background:#252b35}
+.cal-nav button:disabled{opacity:.35;cursor:not-allowed}
 
 /* CALENDÁRIO VERTICAL — lista de dias a partir de hoje */
 .cal-vlist{
@@ -938,22 +976,6 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .cal-vlist::-webkit-scrollbar-track{background:transparent}
 .cal-vlist::-webkit-scrollbar-thumb{background:#2a313d;border-radius:3px}
 .cal-vlist::-webkit-scrollbar-thumb:hover{background:#3a4250}
-.cal-month-sep{
-  font-family:var(--font-head);
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.7px;
-  color:#68758a;
-  text-transform:uppercase;
-  padding:14px 8px 6px;
-  margin-top:4px;
-  border-top:1px solid rgba(255,255,255,.05);
-}
-.cal-month-sep:first-child{
-  margin-top:0;
-  padding-top:4px;
-  border-top:0;
-}
 .cal-row{
   display:flex;
   align-items:center;
@@ -969,6 +991,73 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   background:#1c2129;
   border-color:rgba(255,255,255,.06);
 }
+.cal-row-right{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+}
+.cal-group{
+  margin:2px 0;
+  border-radius:8px;
+  background:#0f1116;
+  border:1px solid rgba(255,255,255,.05);
+  overflow:hidden;
+}
+.cal-group .cal-row{
+  margin:0;
+  border-radius:0;
+  border:0;
+  background:transparent;
+}
+.cal-group .cal-row.cal-row-today{
+  border-radius:0;
+}
+.cal-group-body{
+  display:flex;
+  flex-direction:column;
+}
+.cal-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 14px 8px 28px;
+  border-top:1px solid rgba(255,255,255,.04);
+  background:#0f1116;
+  transition:background .15s;
+}
+.cal-item:hover{background:#15181e}
+.cal-item-main{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+}
+.cal-item-proc{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  overflow:hidden;
+  font-size:12px;
+  font-weight:600;
+  color:var(--txt);
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.cal-item-proc>span:first-child{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  min-width:0;
+}
+.cal-item-sub{
+  font-size:10px;
+  color:#6b7280;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  margin-top:2px;
+}
+.cal-item .bdg{flex-shrink:0;font-size:9px}
 .cal-row-left{
   display:flex;
   align-items:baseline;
@@ -1162,27 +1251,27 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   min-height:0;
   overflow-y:auto;
   overflow-x:hidden;
-  padding:10px;
-  background:#101216;
+  background:transparent;
 }
 .dash-side-list{
-  display:grid;
-  gap:8px;
+  display:flex;
+  flex-direction:column;
 }
 .dash-urgency-body .alert-item{
-  min-height:62px;
-  padding:12px 14px!important;
-  border:1px solid rgba(255,255,255,.07)!important;
-  border-radius:8px;
-  background:#15181e;
+  min-height:58px;
+  padding:14px 18px;
+  border:0;
+  border-radius:0;
+  border-bottom:1px solid rgba(255,255,255,.055);
+  background:transparent;
 }
+.dash-urgency-body .alert-item:last-child{border-bottom:0}
 .dash-urgency-body .alert-item:hover{
-  background:#1b2028;
-  border-color:rgba(255,255,255,.10)!important;
+  background:#1d222b;
 }
 .dash-urgency-body .al-text{
   color:#f4f7fb;
-  font-size:12.5px!important;
+  font-size:13px!important;
   font-weight:700!important;
 }
 .dash-urgency-body .alert-item [style*="font-size:10px"]{
