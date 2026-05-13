@@ -4096,6 +4096,23 @@ function _syncProgressUpdate(el,{label,pct,sub}){
 }
 function _syncProgressHide(el){el?.remove();}
 
+/* Calcula uma "assinatura" do objeto lawsuit retornado pela Advbox para
+   detectar se houve mudança desde a última sincronização. Tenta nomes comuns
+   de campos de "última atualização" + indicadores derivados. Se nenhum dos
+   candidatos existir, retorna null e a otimização (A) fica desabilitada
+   para esse registro — o fluxo normal de fetch acontece. */
+function _advboxLawsuitSig(lawsuit){
+  if(!lawsuit||typeof lawsuit!=='object')return null;
+  const parts=[
+    lawsuit.updated_at, lawsuit.updated_on, lawsuit.modified_at, lawsuit.modified_on,
+    lawsuit.date_updated, lawsuit.last_update,
+    lawsuit.last_movement_at, lawsuit.last_movement_date, lawsuit.last_movement,
+    lawsuit.movements_count, lawsuit.total_movements,
+    lawsuit.posts_count, lawsuit.activities_count
+  ].filter(v=>v!==undefined&&v!==null&&v!=='');
+  return parts.length?parts.map(String).join('|'):null;
+}
+
 async function syncAdvbox(){
   const btn=document.getElementById('sync-btn');
   if(!btn||btn.disabled)return;
@@ -4160,6 +4177,21 @@ async function syncAdvbox(){
     const lawsuits=Array.isArray(sr.data)?sr.data:(sr.data.results||sr.data.data||[]);
     if(!lawsuits.length){if(tentativa===1)st.done++;await _sleep(2000);return;}
 
+    // (A) Skip cedo se a "assinatura" do lawsuit não mudou desde a última sync.
+    // Tentamos vários nomes de campo de "última atualização" — se nenhum existir,
+    // newSig vira null e o caminho rápido fica desabilitado para este registro.
+    const _arr0 = load(mod);
+    const _idx0 = _arr0.findIndex(r=>r.id===rec.id);
+    const newSig = _advboxLawsuitSig(lawsuits[0]);
+    const savedSig = _idx0!==-1 ? (_arr0[_idx0]._advboxLawsuitSig||'') : '';
+    if(newSig && savedSig && savedSig===newSig){
+      // Assinatura igual → sem mudanças. Pula /movements e /history.
+      if(tentativa===1)st.done++;
+      _upd(rec.numeroProcesso+' · sem mudança');
+      await _sleep(500);
+      return;
+    }
+
     const mr=await _advboxGet(`${_PROXY}?action=movements&lawsuit_id=${lawsuits[0].id}`,'movements');
     if(mr.skip){if(tentativa===1)st.done++;await _sleep(2000);return;}
     if(mr.err){
@@ -4201,7 +4233,7 @@ async function syncAdvbox(){
       return;
     }
 
-    pendentes.push({mod,rec,arr,idx,movs,openDils,movsChanged,pi:pendentes.length});
+    pendentes.push({mod,rec,arr,idx,movs,openDils,movsChanged,lawsuitSig:newSig,pi:pendentes.length});
     if(tentativa===1)st.done++;
     _upd(rec.numeroProcesso);
     await _sleep(2000);
@@ -4220,9 +4252,9 @@ async function syncAdvbox(){
     for(const{mod,rec,tentativa}of lote) await _buscarProcesso({mod,rec},tentativa);
   }
 
-  // FASE 2 — Salvar movimentações + diligências abertas
+  // FASE 2 — Salvar movimentações + diligências + assinatura do lawsuit
   if(pendentes.length){
-    for(const[i,{mod,arr,idx,movs,openDils,movsChanged}]of pendentes.entries()){
+    for(const[i,{mod,arr,idx,movs,openDils,movsChanged,lawsuitSig}]of pendentes.entries()){
       _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
       if(idx===-1){st.synced++;continue;}
       let updated=arr[idx];
@@ -4236,6 +4268,9 @@ async function syncAdvbox(){
       }
       if(openDils!==null){
         updated={...updated,_advboxDiligencias:openDils};
+      }
+      if(lawsuitSig){
+        updated={...updated,_advboxLawsuitSig:lawsuitSig};
       }
       arr[idx]=updated;
       save(mod,arr);
