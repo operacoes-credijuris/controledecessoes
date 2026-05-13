@@ -1020,20 +1020,38 @@ serve(async (req) => {
     // 9b. Override determinístico das 3 checkboxes a partir do XLSX (se houver).
     // A IA tende a errar quando o input é grande (sheet2/sheet3 da análise são
     // gigantes), então sobrescrevemos com leitura direta do XML do xlsx.
+    const checkboxDebug: Record<string, unknown> = {
+      apresentacao_paths: inputPaths.apresentacao,
+      tentou_xlsx: false,
+      xlsx_path: null as string | null,
+      detectado: null as Vars | null,
+      erro: null as string | null,
+      valor_ia_antes: {
+        NEGOCIAR_CREDITO_PRINCIPAL: apresentacao.NEGOCIAR_CREDITO_PRINCIPAL,
+        NEGOCIAR_HONORARIOS_CONTRATUAIS: apresentacao.NEGOCIAR_HONORARIOS_CONTRATUAIS,
+        NEGOCIAR_HONORARIOS_SUCUMBENCIAIS: apresentacao.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS,
+      },
+    };
     for (const path of inputPaths.apresentacao) {
       const ext = extOf(path);
       if (ext !== '.xlsx' && ext !== '.xls') continue;
+      checkboxDebug.tentou_xlsx = true;
+      checkboxDebug.xlsx_path = path;
       try {
         const bytes = await storageGetBytes(sbAdmin, BUCKET_INPUT, path);
         const detectado = await detectCheckboxesFromXlsx(bytes);
+        checkboxDebug.detectado = detectado;
         for (const [k, v] of Object.entries(detectado)) {
           if (v != null) apresentacao[k] = v;
         }
       } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        checkboxDebug.erro = msg;
         console.error('[gerar-contrato] override de checkboxes falhou', path, e);
       }
       break; // primeiro xlsx é suficiente
     }
+    console.log('[gerar-contrato] checkbox override debug:', JSON.stringify(checkboxDebug));
 
     // 10. Junta variáveis (precedência: apresentação > cedente/escritório > investidor)
     const dados: Vars = {
@@ -1052,7 +1070,13 @@ serve(async (req) => {
     };
 
     // 11. Decide tipos a gerar e valida papéis necessários
-    const tipos = determinarTipos(tipoExplicito, apresentacao);
+    let tipos: string[];
+    try {
+      tipos = determinarTipos(tipoExplicito, apresentacao);
+    } catch (e) {
+      const baseMsg = e instanceof Error ? e.message : String(e);
+      throw new Error(`${baseMsg} | OVERRIDE-DEBUG: ${JSON.stringify(checkboxDebug)}`);
+    }
     const papeisNecessarios = new Set<string>();
     for (const t of tipos) for (const p of REQUIRED_PAPEIS[t]) papeisNecessarios.add(p);
     papeisNecessarios.delete('apresentacao');
