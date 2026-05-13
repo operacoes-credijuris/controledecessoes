@@ -2699,8 +2699,6 @@ async function _renderPubs(){
     const link=it.link||'';
     const trib=it.siglaTribunal||'';
     const dataDisp=fmtDate(String(it.data_disponibilizacao||'').slice(0,10));
-    const tipo=it.tipoComunicacao||'';
-    const orgao=it.nomeOrgao||'';
     const texto=_decodeHtmlEntities(it.texto||'').trim();
     const isLong=texto.length>150;
     const textoShort=isLong?texto.slice(0,150)+'…':texto;
@@ -2728,7 +2726,6 @@ async function _renderPubs(){
       ${cedCess}
       <div class="pub-item-meta">
         <span class="pub-data"><span class="pub-data-lbl">Disponibilização:</span> ${dataDisp}</span>
-        ${orgao?`<span class="pub-orgao">${esc(orgao)}</span>`:''}
       </div>
       ${texto?`<div class="pub-text" data-full="${esc(texto)}" data-short="${esc(textoShort)}">${esc(textoShort)}</div>`:''}
       ${inteiroBtn}
