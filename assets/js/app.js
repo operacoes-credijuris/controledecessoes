@@ -188,6 +188,7 @@ async function _onAuthenticated(session){
     crtNav('investidores');
   loadAuxiliares();
   _prmInit();
+  _autoSyncInit();
 }
 
 async function _initApp(){
@@ -448,6 +449,94 @@ function _sbShowConfig(){
   }
   const inp=document.getElementById('cfg-advbox-token');
   if(inp&&_secrets.advbox())inp.placeholder='Token já configurado — cole para substituir';
+  _cfgAutosyncLoad();
+}
+
+/* ======================================================
+   AUTO-SYNC — disparo diário automático
+====================================================== */
+const _AUTOSYNC_KEY = 'cj-autosync';
+let _autoSyncTimer = null;
+
+function _cfgAutosyncRead(){
+  try { return JSON.parse(localStorage.getItem(_AUTOSYNC_KEY)||'{}'); } catch { return {}; }
+}
+function _cfgAutosyncWrite(cfg){
+  localStorage.setItem(_AUTOSYNC_KEY, JSON.stringify(cfg));
+}
+
+function _cfgAutosyncLoad(){
+  const cfg = _cfgAutosyncRead();
+  const en = document.getElementById('cfg-autosync-en');
+  const time = document.getElementById('cfg-autosync-time');
+  const last = document.getElementById('cfg-autosync-last');
+  if(en) en.checked = !!cfg.enabled;
+  if(time) time.value = cfg.time || '06:00';
+  if(last){
+    if(cfg.lastRun){
+      const d = new Date(cfg.lastRun);
+      last.textContent = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    } else {
+      last.textContent = 'Nunca';
+    }
+  }
+}
+
+function _cfgAutosyncSave(){
+  const cfg = _cfgAutosyncRead();
+  cfg.enabled = !!document.getElementById('cfg-autosync-en')?.checked;
+  cfg.time = document.getElementById('cfg-autosync-time')?.value || '06:00';
+  _cfgAutosyncWrite(cfg);
+  showToast(cfg.enabled ? `Auto-sync ativado para ${cfg.time}` : 'Auto-sync desativado');
+}
+
+function _autoSyncDayKey(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function _autoSyncCheck(){
+  const cfg = _cfgAutosyncRead();
+  if(!cfg.enabled) return;
+  // Só rodamos enquanto a aba de Execução Processual está visível (botão de sync existe e o token está configurado).
+  // O syncAdvbox internamente também valida _secrets.advbox().
+  const btn = document.getElementById('sync-btn');
+  if(!btn || btn.disabled) return;
+  if(!_secrets.advbox()) return;
+
+  const now = new Date();
+  const todayKey = _autoSyncDayKey(now);
+  const lastKey = (cfg.lastRun||'').slice(0,10);
+  if(lastKey === todayKey) return; // já rodou hoje
+
+  const [hh, mm] = (cfg.time||'06:00').split(':').map(Number);
+  const targetMin = (hh|0)*60 + (mm|0);
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  if(nowMin < targetMin) return; // ainda não chegou o horário
+
+  // Marca antes de disparar para evitar double-trigger em race
+  cfg.lastRun = now.toISOString();
+  _cfgAutosyncWrite(cfg);
+  _cfgAutosyncLoad(); // atualiza "Última execução" se UI estiver aberta
+
+  // Dispara sync — mesma função do botão manual
+  if(typeof syncAdvbox === 'function'){
+    Promise.resolve()
+      .then(()=>syncAdvbox())
+      .catch(e=>console.warn('[Credijuris] auto-sync falhou:', e));
+  }
+}
+
+function _autoSyncInit(){
+  if(_autoSyncTimer) clearInterval(_autoSyncTimer);
+  // Checagem inicial + a cada 60s. Browsers throttlam timers em abas inativas,
+  // mas o check é leve e idempotente (lastRun garante no-op duplo).
+  _autoSyncCheck();
+  _autoSyncTimer = setInterval(_autoSyncCheck, 60_000);
+  // Quando a aba volta a ficar visível, força um check imediato (caso o timer
+  // tenha sido throttlado durante a inatividade).
+  document.addEventListener('visibilitychange', () => {
+    if(!document.hidden) _autoSyncCheck();
+  });
 }
 
 function _sbShowExec(){
@@ -1540,9 +1629,10 @@ function renderCalendario() {
   const curAno = hoje.getFullYear();
   const isCurMonth = (calMes === curMes && calAno === curAno);
 
-  // Coleta diligências abertas (Advbox /history) agrupadas pelo dia do prazo
+  // Coleta diligências abertas (Advbox /history) agrupadas pelo dia do prazo.
+  // Diligências com deadline < hoje são ignoradas no calendário (não acumula
+  // em "hoje"); elas continuam visíveis dentro do histórico de cada processo.
   const prazosByDay = {};
-  const overdueItems = [];
   [['cessoes',load('cessoes')],['rpv',load('rpv')],['requerimentos',load('requerimentos')]].forEach(([mod,recs])=>{
     recs.forEach(r=>{
       if(r.vinculoPai) return;
@@ -1550,22 +1640,17 @@ function renderCalendario() {
       dils.forEach(d => {
         if(!d.deadline) return;
         const ddl = normDate(d.deadline); if(!ddl) return;
-        const item = {
+        if(ddl < hojeStr) return;
+        (prazosByDay[ddl] = prazosByDay[ddl] || []).push({
           _mod:mod, _id:r.id,
           numeroProcesso:r.numeroProcesso||'',
           task:d.task||'',
           deadline:ddl,
           responsible:d.responsible||''
-        };
-        if(ddl < hojeStr) overdueItems.push(item);
-        else (prazosByDay[ddl] = prazosByDay[ddl] || []).push(item);
+        });
       });
     });
   });
-  // Vencidos (deadline anterior a hoje, ainda em aberto) caem no dia de hoje
-  if(overdueItems.length){
-    prazosByDay[hojeStr] = (prazosByDay[hojeStr] || []).concat(overdueItems);
-  }
 
   const diasNoMes = new Date(calAno, calMes + 1, 0).getDate();
   const firstDay = isCurMonth ? hoje.getDate() : 1;

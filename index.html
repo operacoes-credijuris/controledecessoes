@@ -410,6 +410,35 @@
       </div>
     </div>
   </div>
+  <!-- Sincronização -->
+  <div class="cfg-section">
+    <div class="cfg-section-hdr">
+      <div class="cfg-section-kicker">Sincronização</div>
+      <div class="cfg-section-title">Atualização automática</div>
+    </div>
+    <div class="cfg-row">
+      <div class="cfg-row-lbl-side">
+        <div class="cfg-row-lbl">Sincronizar diariamente</div>
+        <div class="cfg-row-sub">Roda automaticamente todo dia no horário escolhido (só funciona enquanto o app estiver aberto no navegador). O botão "↺ Sincronizar" continua disponível.</div>
+      </div>
+      <div class="cfg-row-ctrl" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <label style="display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#cfd6e3;cursor:pointer;user-select:none">
+          <input type="checkbox" id="cfg-autosync-en" onchange="_cfgAutosyncSave()" style="accent-color:#0077ff;width:16px;height:16px;cursor:pointer">
+          Ativada
+        </label>
+        <input id="cfg-autosync-time" type="time" class="cfg-token-input" value="06:00" onchange="_cfgAutosyncSave()" style="width:120px;text-align:center">
+      </div>
+    </div>
+    <div class="cfg-row">
+      <div class="cfg-row-lbl-side">
+        <div class="cfg-row-lbl">Última execução automática</div>
+        <div class="cfg-row-sub">Indica quando a última sincronização agendada foi disparada neste navegador</div>
+      </div>
+      <div class="cfg-row-ctrl">
+        <span id="cfg-autosync-last" style="font-size:13px;font-weight:600;color:#dce3ee;background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 16px;min-width:140px;text-align:right;display:inline-block;box-sizing:border-box">—</span>
+      </div>
+    </div>
+  </div>
   <!-- Conta -->
   <div class="cfg-section">
     <div class="cfg-section-hdr">
