@@ -4201,7 +4201,6 @@ async function syncAdvbox(opts){
     }
 
     const mr=await _advboxGet(`${_PROXY}?action=movements&lawsuit_id=${lawsuits[0].id}`,'movements');
-    if(mr.skip){if(tentativa===1)st.done++;await _sleep(2000);return;}
     if(mr.err){
       if(mr.retryable&&tentativa<3){paraRetry.push({mod,rec,tentativa:tentativa+1});}
       else{erros.push(`${rec.numeroProcesso}: ${mr.err}`);st.failed++;}
@@ -4209,8 +4208,9 @@ async function syncAdvbox(opts){
       _upd(rec.numeroProcesso);
       await _sleep(2000);return;
     }
-    const movs=Array.isArray(mr.data)?mr.data:(mr.data.results||mr.data.data||[]);
-    // Não retorna mais cedo quando movs vazio: ainda queremos tentar diligências
+    // mr.skip (204/404) → processo existe mas sem movimentações tribunal; seguimos
+    // para /history porque diligências são independentes das movimentações.
+    const movs = mr.skip ? [] : (Array.isArray(mr.data)?mr.data:(mr.data.results||mr.data.data||[]));
 
     // Diligências (history) — best effort, falha não derruba processo
     const hr=await _advboxGet(`${_PROXY}?action=history&lawsuit_id=${lawsuits[0].id}`,'history');
