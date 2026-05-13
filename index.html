@@ -717,13 +717,14 @@
       <div class="gc-step-body">
         <div class="gc-lbl">Tipo (opcional)</div>
         <select id="gc-tipo" class="gc-select">
-          <option value="">Auto — decide pelo TIPO_CREDITO_NEGOCIADO da apresentação</option>
-          <option value="cessao_credito">Só cessão de crédito</option>
-          <option value="cessao_honorarios">Só cessão de honorários</option>
+          <option value="">Auto — usa as checkboxes da análise de RPV</option>
+          <option value="cessao_credito">Só cessão de crédito principal</option>
+          <option value="cessao_honorarios_contratuais">Só cessão de honorários contratuais</option>
+          <option value="cessao_honorarios_sucumbenciais">Só cessão de honorários sucumbenciais</option>
           <option value="intermediacao">Só intermediação</option>
           <option value="procuracao">Só procuração</option>
         </select>
-        <div class="gc-hint">No modo auto: <em>principal</em> gera cessão+intermediação+procuração, <em>honorários</em> gera honorários+intermediação+procuração, <em>ambos</em> gera todos.</div>
+        <div class="gc-hint">No modo auto, o sistema lê o quadro <em>"Vai ser negociado aqui quais créditos?"</em> da análise de RPV e gera os contratos correspondentes às checkboxes marcadas (mais intermediação + procuração).</div>
       </div>
     </div>
 
