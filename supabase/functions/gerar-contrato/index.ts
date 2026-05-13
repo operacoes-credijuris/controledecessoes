@@ -271,9 +271,8 @@ function colLetterFromRef(ref: string): string {
   return m ? m[1] : '';
 }
 
-async function extractXlsxText(bytes: Uint8Array): Promise<string> {
-  const zip = await JSZip.loadAsync(bytes);
-  // Lê shared strings — cada <si> pode ter múltiplos <t> (rich text); concatena
+// Lê shared strings de um xlsx (helper compartilhado entre extração e detecção).
+async function readSharedStrings(zip: JSZip): Promise<string[]> {
   const ssXml = await zip.file('xl/sharedStrings.xml')?.async('string') || '';
   const ss: string[] = [];
   const siRe = /<si\b[^>]*>([\s\S]*?)<\/si>/g;
@@ -286,6 +285,71 @@ async function extractXlsxText(bytes: Uint8Array): Promise<string> {
     while ((tm = tRe.exec(inner)) !== null) parts.push(tm[1]);
     ss.push(parts.join(''));
   }
+  return ss;
+}
+
+// Lê as 3 checkboxes do quadro "Vai ser negociado aqui quais créditos?" DIRETO do
+// XML, sem depender da IA. Pra cada row do worksheet, procura a célula t="s" com
+// label "Crédito principal:" / "Honorários contratuais:" / "Honorários sucumbenciais:"
+// e a célula t="b" da mesma row → retorna 'true'/'false' string.
+//
+// Existe porque a IA, mesmo recebendo texto formatado claro tipo "D=TRUE", às
+// vezes retorna "false" pra todas (provavelmente porque sheet2/sheet3 da análise
+// têm muitas células sim/não que confundem o contexto). Esta função sobrescreve
+// o que a IA respondeu pras 3 variáveis NEGOCIAR_*.
+async function detectCheckboxesFromXlsx(bytes: Uint8Array): Promise<Vars> {
+  const result: Vars = {};
+  try {
+    const zip = await JSZip.loadAsync(bytes);
+    const ss = await readSharedStrings(zip);
+
+    // Acha índices dos labels (busca normalizada — sobrevive a variações tipo ":")
+    const findSsIdx = (needle: string): number => {
+      const n = normalizar(needle);
+      return ss.findIndex(s => normalizar(s).includes(n));
+    };
+    const idxPrincipal      = findSsIdx('credito principal');
+    const idxContratuais    = findSsIdx('honorarios contratuais');
+    const idxSucumbenciais  = findSsIdx('honorarios sucumbenciais');
+
+    for (const name of Object.keys(zip.files)) {
+      if (!name.match(/^xl\/worksheets\/sheet\d+\.xml$/)) continue;
+      const sx = await zip.file(name)?.async('string') || '';
+      const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
+      let rm: RegExpExecArray | null;
+      while ((rm = rowRe.exec(sx)) !== null) {
+        // Pra cada row, coleta: último ssRefIdx visto (label) + qualquer t="b" (valor)
+        const cRe = /<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
+        let cm: RegExpExecArray | null;
+        let lastSsIdx = -1;
+        let boolValue: string | null = null;
+        while ((cm = cRe.exec(rm[1])) !== null) {
+          const attrs = (cm[1] ?? cm[2]) || '';
+          const inner = cm[3] ?? '';
+          const typeMatch = attrs.match(/\bt="([^"]+)"/);
+          const type = typeMatch ? typeMatch[1] : '';
+          const vMatch = inner.match(/<v>([^<]*)<\/v>/);
+          if (!vMatch) continue;
+          if (type === 's') lastSsIdx = parseInt(vMatch[1], 10);
+          else if (type === 'b') boolValue = vMatch[1];
+        }
+        if (boolValue == null || lastSsIdx < 0) continue;
+        const v = boolValue === '1' ? 'true' : 'false';
+        if (lastSsIdx === idxPrincipal)          result.NEGOCIAR_CREDITO_PRINCIPAL      = v;
+        else if (lastSsIdx === idxContratuais)   result.NEGOCIAR_HONORARIOS_CONTRATUAIS = v;
+        else if (lastSsIdx === idxSucumbenciais) result.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS = v;
+      }
+    }
+  } catch (e) {
+    // Best-effort — se falhar, deixa a IA mandar. Não derruba a pipeline.
+    console.error('[gerar-contrato] detectCheckboxesFromXlsx falhou:', e);
+  }
+  return result;
+}
+
+async function extractXlsxText(bytes: Uint8Array): Promise<string> {
+  const zip = await JSZip.loadAsync(bytes);
+  const ss = await readSharedStrings(zip);
   // Lê cada sheet
   const lines: string[] = [];
   for (const name of Object.keys(zip.files)) {
@@ -952,6 +1016,24 @@ serve(async (req) => {
       ? extractParte(sbAdmin, cfg.anthropic_api_key, inputPaths.escritorio, SCHEMA_ESCRITORIO)
       : Promise.resolve<Vars>({});
     const [apresentacao, cedente, escritorio] = await Promise.all([apresentacaoP, cedenteP, escritorioP]);
+
+    // 9b. Override determinístico das 3 checkboxes a partir do XLSX (se houver).
+    // A IA tende a errar quando o input é grande (sheet2/sheet3 da análise são
+    // gigantes), então sobrescrevemos com leitura direta do XML do xlsx.
+    for (const path of inputPaths.apresentacao) {
+      const ext = extOf(path);
+      if (ext !== '.xlsx' && ext !== '.xls') continue;
+      try {
+        const bytes = await storageGetBytes(sbAdmin, BUCKET_INPUT, path);
+        const detectado = await detectCheckboxesFromXlsx(bytes);
+        for (const [k, v] of Object.entries(detectado)) {
+          if (v != null) apresentacao[k] = v;
+        }
+      } catch (e) {
+        console.error('[gerar-contrato] override de checkboxes falhou', path, e);
+      }
+      break; // primeiro xlsx é suficiente
+    }
 
     // 10. Junta variáveis (precedência: apresentação > cedente/escritório > investidor)
     const dados: Vars = {
