@@ -1680,12 +1680,13 @@ function renderCalendario() {
           const taskTxt = t.task ? esc(t.task) : '<span style="color:#6b7280">(sem descrição)</span>';
           const procTxt = t.numeroProcesso ? esc(t.numeroProcesso) : '';
           const noteRaw = (t.notes||'').trim();
-          const noteShort = noteRaw.length>20 ? noteRaw.slice(0,20)+'...' : noteRaw;
           const ttl = [t.task,t.numeroProcesso,noteRaw].filter(Boolean).join(' — ');
           return `<div class="cal-task" title="${esc(ttl)}">
-            <span class="cal-task-proc">${taskTxt}</span>
-            ${procTxt ? `<span class="cal-task-sub">${procTxt}</span>` : ''}
-            ${noteShort ? `<span class="cal-task-note">${esc(noteShort)}</span>` : ''}
+            <div class="cal-task-line1">
+              <span class="cal-task-proc">${taskTxt}</span>
+              ${procTxt ? `<span class="cal-task-dot">·</span><span class="cal-task-num">${procTxt}</span>` : ''}
+            </div>
+            ${noteRaw ? `<span class="cal-task-note">${esc(noteRaw)}</span>` : ''}
           </div>`;
         }).join('')}</div>`
       : '';

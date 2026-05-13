@@ -1015,10 +1015,17 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   display:flex;
   flex-direction:column;
   align-items:flex-end;
-  gap:1px;
+  gap:2px;
   max-width:100%;
   min-width:0;
   line-height:1.25;
+}
+.cal-task-line1{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  max-width:100%;
+  min-width:0;
 }
 .cal-task-proc{
   font-size:11px;
@@ -1027,15 +1034,21 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  max-width:100%;
+  min-width:0;
 }
+.cal-task-dot{
+  font-size:11px;
+  color:#5b6576;
+  flex-shrink:0;
+}
+.cal-task-num,
 .cal-task-sub{
   font-size:10px;
   color:#6b7280;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  max-width:100%;
+  min-width:0;
 }
 .cal-task-note{
   font-size:10px;
@@ -1046,6 +1059,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   white-space:nowrap;
   max-width:100%;
 }
+.cal-row.cal-row-has-deadline .cal-task-proc{color:#dceaff}
 .cal-row.cal-row-today .cal-task-note{color:#7891b3}
 .cal-row.cal-row-has-deadline .cal-task-proc{color:#dceaff}
 .cal-row.cal-row-today .cal-task-proc{color:#e9f3ff}
