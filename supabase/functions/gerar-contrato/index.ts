@@ -807,7 +807,10 @@ function determinarTipos(tipoExplicito: string | null | undefined, aprVars: Vars
     throw new Error(
       'Nenhuma checkbox marcada no quadro "Vai ser negociado aqui quais créditos?" ' +
       'da análise de RPV. Marque ao menos uma: Crédito principal, Honorários contratuais ' +
-      'ou Honorários sucumbenciais.',
+      'ou Honorários sucumbenciais. ' +
+      `[debug — valores extraídos pela IA: NEGOCIAR_CREDITO_PRINCIPAL="${aprVars.NEGOCIAR_CREDITO_PRINCIPAL}", ` +
+      `NEGOCIAR_HONORARIOS_CONTRATUAIS="${aprVars.NEGOCIAR_HONORARIOS_CONTRATUAIS}", ` +
+      `NEGOCIAR_HONORARIOS_SUCUMBENCIAIS="${aprVars.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS}"]`,
     );
   }
 
