@@ -4737,6 +4737,44 @@ async function syncAdvbox(opts){
 /* ======================================================
    DEBUG — helpers temporarios (Fase 1 investigacao prazo fatal)
 ====================================================== */
+// Busca a resposta crua de /history pra um processo do Advbox e mostra TODAS as keys
+// disponiveis na resposta — sem depender do parser. Use para identificar campos novos.
+window._debugAdvboxRaw = async function(numeroProcesso){
+  if(!sb){console.error('Supabase nao inicializado');return;}
+  if(!numeroProcesso){
+    // Pega o primeiro processo que tem diligencias cacheadas
+    const all=['cessoes','rpv','requerimentos'].flatMap(m=>load(m));
+    const proc=all.find(r=>r._advboxDiligencias&&r._advboxDiligencias.length);
+    if(!proc){console.error('Nenhum processo com diligencias. Passe um numeroProcesso: _debugAdvboxRaw("0001234-...")');return;}
+    numeroProcesso=proc.numeroProcesso;
+    console.log('Usando processo:',numeroProcesso,'(passe outro pra testar diferente)');
+  }
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){console.error('Sem sessao Supabase. Faca login primeiro.');return;}
+  const hdrs={Authorization:'Bearer '+session.access_token,apikey:_SB_KEY};
+  const proxy=`${_SB_URL}/functions/v1/advbox-proxy`;
+  // 1) lawsuits
+  const lr=await fetch(`${proxy}?action=lawsuits&process_number=${encodeURIComponent(numeroProcesso)}`,{headers:hdrs}).then(r=>r.json());
+  const lawsuits=Array.isArray(lr)?lr:(lr.data||lr.results||[]);
+  if(!lawsuits.length){console.error('Lawsuit nao encontrado pra',numeroProcesso);return;}
+  // 2) history
+  const hr=await fetch(`${proxy}?action=history&lawsuit_id=${lawsuits[0].id}`,{headers:hdrs}).then(r=>r.json());
+  const all=Array.isArray(hr)?hr:(hr.data||hr.results||[]);
+  console.group('[Credijuris] RAW Advbox /history para',numeroProcesso,'(',all.length,'items)');
+  if(all.length){
+    console.log('Primeiro item completo:',all[0]);
+    console.log('Keys do primeiro item:',Object.keys(all[0]));
+    // Conjunto de TODAS as keys do payload
+    const allKeys=new Set();
+    all.forEach(p=>Object.keys(p).forEach(k=>allKeys.add(k)));
+    console.log('Todas as keys distintas em todos os items:',[...allKeys]);
+    if(all.length>1)console.log('Segundo item completo:',all[1]);
+    if(all.length>2)console.log('Terceiro item completo:',all[2]);
+  }
+  console.groupEnd();
+  return all;
+};
+
 window._debugDiligencias = function(){
   const mods=['cessoes','rpv','requerimentos'];
   const all=[];
