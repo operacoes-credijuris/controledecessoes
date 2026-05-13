@@ -73,9 +73,11 @@ a{color:inherit;text-decoration:none}
 /* Sub-panes dentro de #pane-acompanhamento (Cessões/RPV/Encerrados/Diversos) */
 .subpane{display:none;min-height:0;flex:1;flex-direction:column;overflow:hidden}
 .subpane.on{display:flex}
-#pane-acompanhamento .sh-sub-dd{padding-top:0;margin-bottom:4px}
-.sub-dd-btn{padding:6px 12px;font-size:18px;font-weight:700;font-family:var(--font-head);letter-spacing:.2px;color:#f2f6fb}
-.sub-dd-btn .urg-dd-lbl{font-size:18px;font-weight:700}
+#pane-acompanhamento .sh-sub-dd{padding-top:0;margin-bottom:14px;gap:10px}
+#pane-acompanhamento .sh-sub-dd .urg-dd-wrap{display:flex;align-items:center;gap:8px;position:relative}
+#pane-acompanhamento .sh-sub-dd .urg-dd-wrap::before{content:'';display:block;width:3px;height:20px;background:linear-gradient(180deg,#8c9ad0,#6e7dbb);border-radius:999px;flex-shrink:0}
+.sub-dd-btn{padding:6px 12px;font-family:var(--font-head);letter-spacing:.2px;color:#f2f6fb}
+.sub-dd-btn .urg-dd-lbl{font-size:17px;font-weight:700;color:#f2f6fb}
 #pane-dashboard.on{display:flex;flex-direction:column;padding:20px 24px}
 /* Modo não-exec: oculta nav/main via classe no app-content (fallback robusto) */
 .app-content.mode-nonexec>.nav{display:none!important}

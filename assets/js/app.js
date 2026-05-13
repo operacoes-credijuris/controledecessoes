@@ -2594,6 +2594,9 @@ document.addEventListener('keydown',e=>{
 /* ======================================================
    ACOMPANHAMENTO PROCESSUAL — dropdown de sub-aba
 ====================================================== */
+// Wrapper para o botao "+ Adicionar" no header de Acompanhamento — abre o form do subTab atual
+function openCurrentSubForm(){ openForm(subTab); }
+
 function selectSubpane(mod,opts){
   if(!_SUB_TABS.includes(mod))return;
   subTab=mod;

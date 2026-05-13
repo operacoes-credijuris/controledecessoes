@@ -95,7 +95,7 @@
 <nav class="nav">
   <div class="tab on" data-tab="dashboard">Dashboard</div>
   <span class="nav-sep">|</span>
-  <div class="tab" data-tab="acompanhamento">Acompanhamento Processual</div>
+  <div class="tab" data-tab="acompanhamento">Acompanhamento</div>
   <span class="nav-sep">|</span>
   <div class="tab" data-tab="contatos">Telefones e Contatos</div>
 </nav>
@@ -225,14 +225,11 @@
           </button>
         </div>
       </div>
+      <button class="btn btn-gold sub-add-btn" onclick="openCurrentSubForm()">+ Adicionar</button>
     </div>
 
   <!-- CESSÕES ATIVAS -->
   <div id="pane-cessoes" class="subpane on">
-    <div class="sh">
-      <div class="sh-title">Cessões Ativas</div>
-      <button class="btn btn-gold" onclick="openForm('cessoes')">+ Adicionar</button>
-    </div>
     <div class="fb">
       <div class="srch-wrap"><input id="fc-proc" placeholder="Buscar na aba" oninput="render('cessoes')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('cessoes')">Limpar</button>
@@ -269,10 +266,6 @@
 
   <!-- RPV COMPLEMENTAR -->
   <div id="pane-rpv" class="subpane">
-    <div class="sh">
-      <div class="sh-title">RPV Complementar</div>
-      <button class="btn btn-gold" onclick="openForm('rpv')">+ Adicionar</button>
-    </div>
     <div class="fb">
       <div class="srch-wrap"><input id="fr-proc" placeholder="Buscar na aba" oninput="render('rpv')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('rpv')">Limpar</button>
@@ -307,10 +300,6 @@
 
   <!-- REQUERIMENTOS -->
   <div id="pane-requerimentos" class="subpane">
-    <div class="sh">
-      <div class="sh-title">Diversos</div>
-      <button class="btn btn-gold" onclick="openForm('requerimentos')">+ Adicionar</button>
-    </div>
     <div class="fb">
       <div class="srch-wrap"><input id="fre-proc" placeholder="Buscar na aba" oninput="render('requerimentos')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('requerimentos')">Limpar</button>
@@ -337,10 +326,6 @@
 
   <!-- ENCERRADOS DEFINITIVAMENTE -->
   <div id="pane-encerrados" class="subpane">
-    <div class="sh">
-      <div class="sh-title">Encerrados Definitivamente</div>
-      <button class="btn btn-gold" onclick="openForm('encerrados')">+ Adicionar</button>
-    </div>
     <div class="fb">
       <div class="srch-wrap"><input id="fen-proc" placeholder="Buscar na aba" oninput="render('encerrados')"><span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
       <button class="btn btn-blue btn-sm" onclick="clearF('encerrados')">Limpar</button>
