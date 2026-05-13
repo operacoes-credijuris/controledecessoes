@@ -4737,6 +4737,53 @@ async function syncAdvbox(opts){
 /* ======================================================
    DEBUG — helpers temporarios (Fase 1 investigacao prazo fatal)
 ====================================================== */
+// Compara as respostas dos endpoints /history e /activities do Advbox pra um
+// processo. Use para descobrir se /activities traz metadados (categoria, tipo,
+// flag fatal, etc) que /history nao traz.
+window._debugAdvboxCompare = async function(numeroProcesso){
+  if(!sb){console.error('Supabase nao inicializado');return;}
+  if(!numeroProcesso){
+    const all=['cessoes','rpv','requerimentos'].flatMap(m=>load(m));
+    const proc=all.find(r=>r._advboxDiligencias&&r._advboxDiligencias.length);
+    if(!proc){console.error('Sem processo com diligencias');return;}
+    numeroProcesso=proc.numeroProcesso;
+    console.log('Usando processo:',numeroProcesso);
+  }
+  const {data:{session}}=await sb.auth.getSession();
+  const hdrs={Authorization:'Bearer '+session.access_token,apikey:_SB_KEY};
+  const proxy=`${_SB_URL}/functions/v1/advbox-proxy`;
+  const lr=await fetch(`${proxy}?action=lawsuits&process_number=${encodeURIComponent(numeroProcesso)}`,{headers:hdrs}).then(r=>r.json());
+  const lawsuits=Array.isArray(lr)?lr:(lr.data||lr.results||[]);
+  if(!lawsuits.length){console.error('Lawsuit nao encontrado');return;}
+  const lid=lawsuits[0].id;
+  // 1) /history
+  const hr=await fetch(`${proxy}?action=history&lawsuit_id=${lid}`,{headers:hdrs}).then(r=>r.json());
+  const histAll=Array.isArray(hr)?hr:(hr.data||hr.results||[]);
+  // 2) /activities
+  const ar=await fetch(`${proxy}?action=activities&lawsuit_id=${lid}`,{headers:hdrs}).then(r=>r.json()).catch(e=>({error:String(e)}));
+  const actAll=Array.isArray(ar)?ar:(ar.data||ar.results||[]);
+  console.group('[Credijuris] Comparativo /history vs /activities para',numeroProcesso);
+  console.log('=== HISTORY ===','total=',histAll.length);
+  if(histAll.length){
+    const hk=new Set();histAll.forEach(p=>Object.keys(p).forEach(k=>hk.add(k)));
+    console.log('Keys distintas:',[...hk]);
+    console.log('Sample[0]:',histAll[0]);
+  }
+  console.log('=== ACTIVITIES ===','total=',Array.isArray(actAll)?actAll.length:'(nao-array)');
+  if(Array.isArray(actAll)&&actAll.length){
+    const ak=new Set();actAll.forEach(p=>Object.keys(p).forEach(k=>ak.add(k)));
+    console.log('Keys distintas:',[...ak]);
+    console.log('Sample[0]:',actAll[0]);
+    if(actAll.length>1)console.log('Sample[1]:',actAll[1]);
+  } else if(ar.error){
+    console.warn('Erro ao buscar /activities:',ar.error);
+  } else {
+    console.log('Resposta crua /activities:',ar);
+  }
+  console.groupEnd();
+  return {history:histAll,activities:actAll};
+};
+
 // Busca a resposta crua de /history pra um processo do Advbox e mostra TODAS as keys
 // disponiveis na resposta — sem depender do parser. Use para identificar campos novos.
 window._debugAdvboxRaw = async function(numeroProcesso){
