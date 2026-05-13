@@ -862,7 +862,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-stats .sc-val.red{color:#ff7373}
 
 #pane-dashboard .db-grid{
-  grid-template-columns:minmax(0,1fr) minmax(0,1.05fr) minmax(0,1.05fr);
+  grid-template-columns:repeat(3,minmax(0,1fr));
   gap:16px;
   margin:0;
   align-items:stretch;
