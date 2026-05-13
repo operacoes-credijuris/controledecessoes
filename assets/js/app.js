@@ -2580,6 +2580,17 @@ function _decodeHtmlEntities(s){
   return ta.value;
 }
 
+// Title-case PT-BR mantendo partículas minúsculas (da, de, do, etc.).
+function _toTitleCase(s){
+  if(!s)return'';
+  const particulas=new Set(['da','de','do','das','dos','e','à','ao','aos','di','du','del']);
+  return _decodeHtmlEntities(String(s)).toLowerCase().split(/(\s+)/).map((w,i)=>{
+    if(!w.trim())return w;
+    if(i>0&&particulas.has(w))return w;
+    return w.charAt(0).toUpperCase()+w.slice(1);
+  }).join('');
+}
+
 function _djenDateRange(){
   const fim=todayStr();
   const past=new Date(); past.setHours(0,0,0,0); past.setDate(past.getDate()-30);
@@ -2695,7 +2706,7 @@ async function _renderPubs(){
     const textoShort=isLong?texto.slice(0,150)+'…':texto;
     const destArr=Array.isArray(it.destinatarios)?it.destinatarios:[];
     const destHtml=destArr.length
-      ?destArr.map(d=>`${esc(d.nome||'')}${d.polo?` <span class="pub-polo">(${esc(d.polo)})</span>`:''}`).join(' · ')
+      ?destArr.map(d=>esc(_toTitleCase(d.nome||''))).filter(Boolean).join(' · ')
       :'';
     const tribBadge=trib?`<span class="bdg bdg-gray">${esc(trib)}</span>`:'';
     const modBadge=ctx?`<span class="bdg ${ctx.bdg}">${esc(ctx.label)}</span>`:'';
@@ -2704,14 +2715,19 @@ async function _renderPubs(){
       :`<span class="pub-title">${esc(numMasc)}</span>`;
     const navB=ctx?navBtn(ctx.mod,ctx.r.id):'';
     const inteiroBtn=isLong?`<button type="button" class="pub-inteiro-btn" onclick="togglePubText(this)">Ver inteiro teor</button>`:'';
+    const cedCess=ctx?(()=>{
+      const c=ctx.r.cedente||'',s=ctx.r.cessionario||'';
+      if(!c&&!s)return'';
+      return`<div class="pub-item-partes">${esc(c)}${c&&s?' v. ':''}${esc(s)}</div>`;
+    })():'';
     return`<div class="pub-item">
       <div class="pub-item-hdr">
         <div class="pub-item-titulo">${tituloHtml}${cpyBtn(numMasc)}${navB}</div>
         <div class="pub-item-badges">${tribBadge}${modBadge}</div>
       </div>
+      ${cedCess}
       <div class="pub-item-meta">
-        <span class="pub-data">${dataDisp}</span>
-        ${tipo?`<span class="pub-tipo">${esc(tipo)}</span>`:''}
+        <span class="pub-data"><span class="pub-data-lbl">Disponibilização:</span> ${dataDisp}</span>
         ${orgao?`<span class="pub-orgao">${esc(orgao)}</span>`:''}
       </div>
       ${texto?`<div class="pub-text" data-full="${esc(texto)}" data-short="${esc(textoShort)}">${esc(textoShort)}</div>`:''}
