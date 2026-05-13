@@ -430,92 +430,10 @@
 <!-- PAINEL CARTEIRAS -->
 <div id="pane-carteiras">
   <nav class="crt-nav">
-    <div class="crt-tab" data-crt="parametros" onclick="crtNav('parametros')">Parâmetros</div>
-    <span class="crt-sep">|</span>
     <div class="crt-tab on" data-crt="investidores" onclick="crtNav('investidores')">Investidores</div>
     <span class="crt-sep">|</span>
     <div class="crt-tab" data-crt="consolidado" onclick="crtNav('consolidado')">Consolidado</div>
   </nav>
-  <div id="crt-pane-parametros" class="crt-pane">
-    <div class="cfg-section" style="max-width:620px">
-      <div class="cfg-section-hdr">
-        <div class="cfg-section-kicker">Taxas de Mercado</div>
-        <div class="cfg-section-title">Parâmetros de atualização</div>
-      </div>
-      <!-- SELIC -->
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side">
-          <div class="cfg-row-lbl">SELIC vigente</div>
-          <div class="cfg-row-sub">% a.a.</div>
-        </div>
-        <div class="cfg-row-ctrl">
-          <input id="prm-selic" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
-            style="width:140px;text-align:right"
-            oninput="_prmUpdate()"
-            onblur="_prmSave()">
-        </div>
-      </div>
-      <!-- IPCA -->
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side">
-          <div class="cfg-row-lbl">IPCA acumulado 12m</div>
-          <div class="cfg-row-sub">% a.a.</div>
-        </div>
-        <div class="cfg-row-ctrl">
-          <input id="prm-ipca" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
-            style="width:140px;text-align:right"
-            oninput="_prmUpdate()"
-            onblur="_prmSave()">
-        </div>
-      </div>
-      <!-- TR -->
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side">
-          <div class="cfg-row-lbl">TR</div>
-          <div class="cfg-row-sub">% a.a.</div>
-        </div>
-        <div class="cfg-row-ctrl">
-          <input id="prm-tr" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
-            style="width:140px;text-align:right"
-            oninput="_prmUpdate()"
-            onblur="_prmSave()">
-        </div>
-      </div>
-      <!-- CDI -->
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side">
-          <div class="cfg-row-lbl">CDI</div>
-          <div class="cfg-row-sub">% a.a.</div>
-        </div>
-        <div class="cfg-row-ctrl">
-          <input id="prm-cdi" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
-            style="width:140px;text-align:right"
-            oninput="_prmUpdate()"
-            onblur="_prmSave()">
-        </div>
-      </div>
-      <!-- Data de referência (read-only) -->
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side">
-          <div class="cfg-row-lbl">Data de referência do relatório</div>
-          <div class="cfg-row-sub">Preenchida automaticamente com a data de hoje</div>
-        </div>
-        <div class="cfg-row-ctrl">
-          <span id="prm-data-ref" style="font-size:13px;font-weight:600;color:#dce3ee;background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 16px;min-width:140px;text-align:right;display:inline-block;box-sizing:border-box"></span>
-        </div>
-      </div>
-      <!-- Índice padrão (read-only) -->
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side">
-          <div class="cfg-row-lbl">Índice padrão de projeção</div>
-          <div class="cfg-row-sub">IPCA + 2% a.a. — calculado automaticamente</div>
-        </div>
-        <div class="cfg-row-ctrl">
-          <span id="prm-indice-padrao" style="font-size:13px;font-weight:600;color:#60a5fa;background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 16px;min-width:140px;text-align:right;display:inline-block;box-sizing:border-box"></span>
-        </div>
-      </div>
-    </div>
-  </div>
   <div id="crt-pane-investidores" class="crt-pane on">
     <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
       <div class="fg">
@@ -535,6 +453,10 @@
         <label class="flbl">Mês de Referência</label>
         <input id="crt-mes-referencia" class="finp" type="month" readonly style="opacity:.7;cursor:default;pointer-events:none;width:160px">
       </div>
+      <button type="button" class="btn btn-blue btn-sm" onclick="openParametrosModal()" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px" title="Editar taxas de mercado e índices de projeção">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Parâmetros
+      </button>
     </div>
 
     <!-- Cards de resumo -->
@@ -922,6 +844,96 @@
 </div>
 
 <!-- CARTÓRIO MODAL -->
+<!-- PARÂMETROS DA CARTEIRA MODAL -->
+<div id="parametros-ov" class="ov" onclick="ovClick(event,'parametros-ov')">
+  <div class="mdl" style="max-width:620px">
+    <div class="mdl-hdr">
+      <div>
+        <div class="mdl-title">Parâmetros</div>
+        <div class="mdl-sub">Taxas de Mercado · usadas para projeção das carteiras</div>
+      </div>
+      <button class="mdl-x" onclick="closeModal('parametros-ov')">✕</button>
+    </div>
+    <div class="mdl-body">
+      <!-- SELIC -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">SELIC vigente</div>
+          <div class="cfg-row-sub">% a.a.</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <input id="prm-selic" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
+            style="width:140px;text-align:right"
+            oninput="_prmUpdate()"
+            onblur="_prmSave()">
+        </div>
+      </div>
+      <!-- IPCA -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">IPCA acumulado 12m</div>
+          <div class="cfg-row-sub">% a.a.</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <input id="prm-ipca" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
+            style="width:140px;text-align:right"
+            oninput="_prmUpdate()"
+            onblur="_prmSave()">
+        </div>
+      </div>
+      <!-- TR -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">TR</div>
+          <div class="cfg-row-sub">% a.a.</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <input id="prm-tr" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
+            style="width:140px;text-align:right"
+            oninput="_prmUpdate()"
+            onblur="_prmSave()">
+        </div>
+      </div>
+      <!-- CDI -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">CDI</div>
+          <div class="cfg-row-sub">% a.a.</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <input id="prm-cdi" class="cfg-token-input" type="number" step="0.01" min="0" placeholder="0,00"
+            style="width:140px;text-align:right"
+            oninput="_prmUpdate()"
+            onblur="_prmSave()">
+        </div>
+      </div>
+      <!-- Data de referência (read-only) -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">Data de referência do relatório</div>
+          <div class="cfg-row-sub">Preenchida automaticamente com a data de hoje</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <span id="prm-data-ref" style="font-size:13px;font-weight:600;color:#dce3ee;background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 16px;min-width:140px;text-align:right;display:inline-block;box-sizing:border-box"></span>
+        </div>
+      </div>
+      <!-- Índice padrão (read-only) -->
+      <div class="cfg-row">
+        <div class="cfg-row-lbl-side">
+          <div class="cfg-row-lbl">Índice padrão de projeção</div>
+          <div class="cfg-row-sub">IPCA + 2% a.a. — calculado automaticamente</div>
+        </div>
+        <div class="cfg-row-ctrl">
+          <span id="prm-indice-padrao" style="font-size:13px;font-weight:600;color:#60a5fa;background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 16px;min-width:140px;text-align:right;display:inline-block;box-sizing:border-box"></span>
+        </div>
+      </div>
+    </div>
+    <div class="mdl-footer">
+      <button class="btn btn-blue" onclick="closeModal('parametros-ov')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div id="cart-ov" class="ov" onclick="ovClick(event,'cart-ov')">
   <div class="mdl" style="max-width:700px">
     <div class="mdl-hdr">

@@ -492,8 +492,12 @@ function crtNav(tab){
   document.querySelectorAll('.crt-tab').forEach(t=>t.classList.toggle('on',t.dataset.crt===tab));
   document.querySelectorAll('.crt-pane').forEach(p=>p.classList.toggle('on',p.id==='crt-pane-'+tab));
   if(tab==='investidores'){_crtPopulateInvestidores();_crtRenderOperacoes(_crtAcSelected||null);}
-  if(tab==='parametros')_prmInit();
   if(tab==='consolidado')_crtRenderConsolidado();
+}
+
+function openParametrosModal(){
+  openModal('parametros-ov');
+  _prmInit();
 }
 
 function _crtPopulateInvestidores(){
@@ -2361,7 +2365,7 @@ document.addEventListener('keydown',e=>{
 function openDashPanel(tipo){ selectUrgency(tipo); }
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov'].forEach(closeModal);_crtTxtClose();}
+  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov','parametros-ov'].forEach(closeModal);_crtTxtClose();}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
     const elId=mp[curTab];
