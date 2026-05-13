@@ -2720,10 +2720,12 @@ async function _renderPubs(){
     })():'';
     return`<div class="pub-item">
       <div class="pub-item-hdr">
-        <div class="pub-item-titulo">${tituloHtml}${cpyBtn(numMasc)}${navB}</div>
+        <div class="pub-item-titulo-wrap">
+          <div class="pub-item-titulo">${tituloHtml}${cpyBtn(numMasc)}${navB}</div>
+          ${cedCess}
+        </div>
         <div class="pub-item-badges">${tribBadge}${modBadge}</div>
       </div>
-      ${cedCess}
       <div class="pub-item-meta">
         <span class="pub-data"><span class="pub-data-lbl">Disponibilização:</span> ${dataDisp}</span>
       </div>
