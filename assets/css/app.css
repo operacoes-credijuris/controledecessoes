@@ -1037,6 +1037,16 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   white-space:nowrap;
   max-width:100%;
 }
+.cal-task-note{
+  font-size:10px;
+  color:#5b6576;
+  font-style:italic;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:100%;
+}
+.cal-row.cal-row-today .cal-task-note{color:#7891b3}
 .cal-row.cal-row-has-deadline .cal-task-proc{color:#dceaff}
 .cal-row.cal-row-today .cal-task-proc{color:#e9f3ff}
 .cal-row.cal-row-today .cal-task-sub{color:#8aa4c4}

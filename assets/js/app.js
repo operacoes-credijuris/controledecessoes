@@ -1651,6 +1651,7 @@ function renderCalendario() {
           _mod:mod, _id:r.id,
           numeroProcesso:r.numeroProcesso||'',
           task:d.task||'',
+          notes:d.notes||'',
           deadline:ddl,
           responsible:d.responsible||''
         });
@@ -1678,10 +1679,13 @@ function renderCalendario() {
       ? `<div class="cal-row-tasks">${recs.map(t=>{
           const taskTxt = t.task ? esc(t.task) : '<span style="color:#6b7280">(sem descrição)</span>';
           const procTxt = t.numeroProcesso ? esc(t.numeroProcesso) : '';
-          const ttl = `${t.task||''} — ${t.numeroProcesso||''}`.trim();
+          const noteRaw = (t.notes||'').trim();
+          const noteShort = noteRaw.length>20 ? noteRaw.slice(0,20)+'...' : noteRaw;
+          const ttl = [t.task,t.numeroProcesso,noteRaw].filter(Boolean).join(' — ');
           return `<div class="cal-task" title="${esc(ttl)}">
             <span class="cal-task-proc">${taskTxt}</span>
             ${procTxt ? `<span class="cal-task-sub">${procTxt}</span>` : ''}
+            ${noteShort ? `<span class="cal-task-note">${esc(noteShort)}</span>` : ''}
           </div>`;
         }).join('')}</div>`
       : '';
@@ -4176,6 +4180,7 @@ async function syncAdvbox(){
         .filter(p=>p.date_deadline && !(p.status==='completed' || (p.completed!=null && p.completed!==false)))
         .map(p=>({
           task:String(p.task||'').slice(0,200),
+          notes:String(p.comments||p.notes||'').slice(0,300),
           deadline:String(p.date_deadline).slice(0,10),
           responsible:String(p.responsible||p.author||'').slice(0,80)
         }));
