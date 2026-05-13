@@ -4737,6 +4737,42 @@ async function syncAdvbox(opts){
 /* ======================================================
    DEBUG — helpers temporarios (Fase 1 investigacao prazo fatal)
 ====================================================== */
+// Testa /posts pra ver se filtra tarefas concluidas ou traz status.
+window._debugAdvboxPosts = async function(numeroProcesso){
+  if(!sb){console.error('Supabase nao inicializado');return;}
+  if(!numeroProcesso){
+    const all=['cessoes','rpv','requerimentos'].flatMap(m=>load(m));
+    const proc=all.find(r=>r._advboxDiligencias&&r._advboxDiligencias.length);
+    if(!proc){console.error('Sem processo com diligencias');return;}
+    numeroProcesso=proc.numeroProcesso;
+    console.log('Usando processo:',numeroProcesso);
+  }
+  const {data:{session}}=await sb.auth.getSession();
+  const hdrs={Authorization:'Bearer '+session.access_token,apikey:_SB_KEY};
+  const proxy=`${_SB_URL}/functions/v1/advbox-proxy`;
+  const lr=await fetch(`${proxy}?action=lawsuits&process_number=${encodeURIComponent(numeroProcesso)}`,{headers:hdrs}).then(r=>r.json());
+  const lawsuits=Array.isArray(lr)?lr:(lr.data||lr.results||[]);
+  if(!lawsuits.length){console.error('Lawsuit nao encontrado');return;}
+  const lid=lawsuits[0].id;
+  const pr=await fetch(`${proxy}?action=posts&lawsuit_id=${lid}`,{headers:hdrs}).then(r=>r.json()).catch(e=>({error:String(e)}));
+  const postsAll=Array.isArray(pr)?pr:(pr.data||pr.results||[]);
+  console.group('[Credijuris] /posts para',numeroProcesso);
+  if(Array.isArray(postsAll)&&postsAll.length){
+    const k=new Set();postsAll.forEach(p=>Object.keys(p).forEach(x=>k.add(x)));
+    console.log('total=',postsAll.length);
+    console.log('Keys distintas:',[...k]);
+    console.log('Sample[0]:',postsAll[0]);
+    if(postsAll.length>1)console.log('Sample[1]:',postsAll[1]);
+    if(postsAll.length>2)console.log('Sample[2]:',postsAll[2]);
+  } else if(pr.error){
+    console.warn('Erro:',pr.error);
+  } else {
+    console.log('Resposta crua:',pr);
+  }
+  console.groupEnd();
+  return postsAll;
+};
+
 // Compara as respostas dos endpoints /history e /activities do Advbox pra um
 // processo. Use para descobrir se /activities traz metadados (categoria, tipo,
 // flag fatal, etc) que /history nao traz.
