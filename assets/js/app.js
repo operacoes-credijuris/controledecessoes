@@ -3143,39 +3143,11 @@ const _CPY_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" styl
 function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" onclick="cpyNum(event)">${_CPY_SVG}</button>`;}
 const _NAV_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M2.5 8.5L8.5 2.5M5 2.5H8.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('${mod}','${id}')" title="Ir para o processo">${_NAV_SVG}</button>`;}
-const _PF_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M7.5 1.5L9.5 3.5L3.5 9.5H1.5V7.5L7.5 1.5Z" stroke="#4b5563" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2.5L8.5 4.5" stroke="#4b5563" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+// prazoFatal e derivado automaticamente da menor data limite entre as diligencias
+// do Advbox (campo `_advboxDiligencias`). Nao e mais editavel manualmente.
 function fatalCell(mod,id,val){
   const dateStr=val?fmtDate(val):'—';
-  const btn=`<button class="pf-btn" onclick="editPrazoFatal('${mod}','${esc(id)}')" title="Editar prazo fatal">${_PF_SVG}</button>`;
-  return `<span data-pf="${mod}:${esc(id)}">${dateStr}${btn}</span>`;
-}
-let _pfEsc=false;
-function editPrazoFatal(mod,id){
-  const key=`${mod}:${id}`;
-  const span=document.querySelector(`[data-pf="${key}"]`);
-  if(!span)return;
-  const td=span.closest('td');
-  if(!td)return;
-  const rec=load(mod).find(r=>r.id===id);
-  const cur=(rec&&rec.prazoFatal)?normDate(rec.prazoFatal):'';
-  _pfEsc=false;
-  td.innerHTML=`<input type="date" value="${cur}" style="background:#1a1f2e;border:1px solid #6e7dbb;border-radius:5px;color:#e2e8f0;padding:2px 5px;font-size:12px;font-family:inherit;outline:none;width:130px;color-scheme:dark" onblur="if(!_pfEsc)_pfSave('${mod}','${esc(id)}',this.value)" onkeydown="if(event.key==='Enter'){_pfEsc=false;this.blur()}else if(event.key==='Escape'){_pfEsc=true;event.preventDefault();render('${mod}')}">`;
-  const inp=td.querySelector('input');
-  if(inp){inp.focus();inp.click();}
-}
-function _pfSave(mod,id,valor){
-  const data=load(mod);
-  const idx=data.findIndex(r=>r.id===id);
-  if(idx<0){render(mod);return;}
-  const anterior=normDate(data[idx].prazoFatal||'');
-  // Confirmação ao apagar uma data existente
-  if(!valor&&anterior){
-    if(!confirm('Remover o prazo fatal deste processo?')){render(mod);return;}
-  }
-  data[idx]={...data[idx],prazoFatal:valor||''};  // novo objeto: evita mutar CACHE antes do _sbSync capturar prev
-  save(mod,data);
-  render(mod);
-  updateDash();
+  return `<span data-pf="${mod}:${esc(id)}" title="Sincronizado automaticamente do Advbox (prazo mais proximo entre tarefas pendentes)">${dateStr}</span>`;
 }
 /* ======================================================
    CARTEIRAS — EDIÇÃO INLINE DE CAMPOS
@@ -4494,9 +4466,18 @@ function _syncProgressHide(el){el?.remove();}
 /* Versão atual do schema das diligências salvas em r._advboxDiligencias.
    Incrementa quando novos campos são adicionados ao objeto salvo. Usada para
    detectar caches velhos e forçar re-fetch, ignorando a otimização (A).
-   v3: preserva campos crus do Advbox para investigar marcação de "prazo fatal". */
-const DILIGENCIA_SCHEMA_VER = 3;
-let _diligenciaDebugSampleLogged = false;
+   v4: fonte agora é /posts (apenas tarefas pendentes) em vez de /history (todas).
+       Preserva `id` da tarefa. r.prazoFatal passa a ser derivado automaticamente. */
+const DILIGENCIA_SCHEMA_VER = 4;
+
+// Calcula o prazo fatal de um registro a partir de suas diligencias pendentes:
+// pega o `deadline` mais próximo de vencer (inclui vencidos — vencido também é fatal).
+// Retorna '' se não houver nenhuma.
+function _computePrazoFatalFromDils(dils){
+  if(!Array.isArray(dils) || !dils.length) return '';
+  const valid = dils.map(d=>d && d.deadline).filter(d=>d && /^\d{4}-\d{2}-\d{2}/.test(d)).sort();
+  return valid[0] || '';
+}
 
 /* Calcula uma "assinatura" do objeto lawsuit retornado pela Advbox para
    detectar se houve mudança desde a última sincronização. Tenta nomes comuns
@@ -4609,36 +4590,24 @@ async function syncAdvbox(opts){
     // para /history porque diligências são independentes das movimentações.
     const movs = mr.skip ? [] : (Array.isArray(mr.data)?mr.data:(mr.data.results||mr.data.data||[]));
 
-    // Diligências (history) — best effort, falha não derruba processo
-    const hr=await _advboxGet(`${_PROXY}?action=history&lawsuit_id=${lawsuits[0].id}`,'history');
+    // Diligências (posts) — somente tarefas pendentes (/posts ja filtra concluidas).
+    // Cada item com `date_deadline` representa um prazo fatal na logica juridica.
+    const hr=await _advboxGet(`${_PROXY}?action=posts&lawsuit_id=${lawsuits[0].id}`,'posts');
     let openDils=null;
     if(!hr.skip && !hr.err){
       const histAll=Array.isArray(hr.data)?hr.data:(hr.data.data||hr.data.results||[]);
-      // FASE 1 (investigação): loga uma amostra crua do Advbox no console pra identificar
-      // qual campo distingue "prazo fatal" das diligências comuns. Roda apenas uma vez por sync.
-      if(!_diligenciaDebugSampleLogged && histAll.length){
-        console.info('[Credijuris][DEBUG] Amostra crua de diligencia do Advbox (history) — processo',rec.numeroProcesso,':',histAll[0]);
-        console.info('[Credijuris][DEBUG] Keys disponiveis:',Object.keys(histAll[0]));
-        _diligenciaDebugSampleLogged=true;
-      }
       openDils=histAll
-        .filter(p=>p.date_deadline && !(p.status==='completed' || (p.completed!=null && p.completed!==false)))
-        .map(p=>{
-          const clean={
-            task:String(p.task||'').slice(0,200),
-            notes:String(p.comments||p.notes||'').slice(0,300),
-            deadline:String(p.date_deadline).slice(0,10),
-            responsible:String(p.responsible||p.author||'').slice(0,80)
-          };
-          // FASE 1 (investigação): preserva campos crus que possivelmente marcam "prazo fatal".
-          // Adicionamos somente campos top-level que existem na resposta — undefined são ignorados.
-          ['id','category','categoria','task_type','tipo_tarefa','tipo','type','priority','prioridade',
-           'tags','flag_fatal','is_fatal','fatal','is_deadline','deadline_type','tipo_prazo',
-           'kind','classification','classificacao'].forEach(k=>{
-            if(p[k]!==undefined && p[k]!==null) clean['_raw_'+k]=p[k];
-          });
-          return clean;
-        });
+        .filter(p=>p.date_deadline)
+        .map(p=>({
+          id:p.id||null,
+          task:String(p.task||'').slice(0,200),
+          notes:String(p.notes||p.comments||'').slice(0,300),
+          deadline:String(p.date_deadline).slice(0,10),
+          responsible:String(
+            (Array.isArray(p.users) && p.users[0] && (p.users[0].name||p.users[0].nome)) ||
+            p.responsible || p.author || ''
+          ).slice(0,80)
+        }));
     }
 
     const arr=load(mod);
@@ -4693,7 +4662,10 @@ async function syncAdvbox(opts){
         updated={...updated,historicoProcessual:hist,_advboxMovCount:movs.length};
       }
       if(openDils!==null){
-        updated={...updated,_advboxDiligencias:openDils,_advboxDiligenciasSchemaVer:DILIGENCIA_SCHEMA_VER};
+        // prazoFatal agora deriva automaticamente das diligencias do Advbox (mais proxima de vencer).
+        // Sobrescreve qualquer valor manual previo — "fonte da verdade" e o Advbox.
+        const computedPrazo = _computePrazoFatalFromDils(openDils);
+        updated={...updated,_advboxDiligencias:openDils,_advboxDiligenciasSchemaVer:DILIGENCIA_SCHEMA_VER,prazoFatal:computedPrazo};
       }
       if(lawsuitSig){
         updated={...updated,_advboxLawsuitSig:lawsuitSig};
@@ -4733,165 +4705,6 @@ async function syncAdvbox(opts){
   else if(topTab!=='dashboard')render(topTab);
   updateDash();
 }
-
-/* ======================================================
-   DEBUG — helpers temporarios (Fase 1 investigacao prazo fatal)
-====================================================== */
-// Testa /posts pra ver se filtra tarefas concluidas ou traz status.
-window._debugAdvboxPosts = async function(numeroProcesso){
-  if(!sb){console.error('Supabase nao inicializado');return;}
-  if(!numeroProcesso){
-    const all=['cessoes','rpv','requerimentos'].flatMap(m=>load(m));
-    const proc=all.find(r=>r._advboxDiligencias&&r._advboxDiligencias.length);
-    if(!proc){console.error('Sem processo com diligencias');return;}
-    numeroProcesso=proc.numeroProcesso;
-    console.log('Usando processo:',numeroProcesso);
-  }
-  const {data:{session}}=await sb.auth.getSession();
-  const hdrs={Authorization:'Bearer '+session.access_token,apikey:_SB_KEY};
-  const proxy=`${_SB_URL}/functions/v1/advbox-proxy`;
-  const lr=await fetch(`${proxy}?action=lawsuits&process_number=${encodeURIComponent(numeroProcesso)}`,{headers:hdrs}).then(r=>r.json());
-  const lawsuits=Array.isArray(lr)?lr:(lr.data||lr.results||[]);
-  if(!lawsuits.length){console.error('Lawsuit nao encontrado');return;}
-  const lid=lawsuits[0].id;
-  const pr=await fetch(`${proxy}?action=posts&lawsuit_id=${lid}`,{headers:hdrs}).then(r=>r.json()).catch(e=>({error:String(e)}));
-  const postsAll=Array.isArray(pr)?pr:(pr.data||pr.results||[]);
-  console.group('[Credijuris] /posts para',numeroProcesso);
-  if(Array.isArray(postsAll)&&postsAll.length){
-    const k=new Set();postsAll.forEach(p=>Object.keys(p).forEach(x=>k.add(x)));
-    console.log('total=',postsAll.length);
-    console.log('Keys distintas:',[...k]);
-    console.log('Sample[0]:',postsAll[0]);
-    if(postsAll.length>1)console.log('Sample[1]:',postsAll[1]);
-    if(postsAll.length>2)console.log('Sample[2]:',postsAll[2]);
-  } else if(pr.error){
-    console.warn('Erro:',pr.error);
-  } else {
-    console.log('Resposta crua:',pr);
-  }
-  console.groupEnd();
-  return postsAll;
-};
-
-// Compara as respostas dos endpoints /history e /activities do Advbox pra um
-// processo. Use para descobrir se /activities traz metadados (categoria, tipo,
-// flag fatal, etc) que /history nao traz.
-window._debugAdvboxCompare = async function(numeroProcesso){
-  if(!sb){console.error('Supabase nao inicializado');return;}
-  if(!numeroProcesso){
-    const all=['cessoes','rpv','requerimentos'].flatMap(m=>load(m));
-    const proc=all.find(r=>r._advboxDiligencias&&r._advboxDiligencias.length);
-    if(!proc){console.error('Sem processo com diligencias');return;}
-    numeroProcesso=proc.numeroProcesso;
-    console.log('Usando processo:',numeroProcesso);
-  }
-  const {data:{session}}=await sb.auth.getSession();
-  const hdrs={Authorization:'Bearer '+session.access_token,apikey:_SB_KEY};
-  const proxy=`${_SB_URL}/functions/v1/advbox-proxy`;
-  const lr=await fetch(`${proxy}?action=lawsuits&process_number=${encodeURIComponent(numeroProcesso)}`,{headers:hdrs}).then(r=>r.json());
-  const lawsuits=Array.isArray(lr)?lr:(lr.data||lr.results||[]);
-  if(!lawsuits.length){console.error('Lawsuit nao encontrado');return;}
-  const lid=lawsuits[0].id;
-  // 1) /history
-  const hr=await fetch(`${proxy}?action=history&lawsuit_id=${lid}`,{headers:hdrs}).then(r=>r.json());
-  const histAll=Array.isArray(hr)?hr:(hr.data||hr.results||[]);
-  // 2) /activities
-  const ar=await fetch(`${proxy}?action=activities&lawsuit_id=${lid}`,{headers:hdrs}).then(r=>r.json()).catch(e=>({error:String(e)}));
-  const actAll=Array.isArray(ar)?ar:(ar.data||ar.results||[]);
-  console.group('[Credijuris] Comparativo /history vs /activities para',numeroProcesso);
-  console.log('=== HISTORY ===','total=',histAll.length);
-  if(histAll.length){
-    const hk=new Set();histAll.forEach(p=>Object.keys(p).forEach(k=>hk.add(k)));
-    console.log('Keys distintas:',[...hk]);
-    console.log('Sample[0]:',histAll[0]);
-  }
-  console.log('=== ACTIVITIES ===','total=',Array.isArray(actAll)?actAll.length:'(nao-array)');
-  if(Array.isArray(actAll)&&actAll.length){
-    const ak=new Set();actAll.forEach(p=>Object.keys(p).forEach(k=>ak.add(k)));
-    console.log('Keys distintas:',[...ak]);
-    console.log('Sample[0]:',actAll[0]);
-    if(actAll.length>1)console.log('Sample[1]:',actAll[1]);
-  } else if(ar.error){
-    console.warn('Erro ao buscar /activities:',ar.error);
-  } else {
-    console.log('Resposta crua /activities:',ar);
-  }
-  console.groupEnd();
-  return {history:histAll,activities:actAll};
-};
-
-// Busca a resposta crua de /history pra um processo do Advbox e mostra TODAS as keys
-// disponiveis na resposta — sem depender do parser. Use para identificar campos novos.
-window._debugAdvboxRaw = async function(numeroProcesso){
-  if(!sb){console.error('Supabase nao inicializado');return;}
-  if(!numeroProcesso){
-    // Pega o primeiro processo que tem diligencias cacheadas
-    const all=['cessoes','rpv','requerimentos'].flatMap(m=>load(m));
-    const proc=all.find(r=>r._advboxDiligencias&&r._advboxDiligencias.length);
-    if(!proc){console.error('Nenhum processo com diligencias. Passe um numeroProcesso: _debugAdvboxRaw("0001234-...")');return;}
-    numeroProcesso=proc.numeroProcesso;
-    console.log('Usando processo:',numeroProcesso,'(passe outro pra testar diferente)');
-  }
-  const {data:{session}}=await sb.auth.getSession();
-  if(!session){console.error('Sem sessao Supabase. Faca login primeiro.');return;}
-  const hdrs={Authorization:'Bearer '+session.access_token,apikey:_SB_KEY};
-  const proxy=`${_SB_URL}/functions/v1/advbox-proxy`;
-  // 1) lawsuits
-  const lr=await fetch(`${proxy}?action=lawsuits&process_number=${encodeURIComponent(numeroProcesso)}`,{headers:hdrs}).then(r=>r.json());
-  const lawsuits=Array.isArray(lr)?lr:(lr.data||lr.results||[]);
-  if(!lawsuits.length){console.error('Lawsuit nao encontrado pra',numeroProcesso);return;}
-  // 2) history
-  const hr=await fetch(`${proxy}?action=history&lawsuit_id=${lawsuits[0].id}`,{headers:hdrs}).then(r=>r.json());
-  const all=Array.isArray(hr)?hr:(hr.data||hr.results||[]);
-  console.group('[Credijuris] RAW Advbox /history para',numeroProcesso,'(',all.length,'items)');
-  if(all.length){
-    console.log('Primeiro item completo:',all[0]);
-    console.log('Keys do primeiro item:',Object.keys(all[0]));
-    // Conjunto de TODAS as keys do payload
-    const allKeys=new Set();
-    all.forEach(p=>Object.keys(p).forEach(k=>allKeys.add(k)));
-    console.log('Todas as keys distintas em todos os items:',[...allKeys]);
-    if(all.length>1)console.log('Segundo item completo:',all[1]);
-    if(all.length>2)console.log('Terceiro item completo:',all[2]);
-  }
-  console.groupEnd();
-  return all;
-};
-
-window._debugDiligencias = function(){
-  const mods=['cessoes','rpv','requerimentos'];
-  const all=[];
-  mods.forEach(m=>{
-    load(m).forEach(r=>{
-      (r._advboxDiligencias||[]).forEach(d=>{
-        all.push({mod:m,processo:r.numeroProcesso,...d});
-      });
-    });
-  });
-  const rawKeys=new Set();
-  all.forEach(d=>Object.keys(d).forEach(k=>{ if(k.startsWith('_raw_'))rawKeys.add(k); }));
-  console.group('[Credijuris] Diligencias cacheadas:',all.length);
-  if(!all.length){
-    console.warn('Nenhuma diligencia cacheada. Faca uma sync primeiro (botao Sincronizar no topo).');
-  } else {
-    console.log('Sample [0]:',all[0]);
-    console.log('Todos os _raw_* encontrados nas diligencias:',[...rawKeys]);
-    // Agrupa por valor de cada _raw_ field — ajuda a identificar quais marcam "fatal"
-    rawKeys.forEach(k=>{
-      const valores=new Map();
-      all.forEach(d=>{
-        const v=d[k];
-        if(v===undefined||v===null)return;
-        const key=typeof v==='object'?JSON.stringify(v):String(v);
-        valores.set(key,(valores.get(key)||0)+1);
-      });
-      console.log(`Distribuicao de ${k}:`,Object.fromEntries(valores));
-    });
-    console.log('Lista completa:',all);
-  }
-  console.groupEnd();
-  return all;
-};
 
 /* ======================================================
    INIT
