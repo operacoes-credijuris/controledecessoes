@@ -430,7 +430,8 @@
 
 <!-- PAINEL CONFIGURAÇÕES -->
 <div id="pane-config">
-  <!-- Integrações -->
+
+  <!-- Integrações: Advbox -->
   <div class="cfg-section">
     <div class="cfg-section-hdr">
       <div class="cfg-section-kicker">Integrações</div>
@@ -439,42 +440,41 @@
     <div class="cfg-row">
       <div class="cfg-row-lbl-side">
         <div class="cfg-row-lbl">Token de API</div>
-        <div class="cfg-row-sub">Utilizado para sincronizar movimentações processuais</div>
+        <div class="cfg-row-sub">Utilizado para sincronizar movimentações processuais e criar tarefas</div>
       </div>
       <div class="cfg-row-ctrl">
         <input id="cfg-advbox-token" class="cfg-token-input" type="password" placeholder="Cole o token aqui…" autocomplete="off">
         <span id="cfg-advbox-status" class="cfg-status"></span>
-        <button id="cfg-advbox-refresh-btn" class="cfg-save-btn" style="background:transparent;border:1px solid rgba(255,255,255,.12);color:#94a3b8" onclick="_cfgAdvboxRefreshSettings()" title="Recarrega usuarios e tipos de tarefa do Advbox (cache local)">Atualizar cache</button>
+        <button id="cfg-advbox-refresh-btn" class="cfg-save-btn cfg-btn-ghost" onclick="_cfgAdvboxRefreshSettings()" title="Recarrega usuarios e tipos de tarefa do Advbox (cache local)">Atualizar cache</button>
         <button id="cfg-advbox-save-btn" class="cfg-save-btn" onclick="cfgSaveAdvboxToken()">Salvar</button>
       </div>
     </div>
-    <div class="cfg-row">
+    <div class="cfg-row cfg-row-col">
       <div class="cfg-row-lbl-side">
         <div class="cfg-row-lbl">Criação automática de processos</div>
-        <div class="cfg-row-sub">Ao cadastrar um processo novo, cria automaticamente no Advbox</div>
+        <div class="cfg-row-sub">Padrões aplicados ao cadastrar um processo novo na plataforma</div>
       </div>
-      <div class="cfg-row-ctrl" style="flex-direction:column;align-items:flex-start;gap:8px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:150px">
-            <span style="font-size:10px;color:#6b7280;font-weight:600;letter-spacing:.3px;text-transform:uppercase">Responsável</span>
-            <select id="cfg-advbox-auto-user" class="cfg-select"><option value="">Selecione…</option></select>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:150px">
-            <span style="font-size:10px;color:#6b7280;font-weight:600;letter-spacing:.3px;text-transform:uppercase">Fase processual</span>
-            <select id="cfg-advbox-auto-stage" class="cfg-select"><option value="">Selecione…</option></select>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:150px">
-            <span style="font-size:10px;color:#6b7280;font-weight:600;letter-spacing:.3px;text-transform:uppercase">Tipo de processo</span>
-            <select id="cfg-advbox-auto-type" class="cfg-select"><option value="">Selecione…</option></select>
-          </div>
+      <div class="cfg-auto-grid">
+        <div class="cfg-auto-field">
+          <span class="cfg-field-lbl">Responsável</span>
+          <select id="cfg-advbox-auto-user" class="cfg-select"><option value="">Selecione…</option></select>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="cfg-save-btn" onclick="_cfgAdvboxSaveAutoDefaults()">Salvar</button>
-          <span id="cfg-advbox-auto-status" class="cfg-status"></span>
+        <div class="cfg-auto-field">
+          <span class="cfg-field-lbl">Fase processual</span>
+          <select id="cfg-advbox-auto-stage" class="cfg-select"><option value="">Selecione…</option></select>
         </div>
+        <div class="cfg-auto-field">
+          <span class="cfg-field-lbl">Tipo de processo</span>
+          <select id="cfg-advbox-auto-type" class="cfg-select"><option value="">Selecione…</option></select>
+        </div>
+      </div>
+      <div class="cfg-row-actions">
+        <button class="cfg-save-btn" onclick="_cfgAdvboxSaveAutoDefaults()">Salvar</button>
+        <span id="cfg-advbox-auto-status" class="cfg-status"></span>
       </div>
     </div>
   </div>
+
   <!-- Sincronização -->
   <div class="cfg-section">
     <div class="cfg-section-hdr">
@@ -484,14 +484,15 @@
     <div class="cfg-row">
       <div class="cfg-row-lbl-side">
         <div class="cfg-row-lbl">Sincronizar diariamente</div>
-        <div class="cfg-row-sub">Roda automaticamente todo dia no horário escolhido (só funciona enquanto o app estiver aberto no navegador). O botão "↺ Sincronizar" continua disponível.</div>
+        <div class="cfg-row-sub">Roda automaticamente todo dia no horário escolhido — só funciona enquanto o app estiver aberto no navegador. O botão "↺ Sincronizar" continua disponível a qualquer momento.</div>
       </div>
-      <div class="cfg-row-ctrl" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <label style="display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#cfd6e3;cursor:pointer;user-select:none">
-          <input type="checkbox" id="cfg-autosync-en" onchange="_cfgAutosyncSave()" style="accent-color:#6e7dbb;width:16px;height:16px;cursor:pointer">
-          Ativada
+      <div class="cfg-row-ctrl" style="gap:14px">
+        <label class="cfg-toggle" title="Ativar sincronização automática">
+          <input type="checkbox" id="cfg-autosync-en" onchange="_cfgAutosyncSave()">
+          <span class="cfg-toggle-track"></span>
+          <span class="cfg-toggle-thumb"></span>
         </label>
-        <input id="cfg-autosync-time" type="time" class="cfg-token-input" value="06:00" onchange="_cfgAutosyncSave()" style="width:120px;text-align:center">
+        <input id="cfg-autosync-time" type="time" class="cfg-token-input" value="06:00" onchange="_cfgAutosyncSave()" style="width:110px;text-align:center">
       </div>
     </div>
     <div class="cfg-row">
@@ -500,10 +501,11 @@
         <div class="cfg-row-sub">Data e hora da última sincronização, manual ou automática</div>
       </div>
       <div class="cfg-row-ctrl">
-        <span id="cfg-autosync-last" style="font-size:13px;font-weight:600;color:#dce3ee;background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 16px;min-width:140px;text-align:right;display:inline-block;box-sizing:border-box">—</span>
+        <span id="cfg-autosync-last" class="cfg-last-run">—</span>
       </div>
     </div>
   </div>
+
   <!-- Conta -->
   <div class="cfg-section">
     <div class="cfg-section-hdr">
@@ -511,15 +513,19 @@
       <div class="cfg-section-title">Sessão atual</div>
     </div>
     <div class="cfg-row">
-      <div>
-        <div class="cfg-row-lbl">Usuário conectado</div>
-        <div class="cfg-row-sub" id="cfg-user-email">—</div>
+      <div class="cfg-user-card">
+        <div id="cfg-user-avatar" class="cfg-user-avatar">?</div>
+        <div>
+          <div class="cfg-row-lbl">Usuário conectado</div>
+          <div id="cfg-user-email" class="cfg-row-sub">—</div>
+        </div>
       </div>
       <div class="cfg-row-ctrl">
-        <button class="cfg-save-btn" style="background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.35);color:#fca5a5" onclick="doLogout()">Sair</button>
+        <button class="cfg-save-btn cfg-btn-danger" onclick="doLogout()">Sair</button>
       </div>
     </div>
   </div>
+
 </div>
 
 <!-- PAINEL CARTEIRAS -->

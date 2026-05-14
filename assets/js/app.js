@@ -559,7 +559,11 @@ function _sbShowConfig(){
   const emailEl=document.getElementById('cfg-user-email');
   if(emailEl&&sb){
     sb.auth.getUser().then(({data})=>{
-      if(data?.user?.email)emailEl.textContent=data.user.email;
+      if(data?.user?.email){
+        emailEl.textContent=data.user.email;
+        const av=document.getElementById('cfg-user-avatar');
+        if(av)av.textContent=(data.user.email[0]||'?').toUpperCase();
+      }
     });
   }
   const inp=document.getElementById('cfg-advbox-token');
