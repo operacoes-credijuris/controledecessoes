@@ -208,7 +208,9 @@ tr:hover .pf-btn{opacity:.5}
 .crt-eb:hover{opacity:1!important}
 /* ALERT NAV BUTTON */
 .al-nav-btn{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0;color:#4b5563}
-.alert-item:hover .al-nav-btn{opacity:.6}
+.alert-item:hover .al-nav-btn,
+.mov-group-hdr:hover .al-nav-btn,
+.pub-item:hover .al-nav-btn{opacity:.6}
 .al-nav-btn:hover{opacity:1!important}
 
 /* SEARCH WRAP */
@@ -988,7 +990,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-prazos-search .srch-ico svg{width:11px;height:11px}
 /* Search bar da coluna Atividade (filtra por numero do processo) */
 .dash-search-bar{
-  padding:8px 16px 4px;
+  padding:7px 16px 3px;
   border-bottom:1px solid rgba(255,255,255,.055);
   flex-shrink:0;
 }
