@@ -1460,17 +1460,17 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 .pub-inteiro-btn:hover{background:rgba(110,125,187,.18);color:#dceaff}
 .pub-advbox-btn{
-  background:rgba(59,130,246,.12);
-  border:1px solid rgba(59,130,246,.28);
-  border-radius:5px;
-  cursor:pointer;
-  padding:3px 7px;
-  display:flex;align-items:center;gap:4px;
-  color:#60a5fa;
-  flex-shrink:0;
+  padding:1px 7px;
+  border-radius:20px;
+  font-size:10px;font-weight:600;letter-spacing:.15px;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(236,72,153,.18);
+  color:#f9a8d4;
+  border:1px solid rgba(236,72,153,.38);
+  cursor:pointer;flex-shrink:0;
   transition:background .15s,border-color .15s,color .15s;
 }
-.pub-advbox-btn:hover{background:rgba(59,130,246,.24);border-color:rgba(99,160,255,.5);color:#bfdbfe}
+.pub-advbox-btn:hover{background:rgba(236,72,153,.28);border-color:rgba(236,72,153,.6);color:#fce7f3}
 .pub-dest{
   font-size:11px;color:#8793a3;
   border-top:1px dashed rgba(255,255,255,.06);
