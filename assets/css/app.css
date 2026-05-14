@@ -875,7 +875,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-stats .sc-val.red{color:#ff7373}
 
 #pane-dashboard .db-grid{
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:repeat(4,minmax(0,1fr));
   gap:16px;
   margin:0;
   align-items:stretch;
@@ -893,7 +893,8 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-agenda,
 .dash-movements,
 .dash-activity-panel,
-.dash-urgencies-panel{
+.dash-urgencies-panel,
+.dash-prazos-panel{
   display:flex;
   flex-direction:column;
   min-width:0;
@@ -1419,8 +1420,9 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   justify-content:center;
 }
 
-@media(max-width:1200px){
-  #pane-dashboard .db-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media(max-width:1500px){
+  /* 4 -> 2 colunas com Agenda full-width na primeira linha */
+  #pane-dashboard .db-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   #pane-dashboard .dash-agenda{grid-column:1 / -1}
 }
 @media(max-width:900px){

@@ -1816,11 +1816,13 @@ function updateDash(){
       </div>`;
     }).join('');
   }
-  // Contadores do card Urgências
+  // Contadores do card Urgências (Prazos Fatais agora vive em coluna propria;
+  // mantemos urg-count-prazos atualizado pra qualquer chamada legada).
   const _uPraz=document.getElementById('urg-count-prazos');if(_uPraz)_uPraz.textContent=alertRecs.length||'0';
   const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
   const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
-  selectUrgency(dashUrgencyType||'prazos');
+  _renderPrazosCol(alertRecs.length);
+  selectUrgency(dashUrgencyType||'liquidacao');
   selectActivity(dashActivityType||'publicacoes');
 
   renderCalendario();
@@ -2645,13 +2647,30 @@ function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
 
-let dashUrgencyType='prazos';
+let dashUrgencyType='liquidacao';
+// Coluna autonoma de Prazos Fatais: clona ds-alerts-body direto no novo painel
+// e atualiza o contador do header. Nao usa o dropdown de Urgencias.
+function _renderPrazosCol(count){
+  const src=document.getElementById('ds-alerts-body');
+  const body=document.getElementById('dash-prazos-body');
+  if(!src||!body)return;
+  body.innerHTML='';
+  const clone=src.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.classList.add('dash-side-list');
+  clone.style.cssText='';
+  body.appendChild(clone);
+  const cntEl=document.getElementById('prazos-current-count');
+  if(cntEl)cntEl.textContent=(count&&count>0)?String(count):'';
+}
+
 function selectUrgency(tipo){
   const map={
-    prazos:      {srcId:'ds-alerts-body', title:'Prazos Fatais',                 cntId:'urg-count-prazos'},
     liquidacao:  {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida', cntId:'urg-count-liq'},
     paralisados: {srcId:'ds-par-body',    title:'Paralisados',                   cntId:'urg-count-par'},
   };
+  // `prazos` agora vive em coluna propria — redireciona chamadas legadas.
+  if(tipo==='prazos'){_renderPrazosCol(parseInt(document.getElementById('urg-count-prazos')?.textContent||'0',10)||0);return;}
   const cfg=map[tipo]; if(!cfg)return;
   dashUrgencyType=tipo;
   const src=document.getElementById(cfg.srcId);
