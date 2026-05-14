@@ -1695,7 +1695,7 @@ function updateDash(){
       const col=lv==='urg'?'#f97316':lv==='warn'?'#fb923c':lv==='next'?'var(--ylw2)':'var(--txt3)';
       const msg=diff===0?'hoje':diff===1?'1 dia restante':`${diff} dias restantes`;
       const partes=r.cedente||r.cessionario?`${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}`:'';
-      const sub=partes;
+      const sub=[partes,r._task?esc(r._task):''].filter(Boolean).join(' · ');
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
           <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r._id)}</div>
