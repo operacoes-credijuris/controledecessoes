@@ -4255,6 +4255,8 @@ function openHist(mod,id){
   const rec=data.find(r=>r.id===id);
   if(!rec)return;
   document.getElementById('hist-proc').textContent=rec.numeroProcesso||'';
+  const _hAdvBtn=document.getElementById('hist-advbox-btn');
+  if(_hAdvBtn){_hAdvBtn.innerHTML=_ADVBOX_TASK_SVG;_hAdvBtn.dataset.num=rec.numeroProcesso||'';}
   renderHistBody(rec);
   switchHistTab('historico');
   openModal('hist-ov');
@@ -5095,6 +5097,10 @@ const _ADVBOX_TASK_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="no
 
 function pubAdvboxBtn(num,texto){
   return`<button class="pub-advbox-btn" data-num="${esc(num)}" data-texto="${esc(texto)}" onclick="_advboxBtnClick(event)" title="Criar tarefa no Advbox">${_ADVBOX_TASK_SVG}</button>`;
+}
+function _histAdvboxBtn(){
+  const btn=document.getElementById('hist-advbox-btn');
+  _advboxOpenTaskModal(btn?.dataset.num||'','');
 }
 function _advboxBtnClick(e){
   const b=e.currentTarget||e.target.closest('.pub-advbox-btn');
