@@ -43,6 +43,8 @@ serve(async (req) => {
     const limit = url.searchParams.get('limit') ?? '100';
 
     let advboxUrl: string;
+    let method: 'GET' | 'POST' = 'GET';
+    let forwardBody: string | undefined;
     if (action === 'lawsuits') {
       advboxUrl = `${ADVBOX_BASE}/lawsuits?process_number=${encodeURIComponent(processNumber)}`;
     } else if (action === 'movements') {
@@ -53,6 +55,18 @@ serve(async (req) => {
       advboxUrl = `${ADVBOX_BASE}/history/${encodeURIComponent(lawsuitId)}`;
     } else if (action === 'activities') {
       advboxUrl = `${ADVBOX_BASE}/activities?lawsuit_id=${encodeURIComponent(lawsuitId)}&page=${page}&limit=${limit}`;
+    } else if (action === 'settings') {
+      // GET /settings — retorna users[] e tasks[] disponiveis no escritorio Advbox.
+      advboxUrl = `${ADVBOX_BASE}/settings`;
+    } else if (action === 'create-post') {
+      // POST /posts — cria nova tarefa. Body do request e repassado integralmente
+      // para o Advbox, preservando todos os campos enviados pelo cliente.
+      if (req.method !== 'POST') {
+        return new Response(JSON.stringify({ error: 'Metodo POST obrigatorio para create-post' }), { status: 405, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+      advboxUrl = `${ADVBOX_BASE}/posts`;
+      method = 'POST';
+      forwardBody = await req.text();
     } else if (action === 'raw') {
       // Passagem direta — para exploração de endpoints: ?action=raw&path=/posts%3Flawsuit_id%3D123%26concluded%3D1
       const rawPath = url.searchParams.get('path') ?? '';
@@ -62,7 +76,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'action inválida' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const res = await fetch(advboxUrl, { headers: { Authorization: 'Bearer ' + token } });
+    const fetchOpts: RequestInit = {
+      method,
+      headers: {
+        Authorization: 'Bearer ' + token,
+        ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+      },
+    };
+    if (forwardBody !== undefined) fetchOpts.body = forwardBody;
+    const res = await fetch(advboxUrl, fetchOpts);
 
     if (res.status === 204) return new Response(null, { status: 204, headers: CORS });
 

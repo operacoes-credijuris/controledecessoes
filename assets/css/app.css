@@ -1343,6 +1343,15 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   cursor:pointer;
 }
 .pub-inteiro-btn:hover{background:rgba(110,125,187,.18);color:#dceaff}
+.pub-advbox-btn{
+  opacity:.42;
+  background:none;border:none;cursor:pointer;
+  padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;
+  color:#6b7280;
+  transition:opacity .15s,transform .15s,color .15s;flex-shrink:0;
+}
+.pub-item:hover .pub-advbox-btn{opacity:.7}
+.pub-advbox-btn:hover{opacity:1!important;color:#93c5fd;transform:scale(1.08)}
 .pub-dest{
   font-size:11px;color:#8793a3;
   border-top:1px dashed rgba(255,255,255,.06);

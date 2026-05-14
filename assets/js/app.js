@@ -3005,6 +3005,7 @@ async function _renderPubs(){
       ?`<a href="${esc(link)}" target="_blank" rel="noopener" class="pub-title-link">${esc(numMasc)}</a>`
       :`<span class="pub-title">${esc(numMasc)}</span>`;
     const navB=ctx?navBtn(ctx.mod,ctx.r.id):'';
+    const advB=pubAdvboxBtn(numMasc||'',texto||'');
     const inteiroBtn=isLong?`<button type="button" class="pub-inteiro-btn" onclick="togglePubText(this)">Ver inteiro teor</button>`:'';
     const cedCess=ctx?(()=>{
       const c=ctx.r.cedente||'',s=ctx.r.cessionario||'';
@@ -3014,7 +3015,7 @@ async function _renderPubs(){
     return`<div class="pub-item">
       <div class="pub-item-hdr">
         <div class="pub-item-titulo-wrap">
-          <div class="pub-item-titulo">${tituloHtml}${cpyBtn(numMasc)}${navB}</div>
+          <div class="pub-item-titulo">${tituloHtml}${cpyBtn(numMasc)}${navB}${advB}</div>
           ${cedCess}
         </div>
         <div class="pub-item-badges">${tribBadge}${modBadge}</div>
@@ -4929,6 +4930,215 @@ async function syncAdvbox(opts){
     _syncProgressHide(prog);
     btn.disabled=false;
     btn.innerHTML='↺ Sincronizar';
+  }
+}
+
+/* ======================================================
+   ADVBOX — CRIAR TAREFA POR PUBLICACAO
+   - Botao discreto em cada publicacao DJEN abre modal.
+   - GET /settings cacheado em localStorage (cj-advbox-settings).
+   - guests do POST /posts sempre inclui TODOS os users do escritorio
+     pra tarefa ficar visivel para todos.
+====================================================== */
+const _ADVBOX_SETTINGS_KEY='cj-advbox-settings';
+let _advboxModalCtx=null;
+
+// SVG do botao "Criar tarefa no Advbox" em cada publicacao. Clipboard + circulo
+// com "+". Cinza discreto por padrao, destaca no hover (regras em app.css).
+const _ADVBOX_TASK_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><rect x="2" y="2.5" width="5" height="6.5" rx="0.7" stroke="currentColor" stroke-width="1.1"/><path d="M3.5 2.5V1.7C3.5 1.5 3.6 1.4 3.8 1.4H5.2C5.4 1.4 5.5 1.5 5.5 1.7V2.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><circle cx="8" cy="8" r="2.3" stroke="currentColor" stroke-width="1.1"/><path d="M8 6.8V9.2M6.8 8H9.2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
+
+function pubAdvboxBtn(num,texto){
+  return`<button class="pub-advbox-btn" data-num="${esc(num)}" data-texto="${esc(texto)}" onclick="_advboxBtnClick(event)" title="Criar tarefa no Advbox">${_ADVBOX_TASK_SVG}</button>`;
+}
+function _advboxBtnClick(e){
+  const b=e.currentTarget||e.target.closest('.pub-advbox-btn');
+  if(!b)return;
+  _advboxOpenTaskModal(b.dataset.num||'',b.dataset.texto||'');
+}
+
+function _advboxLoadSettingsCache(){
+  try{const s=localStorage.getItem(_ADVBOX_SETTINGS_KEY);return s?JSON.parse(s):null;}
+  catch{return null;}
+}
+function _advboxSaveSettingsCache(settings){
+  try{localStorage.setItem(_ADVBOX_SETTINGS_KEY,JSON.stringify(settings));}catch{}
+}
+
+async function _advboxProxyAuth(){
+  const{data:{session}}=await sb.auth.getSession();
+  return{
+    headers:{
+      ...(session?.access_token?{'Authorization':'Bearer '+session.access_token}:{}),
+      'apikey':_SB_KEY
+    },
+    proxy:`${_SB_URL}/functions/v1/advbox-proxy`
+  };
+}
+
+async function _advboxProxyFetch(url,opts={}){
+  const{headers}=await _advboxProxyAuth();
+  const r=await fetch(url,{...opts,headers:{...headers,...(opts.headers||{})}});
+  const body=await r.text();
+  // Advbox as vezes redireciona pra HTML quando token invalido.
+  if(body.trimStart().startsWith('<'))throw new Error('Token Advbox expirado ou invalido');
+  let json;try{json=body?JSON.parse(body):null;}catch{throw new Error('Resposta nao-JSON do proxy');}
+  if(!r.ok)throw new Error((json&&json.error)||`HTTP ${r.status}`);
+  return json;
+}
+
+async function _advboxFetchSettings(force=false){
+  if(!force){
+    const cached=_advboxLoadSettingsCache();
+    if(cached)return cached;
+  }
+  const{proxy}=await _advboxProxyAuth();
+  const data=await _advboxProxyFetch(`${proxy}?action=settings`);
+  _advboxSaveSettingsCache(data);
+  return data;
+}
+
+function _advboxOpenTaskModal(numeroProcesso,texto){
+  _advboxModalCtx={numeroProcesso:numeroProcesso||'',texto:texto||'',settings:null};
+  document.getElementById('advbox-task-subtitle').textContent=numeroProcesso||'';
+  document.getElementById('advbox-task-err').style.display='none';
+  const submitBtn=document.getElementById('advbox-task-submit');
+  // Sem token: aviso amigavel com atalho pra Configuracoes.
+  if(!_secrets.advbox()){
+    submitBtn.style.display='none';
+    document.getElementById('advbox-task-body').innerHTML=`
+      <div style="padding:8px 0">
+        <div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:14px;font-size:13px;color:#fbbf24;line-height:1.5">
+          Token do Advbox nao configurado. Cadastre o token de API em <strong>Configuracoes</strong> para usar esta funcionalidade.
+        </div>
+        <div style="margin-top:14px;text-align:right">
+          <button class="btn btn-gold btn-sm" onclick="closeModal('advbox-task-ov');sbNav('config')">Ir para Configuracoes</button>
+        </div>
+      </div>`;
+    openModal('advbox-task-ov');
+    return;
+  }
+  submitBtn.style.display='';
+  submitBtn.disabled=false;
+  submitBtn.textContent='Criar tarefa';
+  document.getElementById('advbox-task-body').innerHTML=`
+    <div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">
+      <span class="spin" style="vertical-align:middle;margin-right:8px"></span>Carregando usuarios e tarefas do Advbox...
+    </div>`;
+  openModal('advbox-task-ov');
+  _advboxFetchSettings().then(settings=>{
+    _advboxModalCtx.settings=settings;
+    _advboxRenderTaskForm();
+  }).catch(e=>{
+    document.getElementById('advbox-task-body').innerHTML=`
+      <div style="padding:20px;text-align:center;color:#ef4444;font-size:13px">${esc(e.message||String(e))}</div>`;
+  });
+}
+
+function _advboxRenderTaskForm(){
+  const ctx=_advboxModalCtx;
+  if(!ctx||!ctx.settings)return;
+  const tasks=Array.isArray(ctx.settings.tasks)?ctx.settings.tasks:[];
+  const users=Array.isArray(ctx.settings.users)?ctx.settings.users:[];
+  const today=new Date().toISOString().slice(0,10);
+  if(!tasks.length||!users.length){
+    document.getElementById('advbox-task-body').innerHTML=`
+      <div style="padding:20px;text-align:center;color:#fbbf24;font-size:13px">
+        Configuracoes do Advbox retornadas sem ${!tasks.length?'tarefas':'usuarios'}. Verifique seu cadastro no Advbox.
+      </div>`;
+    document.getElementById('advbox-task-submit').style.display='none';
+    return;
+  }
+  // Advbox /settings: task.task = nome, user.name = nome do usuario.
+  const taskOpts=tasks.map(t=>`<option value="${esc(t.id)}">${esc(t.task||t.name||t.title||t.id)}</option>`).join('');
+  const userOpts=users.map(u=>`<option value="${esc(u.id)}">${esc(u.name||u.email||u.id)}</option>`).join('');
+  document.getElementById('advbox-task-body').innerHTML=`
+    <div class="fgrid">
+      ${fg('Tipo de tarefa',`<select id="f-advbox-task-type" class="fsel"><option value="">Selecione...</option>${taskOpts}</select>`)}
+      ${fg('Responsavel principal',`<select id="f-advbox-user" class="fsel"><option value="">Selecione...</option>${userOpts}</select>`)}
+      ${fg('Data de inicio',fi('advbox-start',today,'date'))}
+      ${fg('Data de prazo',fi('advbox-deadline','','date'))}
+      ${fg('Observacoes',`<textarea id="f-advbox-comments" class="finp" rows="4" style="resize:vertical;min-height:90px;font-family:inherit">${esc(ctx.texto||'')}</textarea>`,true)}
+    </div>
+    <div style="display:flex;gap:18px;margin-top:14px">
+      ${fck('advbox-urgent',false,'Urgente')}
+      ${fck('advbox-important',false,'Importante')}
+    </div>`;
+}
+
+function _advboxShowTaskErr(msg){
+  const el=document.getElementById('advbox-task-err');
+  el.textContent=msg;
+  el.style.display='';
+}
+
+async function _advboxCreateTask(){
+  const ctx=_advboxModalCtx;
+  if(!ctx||!ctx.settings)return;
+  const taskId=gf('advbox-task-type');
+  const userId=gf('advbox-user');
+  const startDate=gf('advbox-start');
+  const deadline=gf('advbox-deadline');
+  const comments=gf('advbox-comments');
+  const urgent=gf('advbox-urgent','checkbox');
+  const important=gf('advbox-important','checkbox');
+  if(!taskId){_advboxShowTaskErr('Selecione o tipo de tarefa.');return;}
+  if(!userId){_advboxShowTaskErr('Selecione o responsavel principal.');return;}
+  if(!startDate){_advboxShowTaskErr('Informe a data de inicio.');return;}
+  if(!ctx.numeroProcesso){_advboxShowTaskErr('Publicacao sem numero de processo.');return;}
+  const users=Array.isArray(ctx.settings.users)?ctx.settings.users:[];
+  // guests inclui SEMPRE todos os usuarios do escritorio (visibilidade compartilhada).
+  const guests=users.map(u=>{const n=Number(u.id);return isFinite(n)?n:u.id;});
+  document.getElementById('advbox-task-err').style.display='none';
+  const btn=document.getElementById('advbox-task-submit');
+  btn.disabled=true;btn.innerHTML='<span class="spin" style="vertical-align:middle"></span> Criando...';
+  try{
+    const{proxy}=await _advboxProxyAuth();
+    // 1) Resolve lawsuits_id pelo numero do processo
+    const lsData=await _advboxProxyFetch(`${proxy}?action=lawsuits&process_number=${encodeURIComponent(ctx.numeroProcesso)}`);
+    const lsArr=Array.isArray(lsData)?lsData:(lsData.results||lsData.data||[]);
+    const lawsuit=lsArr[0];
+    if(!lawsuit||!lawsuit.id)throw new Error('Processo nao encontrado no Advbox');
+    // 2) Cria a tarefa
+    const payload={
+      from:String(userId),
+      guests,
+      tasks_id:String(taskId),
+      lawsuits_id:String(lawsuit.id),
+      start_date:startDate,
+      ...(deadline?{date_deadline:deadline}:{}),
+      ...(comments?{comments}:{}),
+      ...(urgent?{urgent:true}:{}),
+      ...(important?{important:true}:{}),
+    };
+    const post=await _advboxProxyFetch(`${proxy}?action=create-post`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    // Advbox /posts retorna {success:true, posts_id:N}.
+    const postId=(post&&(post.posts_id||post.id||(post.data&&post.data.id)))||'';
+    closeModal('advbox-task-ov');
+    showToast(postId?`Tarefa criada no Advbox (ID ${postId}).`:'Tarefa criada no Advbox.');
+  }catch(e){
+    _advboxShowTaskErr(e.message||String(e));
+    btn.disabled=false;btn.textContent='Criar tarefa';
+  }
+}
+
+async function _cfgAdvboxRefreshSettings(){
+  const btn=document.getElementById('cfg-advbox-refresh-btn');
+  const status=document.getElementById('cfg-advbox-status');
+  if(!_secrets.advbox()){
+    if(status){status.textContent='Configure o token primeiro';status.style.color='#fbbf24';}
+    return;
+  }
+  const oldTxt=btn.textContent;
+  btn.disabled=true;btn.textContent='Atualizando...';
+  if(status){status.textContent='';status.style.color='';}
+  try{
+    const data=await _advboxFetchSettings(true);
+    const n=(Array.isArray(data.users)?data.users.length:0)+' usuarios, '+(Array.isArray(data.tasks)?data.tasks.length:0)+' tarefas';
+    if(status){status.textContent='Cache atualizado: '+n;status.style.color='#10b981';}
+  }catch(e){
+    if(status){status.textContent='Erro: '+(e.message||String(e));status.style.color='#ef4444';}
+  }finally{
+    btn.disabled=false;btn.textContent=oldTxt;
   }
 }
 
