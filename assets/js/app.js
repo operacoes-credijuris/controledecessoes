@@ -317,9 +317,32 @@ function fatalBadge(s){
   return fmtDate(s);
 }
 
+/* Prazo fatal "efetivo" do registro: proximo deadline >= hoje entre as
+   diligencias do Advbox. Ignora vencidos porque a API do Advbox nao tem
+   endpoint de conclusao — tarefas concluidas no Advbox continuam aparecendo
+   como pendentes aqui. Fallback para r.prazoFatal se nao houver diligencias
+   (legado/manual) e apenas se for futuro. Retorna '' quando nao ha prazo. */
+function _effectivePrazoFatal(r){
+  const hoje=todayStr();
+  const dils=Array.isArray(r._advboxDiligencias)?r._advboxDiligencias:[];
+  if(dils.length){
+    const futuros=dils
+      .map(d=>d&&d.deadline?normDate(d.deadline):'')
+      .filter(d=>d&&d>=hoje)
+      .sort();
+    if(futuros.length)return futuros[0];
+    return ''; // tem diligencias mas todas vencidas — ignora
+  }
+  if(r.prazoFatal){
+    const nd=normDate(r.prazoFatal);
+    if(nd&&nd>=hoje)return nd;
+  }
+  return '';
+}
+
 function rowCls(r){
-  const lv=fatalLevel(r.prazoFatal);
-  if(lv==='exp'||lv==='urg')return'row-red';
+  const lv=fatalLevel(_effectivePrazoFatal(r));
+  if(lv==='urg')return'row-red';
   if(lv==='warn')return'row-ylw';
   return'';
 }
@@ -1485,10 +1508,34 @@ function updateDash(){
   document.getElementById('ds-cess').textContent=cePai;
   document.getElementById('ds-rpv').textContent=rpPai;
   document.getElementById('ds-enc').textContent=enPai;
-  /* "Com Prazo Fatal" — apenas registros pais (não filhos vinculados),
-     consistente com o critério de contagem dos demais cards. */
-  const withFatal=[...ce,...rp,...re].filter(r=>!r.vinculoPai&&r.prazoFatal&&normDate(r.prazoFatal)).length;
-  document.getElementById('ds-fatal').textContent=withFatal;
+
+  /* Prazos Fatais — gera a lista uma vez aqui. Uma entrada POR DILIGENCIA
+     (nao por processo). Inclui processos filhos. Ignora deadlines vencidos
+     (Advbox nao marca conclusao). Mesma fonte usada pelo card lateral E pelo
+     KPI "COM PRAZO FATAL" — contagens sempre consistentes. */
+  const _hojeStr=todayStr();
+  const alertRecs=[];
+  [['cessoes',ce],['rpv',rp],['requerimentos',re]].forEach(([mod,recs])=>{
+    recs.forEach(r=>{
+      const dils=Array.isArray(r._advboxDiligencias)?r._advboxDiligencias:[];
+      if(dils.length){
+        dils.forEach(d=>{
+          if(!d||!d.deadline)return;
+          const nd=normDate(d.deadline);
+          if(!nd||nd<_hojeStr)return;
+          alertRecs.push({_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_deadline:nd,_task:d.task||''});
+        });
+      } else if(r.prazoFatal){
+        const nd=normDate(r.prazoFatal);
+        if(nd&&nd>=_hojeStr){
+          alertRecs.push({_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_deadline:nd,_task:''});
+        }
+      }
+    });
+  });
+  alertRecs.sort((a,b)=>a._deadline.localeCompare(b._deadline));
+
+  document.getElementById('ds-fatal').textContent=alertRecs.length;
 
   const today=new Date(); today.setHours(0,0,0,0);
 
@@ -1578,27 +1625,7 @@ function updateDash(){
     }).join('');
   }
 
-  // ALERTAS — Prazos Fatais: uma entrada POR DILIGÊNCIA (não por processo).
-  // Inclui processos filhos (vinculoPai!=null) — mesma regra do calendário.
-  // Fallback: se o registro tem prazoFatal mas sem _advboxDiligencias (legado/manual),
-  // gera uma entrada baseada em r.prazoFatal.
-  const alertRecs=[];
-  [['cessoes',ce],['rpv',rp],['requerimentos',re]].forEach(([mod,recs])=>{
-    recs.forEach(r=>{
-      const dils=Array.isArray(r._advboxDiligencias)?r._advboxDiligencias:[];
-      if(dils.length){
-        dils.forEach(d=>{
-          if(!d||!d.deadline)return;
-          const nd=normDate(d.deadline);if(!nd)return;
-          alertRecs.push({_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_deadline:nd,_task:d.task||''});
-        });
-      } else if(r.prazoFatal&&normDate(r.prazoFatal)){
-        alertRecs.push({_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_deadline:normDate(r.prazoFatal),_task:''});
-      }
-    });
-  });
-  alertRecs.sort((a,b)=>a._deadline.localeCompare(b._deadline));
-
+  // Card lateral Prazos Fatais — reusa a lista alertRecs ja gerada acima.
   document.getElementById('ds-cnt-alerts').textContent=alertRecs.length?`· ${alertRecs.length}`:'';
   const ab=document.getElementById('ds-alerts-body');
   if(!alertRecs.length){
@@ -1606,11 +1633,9 @@ function updateDash(){
   } else {
     ab.innerHTML=alertRecs.map(r=>{
       const lv=fatalLevel(r._deadline);
-      const diff=Math.round((new Date(r._deadline)-new Date(todayStr()))/864e5);
-      const col=lv==='exp'?'var(--red2)':lv==='urg'?'#f97316':lv==='warn'?'#fb923c':lv==='next'?'var(--ylw2)':'var(--txt3)';
-      const msg=lv==='exp'?'vencido'
-        :diff===1?`${diff} dia restante`
-        :`${diff} dias restantes`;
+      const diff=Math.round((new Date(r._deadline)-new Date(_hojeStr))/864e5);
+      const col=lv==='urg'?'#f97316':lv==='warn'?'#fb923c':lv==='next'?'var(--ylw2)':'var(--txt3)';
+      const msg=diff===0?'hoje':diff===1?'1 dia restante':`${diff} dias restantes`;
       const partes=r.cedente||r.cessionario?`${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}`:'';
       const sub=[partes,r._task?esc(r._task):''].filter(Boolean).join(' · ');
       return`<div class="alert-item">
@@ -2430,7 +2455,7 @@ function reqRow(r,allData,isChild){
     <td class="td-icon"><button class="btn btn-blue btn-xs" onclick="openHist('requerimentos','${r.id}')"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="1.5" y="1.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="3.5" y1="4" x2="7.5" y2="4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="3.5" y1="6" x2="6.5" y2="6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></td>
     <td class="wrap">${calcUltimaMovimentacao(r)}</td>
     <td class="td-icon">${contatoBadge('requerimentos',r)}</td>
-    <td>${fatalCell('requerimentos',r.id,r.prazoFatal)}</td>
+    <td>${fatalCell('requerimentos',r.id,_effectivePrazoFatal(r))}</td>
     <td>${fmtDate(r.protocolo)}</td>
     <td class="td-icon"><button class="btn btn-blue btn-xs" onclick="openSenha('${r.id}')" title="Ver senha" style="opacity:${r.senhaAcesso?1:.35}"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="2" y="5" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M3.5 5V3.5a2 2 0 014 0V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="5.5" cy="7.5" r=".8" fill="currentColor"/></svg></button></td>
     <td title="${esc(r.natureza||'')}">${esc(r.natureza)||'—'}</td>
@@ -4487,12 +4512,14 @@ function _syncProgressHide(el){el?.remove();}
 const DILIGENCIA_SCHEMA_VER = 4;
 
 // Calcula o prazo fatal de um registro a partir de suas diligencias pendentes:
-// pega o `deadline` mais próximo de vencer (inclui vencidos — vencido também é fatal).
-// Retorna '' se não houver nenhuma.
+// pega o `deadline` mais proximo >= hoje. Ignora vencidos porque a API do Advbox
+// nao tem endpoint de conclusao — tarefas concluidas continuam aparecendo aqui.
+// Retorna '' se nao houver nenhuma diligencia futura.
 function _computePrazoFatalFromDils(dils){
   if(!Array.isArray(dils) || !dils.length) return '';
-  const valid = dils.map(d=>d && d.deadline).filter(d=>d && /^\d{4}-\d{2}-\d{2}/.test(d)).sort();
-  return valid[0] || '';
+  const hoje=todayStr();
+  const futuros = dils.map(d=>d && d.deadline).filter(d=>d && /^\d{4}-\d{2}-\d{2}/.test(d) && d>=hoje).sort();
+  return futuros[0] || '';
 }
 
 /* Calcula uma "assinatura" do objeto lawsuit retornado pela Advbox para
