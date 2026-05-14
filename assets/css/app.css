@@ -918,13 +918,13 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   transition:color .15s,border-color .15s;
 }
 .dash-prazos-tab:hover{color:#c5cad8}
-.dash-prazos-tab.on{color:#6e7dbb;border-bottom-color:#6e7dbb}
+.dash-prazos-tab.on{color:#168fff;border-bottom-color:#168fff}
 .dash-prazos-tab-cnt{
   font-size:10px;font-weight:700;
   padding:1px 6px;border-radius:999px;
   background:rgba(255,255,255,.06);color:#94a3b8;min-width:14px;text-align:center;
 }
-.dash-prazos-tab.on .dash-prazos-tab-cnt{background:rgba(110,125,187,.22);color:#dde2f4}
+.dash-prazos-tab.on .dash-prazos-tab-cnt{background:rgba(22,143,255,.22);color:#cfe6ff}
 .dash-prazos-tab-cnt:empty{display:none}
 /* Search a direita das tabs Peremptorios/Outros (filtra Tarefas Pendentes) */
 .dash-prazos-search{
@@ -968,7 +968,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   flex-shrink:0;
 }
 .dash-panel-kicker.blue{color:#8c9ad0}
-.dash-panel-kicker.brand{color:#6e7dbb}
+.dash-panel-kicker.brand{color:#168fff}
 .dash-panel-kicker.danger{color:#ff8080}
 .dash-panel-title{
   color:#f2f6fb;
@@ -991,6 +991,10 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   display:flex;
   flex-direction:column;
 }
+/* Forca display:none quando o atributo `hidden` esta presente; o `display:flex`
+   acima sobrescreve o default do `hidden` (display:none), fazendo o calendario
+   continuar visivel mesmo quando o dropdown de Urgencias troca pra outra aba. */
+.dash-calendar[hidden]{display:none}
 #cal-container{
   flex:1;
   min-height:0;
@@ -1133,11 +1137,21 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   white-space:nowrap;
   max-width:100%;
 }
+/* Linha "Cedente v. Cessionario" entre o numero do processo e a nota. */
+.cal-task-partes{
+  font-size:10px;
+  color:#8793a3;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:100%;
+}
 .cal-row.cal-row-has-deadline .cal-task-proc{color:#dceaff}
-.cal-row.cal-row-today .cal-task-note{color:#7891b3}
+.cal-row.cal-row-today .cal-task-note{color:#c89090}
+.cal-row.cal-row-today .cal-task-partes{color:#c8a8a8}
 .cal-row.cal-row-has-deadline .cal-task-proc{color:#dceaff}
-.cal-row.cal-row-today .cal-task-proc{color:#e9f3ff}
-.cal-row.cal-row-today .cal-task-sub{color:#8aa4c4}
+.cal-row.cal-row-today .cal-task-proc{color:#fff0f0}
+.cal-row.cal-row-today .cal-task-sub{color:#d4a8a8}
 .cal-row-left{
   display:flex;
   align-items:baseline;
@@ -1164,9 +1178,9 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   font-weight:800;
   letter-spacing:.6px;
   text-transform:uppercase;
-  color:#bfddff;
-  background:rgba(110,125,187,.22);
-  border:1px solid rgba(110,125,187,.45);
+  color:#ffd6d6;
+  background:rgba(255,115,115,.22);
+  border:1px solid rgba(255,115,115,.45);
   border-radius:999px;
   padding:2px 7px;
   line-height:1;
@@ -1175,11 +1189,11 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .cal-row.cal-row-weekend .cal-row-day,
 .cal-row.cal-row-weekend .cal-row-wd{opacity:.55}
 .cal-row.cal-row-today{
-  background:linear-gradient(90deg,rgba(110,125,187,.18),rgba(110,125,187,.03));
-  box-shadow:inset 3px 0 0 #168fff;
+  background:linear-gradient(90deg,rgba(255,115,115,.16),rgba(255,115,115,.03));
+  box-shadow:inset 3px 0 0 #ff7373;
 }
 .cal-row.cal-row-today .cal-row-day{color:#fff}
-.cal-row.cal-row-today .cal-row-wd{color:#bfddff}
+.cal-row.cal-row-today .cal-row-wd{color:#ffc5c5}
 /* URGÊNCIAS — dropdown no título */
 .urg-dd-wrap{
   position:relative;

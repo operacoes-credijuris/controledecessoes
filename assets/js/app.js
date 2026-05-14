@@ -1643,6 +1643,7 @@ function updateDash(){
     });
   });
   alertRecs.sort((a,b)=>a._deadline.localeCompare(b._deadline));
+  // outrosRecs ordenado por numeroProcesso pra dar previsibilidade (sem _deadline pra usar).
   outrosRecs.sort((a,b)=>(a.numeroProcesso||'').localeCompare(b.numeroProcesso||''));
 
   // KPI "COM PRAZO FATAL": numero de PROCESSOS distintos com prazo futuro.
@@ -1906,6 +1907,8 @@ function renderCalendario() {
         (prazosByDay[ddl] = prazosByDay[ddl] || []).push({
           _mod:mod, _id:r.id,
           numeroProcesso:r.numeroProcesso||'',
+          cedente:r.cedente||'',
+          cessionario:r.cessionario||'',
           task:d.task||'',
           notes:d.notes||'',
           deadline:ddl,
@@ -1936,12 +1939,16 @@ function renderCalendario() {
           const taskTxt = t.task ? esc(t.task) : '<span style="color:#6b7280">(sem descrição)</span>';
           const procTxt = t.numeroProcesso ? esc(t.numeroProcesso) : '';
           const noteRaw = (t.notes||'').trim();
-          const ttl = [t.task,t.numeroProcesso,noteRaw].filter(Boolean).join(' — ');
+          const ced = (t.cedente||'').trim();
+          const ces = (t.cessionario||'').trim();
+          const partes = (ced || ces) ? `${esc(ced)}${ced && ces ? ' v. ' : ''}${esc(ces)}` : '';
+          const ttl = [t.task,t.numeroProcesso,partes,noteRaw].filter(Boolean).join(' — ');
           return `<div class="cal-task" title="${esc(ttl)}">
             <div class="cal-task-line1">
               <span class="cal-task-proc">${taskTxt}</span>
               ${procTxt ? `<span class="cal-task-dot">·</span><span class="cal-task-num">${procTxt}</span>` : ''}
             </div>
+            ${partes ? `<span class="cal-task-partes">${partes}</span>` : ''}
             ${noteRaw ? `<span class="cal-task-note">${esc(noteRaw)}</span>` : ''}
           </div>`;
         }).join('')}</div>`
@@ -2700,6 +2707,7 @@ function _renderPrazosCol(perCount,outCount){
   clone.classList.add('dash-side-list');
   clone.style.cssText='';
   body.appendChild(clone);
+  // Contadores: tab strip + badge no header (mostra so o da aba ativa).
   const perEl=document.getElementById('prazos-tab-cnt-per');
   const outEl=document.getElementById('prazos-tab-cnt-out');
   if(perEl)perEl.textContent=_prazosCounts.per>0?String(_prazosCounts.per):'';
@@ -4759,8 +4767,10 @@ function _syncProgressHide(el){el?.remove();}
    Incrementa quando novos campos são adicionados ao objeto salvo. Usada para
    detectar caches velhos e forçar re-fetch, ignorando a otimização (A).
    v4: fonte agora é /posts (apenas tarefas pendentes) em vez de /history (todas).
-       Preserva `id` da tarefa. r.prazoFatal passa a ser derivado automaticamente. */
-const DILIGENCIA_SCHEMA_VER = 4;
+       Preserva `id` da tarefa. r.prazoFatal passa a ser derivado automaticamente.
+   v5: tambem armazena diligencias pendentes SEM date_deadline (deadline:'') pra
+       alimentar a aba "Outros" na coluna Tarefas Pendentes do dashboard. */
+const DILIGENCIA_SCHEMA_VER = 5;
 
 // Calcula o prazo fatal de um registro a partir de suas diligencias pendentes:
 // pega o `deadline` mais proximo >= hoje. Ignora vencidos porque a API do Advbox
@@ -4906,20 +4916,24 @@ async function syncAdvbox(opts){
     if(!hr.skip && !hr.err){
       const histAll=Array.isArray(hr.data)?hr.data:(hr.data.data||hr.data.results||[]);
       openDils=histAll
-        .filter(p=>p.date_deadline)
-        .map(p=>({
-          id:p.id||null,
-          task:String(p.task||'').slice(0,200),
-          notes:String(p.notes||p.comments||'').slice(0,300),
-          // normDate aceita ISO, "dd/mm/yyyy", com timezone, etc. Garante
-          // que formatos inesperados da Advbox nao quebrem o calendario/KPI.
-          deadline:normDate(p.date_deadline)||String(p.date_deadline).slice(0,10),
-          responsible:String(
-            (Array.isArray(p.users) && p.users[0] && (p.users[0].name||p.users[0].nome)) ||
-            p.responsible || p.author || ''
-          ).slice(0,80)
-        }))
-        .filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.deadline)); // descarta com data invalida
+        .map(p=>{
+          const rawDeadline=p.date_deadline||'';
+          // normDate aceita ISO, "dd/mm/yyyy", com timezone, etc. Quando vazio
+          // ou invalido, mantem string vazia — significa "tarefa pendente sem
+          // prazo fatal" e alimenta a aba Outros.
+          const normalizedDeadline=rawDeadline?(normDate(rawDeadline)||String(rawDeadline).slice(0,10)):'';
+          const validDeadline=/^\d{4}-\d{2}-\d{2}$/.test(normalizedDeadline);
+          return{
+            id:p.id||null,
+            task:String(p.task||'').slice(0,200),
+            notes:String(p.notes||p.comments||'').slice(0,300),
+            deadline:validDeadline?normalizedDeadline:'',
+            responsible:String(
+              (Array.isArray(p.users) && p.users[0] && (p.users[0].name||p.users[0].nome)) ||
+              p.responsible || p.author || ''
+            ).slice(0,80)
+          };
+        });
     }
 
     const arr=load(mod);
