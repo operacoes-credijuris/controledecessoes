@@ -903,10 +903,12 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 /* Tab strip da coluna Tarefas Pendentes (Peremptorios / Outros) */
 .dash-prazos-tabs{
-  display:flex;gap:2px;align-items:center;
-  padding:8px 16px 0;
+  display:flex;gap:2px;align-items:flex-end;
+  padding:0 16px;
+  height:39px;
   border-bottom:1px solid rgba(255,255,255,.055);
   flex-shrink:0;
+  box-sizing:border-box;
 }
 .dash-prazos-tab{
   background:transparent;border:none;cursor:pointer;
