@@ -875,7 +875,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-stats .sc-val.red{color:#ff7373}
 
 #pane-dashboard .db-grid{
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:repeat(2,minmax(0,1fr));
   gap:16px;
   margin:0;
   align-items:stretch;
@@ -918,14 +918,57 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   transition:color .15s,border-color .15s;
 }
 .dash-prazos-tab:hover{color:#c5cad8}
-.dash-prazos-tab.on{color:#168fff;border-bottom-color:#168fff}
+.dash-prazos-tab.on{color:#ff7373;border-bottom-color:#ff7373}
 .dash-prazos-tab-cnt{
   font-size:10px;font-weight:700;
   padding:1px 6px;border-radius:999px;
   background:rgba(255,255,255,.06);color:#94a3b8;min-width:14px;text-align:center;
 }
-.dash-prazos-tab.on .dash-prazos-tab-cnt{background:rgba(22,143,255,.22);color:#cfe6ff}
+.dash-prazos-tab.on .dash-prazos-tab-cnt{background:rgba(255,115,115,.22);color:#ffd6d6}
 .dash-prazos-tab-cnt:empty{display:none}
+/* Tipo de tarefa Advbox ao lado do n. do processo nos itens de Peremptorios */
+.al-task-type{
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+  color:#a8b3c2;
+  margin-left:6px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:140px;
+  display:inline-block;
+  vertical-align:middle;
+}
+/* Descricao da diligencia (1 linha) com "ler mais..." se truncado */
+.al-note{
+  font-size:10px;
+  color:#94a3b8;
+  font-style:italic;
+  margin-top:3px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}
+.al-note.expanded{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+}
+.al-note-btn{
+  background:transparent;
+  border:none;
+  padding:1px 0 0;
+  margin-left:4px;
+  font-size:10px;
+  font-style:normal;
+  font-weight:600;
+  color:#93c5fd;
+  cursor:pointer;
+}
+.al-note-btn:hover{color:#dceaff;text-decoration:underline}
 /* Search a direita das tabs Peremptorios/Outros (filtra Tarefas Pendentes) */
 .dash-prazos-search{
   margin-left:auto;
@@ -1501,14 +1544,9 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   justify-content:center;
 }
 
-@media(max-width:1200px){
-  /* 3 -> 2 colunas, Tarefas Pendentes full-width na primeira linha */
-  #pane-dashboard .db-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  #pane-dashboard .dash-prazos-panel{grid-column:1 / -1}
-}
 @media(max-width:900px){
+  /* 2 -> 1 coluna empilhada */
   #pane-dashboard .db-grid{grid-template-columns:1fr}
-  #pane-dashboard .dash-prazos-panel{grid-column:auto}
   .dash-caption{text-align:left}
 }
 @media(max-width:860px){

@@ -1627,7 +1627,7 @@ function updateDash(){
       const dils=Array.isArray(r._advboxDiligencias)?r._advboxDiligencias:[];
       dils.forEach(d=>{
         if(!d)return;
-        const base={_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_task:d.task||''};
+        const base={_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_task:d.task||'',_notes:d.notes||''};
         if(d.deadline){
           const nd=normDate(d.deadline);
           if(!nd||nd<_hojeStr)return;
@@ -1748,11 +1748,17 @@ function updateDash(){
       const col=lv==='urg'?'#f97316':lv==='warn'?'#fb923c':lv==='next'?'var(--ylw2)':'var(--txt3)';
       const msg=diff===0?'hoje':diff===1?'1 dia restante':`${diff} dias restantes`;
       const partes=r.cedente||r.cessionario?`${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}`:'';
-      const sub=partes;
+      const taskTypeHtml=r._task?`<span class="al-task-type">${esc(r._task)}</span>`:'';
+      const noteRaw=(r._notes||'').trim();
+      const NOTE_LIMIT=80;
+      const noteIsLong=noteRaw.length>NOTE_LIMIT;
+      const noteShort=noteIsLong?noteRaw.slice(0,NOTE_LIMIT)+'…':noteRaw;
+      const noteHtml=noteRaw?`<div style="display:flex;align-items:baseline;flex-wrap:wrap"><span class="al-note" data-full="${esc(noteRaw)}" data-short="${esc(noteShort)}">${esc(noteShort)}</span>${noteIsLong?`<button type="button" class="al-note-btn" onclick="_toggleAlNote(this)">ler mais...</button>`:''}</div>`:'';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r._id)}</div>
-          ${sub?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sub}</div>`:''}
+          <div class="al-text">${esc(r.numeroProcesso)}${taskTypeHtml}${navBtn(r._mod,r._id)}</div>
+          ${partes?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${partes}</div>`:''}
+          ${noteHtml}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
           <span style="font-size:10px;color:#6b7280">${msg}</span>
@@ -1844,16 +1850,19 @@ function updateDash(){
   }
   // Reaplica filtro de busca apos sobrescrever o body.
   {const sInput=document.getElementById('act-search');if(sInput&&sInput.value&&dashActivityType==='movimentacoes')_actSearch(sInput.value);}
-  // Contadores do card Urgências (Prazos Fatais agora vive em coluna propria;
-  // mantemos urg-count-prazos atualizado pra qualquer chamada legada).
+  // Contadores: mantem urg-count-prazos atualizado pra retro-compat (modais
+  // expandidos legados ainda leem dali); o badge do dropdown "Tarefas Pendentes"
+  // mostra per+out — soma da aba inteira.
   const _uPraz=document.getElementById('urg-count-prazos');if(_uPraz)_uPraz.textContent=alertRecs.length||'0';
+  const _uTar=document.getElementById('urg-count-tarefas');if(_uTar){const tot=alertRecs.length+outrosRecs.length;_uTar.textContent=tot>0?String(tot):'';}
   const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
   const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
-  _renderPrazosCol(alertRecs.length,outrosRecs.length);
+  // Atualiza os contadores das tabs antes de renderizar a view (selectUrgency
+  // chama _renderPrazosCol no caso 'tarefas', que precisa dos counts setados).
+  _prazosCounts.per=alertRecs.length;
+  _prazosCounts.out=outrosRecs.length;
   selectUrgency(dashUrgencyType||'tarefas');
   selectActivity(dashActivityType||'publicacoes');
-
-  renderCalendario();
 }
 
 /* ======================================================
@@ -2740,41 +2749,39 @@ function selectUrgency(tipo){
     liquidacao:  {srcId:'ds-liq-body',    title:'Liquidação Próxima ou Vencida', cntId:'urg-count-liq'},
     paralisados: {srcId:'ds-par-body',    title:'Paralisados',                   cntId:'urg-count-par'},
   };
-  // `prazos` agora vive em coluna propria — redireciona chamadas legadas.
-  if(tipo==='prazos'){_renderPrazosCol(parseInt(document.getElementById('urg-count-prazos')?.textContent||'0',10)||0);return;}
-  const calBody=document.getElementById('dash-calendar-body');
-  const listBody=document.getElementById('dash-urgency-body');
+  // `prazos` legado redireciona pra `tarefas` (mantem compat com openDashPanel).
+  if(tipo==='prazos')tipo='tarefas';
+  const body=document.getElementById('dash-prazos-body');
+  const tabsWrap=document.getElementById('prazos-tabs-wrap');
   const titleEl=document.getElementById('urg-current-title');
   const cntEl=document.getElementById('urg-current-count');
   const footer=document.getElementById('urg-footer');
-  // tipo === 'tarefas' renderiza o calendario (rotulado "Prazos Fatais" no UI).
+  // 'tarefas' = Tarefas Pendentes com tabs Peremptorios/Outros + search.
   if(tipo==='tarefas'){
     dashUrgencyType=tipo;
-    if(titleEl)titleEl.textContent='Prazos Fatais';
+    if(titleEl)titleEl.textContent='Tarefas Pendentes';
     if(cntEl)cntEl.textContent='';
-    if(calBody)calBody.hidden=false;
-    if(listBody)listBody.style.display='none';
+    if(tabsWrap)tabsWrap.style.display='';
     if(footer)footer.hidden=true;
     document.querySelectorAll('.urg-dd-item').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
-    renderCalendario();
+    _renderPrazosCol(); // popula o body com o tab ativo (per ou outros)
     closeUrgDD();
     return;
   }
   const cfg=map[tipo]; if(!cfg)return;
   dashUrgencyType=tipo;
   const src=document.getElementById(cfg.srcId);
-  if(!src||!listBody)return;
+  if(!src||!body)return;
   const cnt=(document.getElementById(cfg.cntId)?.textContent||'').trim();
   if(titleEl)titleEl.textContent=cfg.title;
   if(cntEl)cntEl.textContent=(cnt&&cnt!=='0')?cnt:'';
-  if(calBody)calBody.hidden=true;
-  listBody.style.display='';
-  listBody.innerHTML='';
+  if(tabsWrap)tabsWrap.style.display='none';
+  body.innerHTML='';
   const clone=src.cloneNode(true);
   clone.removeAttribute('id');
   clone.classList.add('dash-side-list');
   clone.style.cssText='';
-  listBody.appendChild(clone);
+  body.appendChild(clone);
   document.querySelectorAll('.urg-dd-item').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
   // Rodapé fixo: legenda do tipo 'liquidacao' (cessionário c/ 2+ processos)
   if(footer){
@@ -3140,6 +3147,23 @@ async function _renderPubs(){
   // Reaplica filtro de busca apos render (cache hit ou fetch novo).
   const sInput=document.getElementById('act-search');
   if(sInput&&sInput.value&&dashActivityType==='publicacoes')_actSearch(sInput.value);
+}
+
+function _toggleAlNote(btn){
+  const wrap=btn.parentElement;
+  if(!wrap)return;
+  const sp=wrap.querySelector('.al-note');
+  if(!sp)return;
+  const isExp=sp.classList.contains('expanded');
+  if(isExp){
+    sp.textContent=sp.dataset.short||'';
+    sp.classList.remove('expanded');
+    btn.textContent='ler mais...';
+  } else {
+    sp.textContent=sp.dataset.full||'';
+    sp.classList.add('expanded');
+    btn.textContent='recolher';
+  }
 }
 
 function togglePubText(btn){
