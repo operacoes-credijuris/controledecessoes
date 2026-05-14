@@ -1578,13 +1578,26 @@ function updateDash(){
     }).join('');
   }
 
-  // ALERTAS — Prazos Fatais (igual ao original)
-  const alertRecs=[
-    ...ce.filter(r=>!r.vinculoPai).map(r=>({...r,_mod:'cessoes'})),
-    ...rp.filter(r=>!r.vinculoPai).map(r=>({...r,_mod:'rpv'})),
-    ...re.filter(r=>!r.vinculoPai).map(r=>({...r,_mod:'requerimentos'}))
-  ].filter(r=>r.prazoFatal&&normDate(r.prazoFatal))
-    .sort((a,b)=>normDate(a.prazoFatal).localeCompare(normDate(b.prazoFatal)));
+  // ALERTAS — Prazos Fatais: uma entrada POR DILIGÊNCIA (não por processo).
+  // Inclui processos filhos (vinculoPai!=null) — mesma regra do calendário.
+  // Fallback: se o registro tem prazoFatal mas sem _advboxDiligencias (legado/manual),
+  // gera uma entrada baseada em r.prazoFatal.
+  const alertRecs=[];
+  [['cessoes',ce],['rpv',rp],['requerimentos',re]].forEach(([mod,recs])=>{
+    recs.forEach(r=>{
+      const dils=Array.isArray(r._advboxDiligencias)?r._advboxDiligencias:[];
+      if(dils.length){
+        dils.forEach(d=>{
+          if(!d||!d.deadline)return;
+          const nd=normDate(d.deadline);if(!nd)return;
+          alertRecs.push({_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_deadline:nd,_task:d.task||''});
+        });
+      } else if(r.prazoFatal&&normDate(r.prazoFatal)){
+        alertRecs.push({_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_deadline:normDate(r.prazoFatal),_task:''});
+      }
+    });
+  });
+  alertRecs.sort((a,b)=>a._deadline.localeCompare(b._deadline));
 
   document.getElementById('ds-cnt-alerts').textContent=alertRecs.length?`· ${alertRecs.length}`:'';
   const ab=document.getElementById('ds-alerts-body');
@@ -1592,21 +1605,22 @@ function updateDash(){
     ab.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt3);font-size:12px">Nenhum alerta de prazo fatal</div>';
   } else {
     ab.innerHTML=alertRecs.map(r=>{
-      const lv=fatalLevel(r.prazoFatal);
-      const nd=normDate(r.prazoFatal);
-      const diff=Math.round((new Date(nd)-new Date(todayStr()))/864e5);
+      const lv=fatalLevel(r._deadline);
+      const diff=Math.round((new Date(r._deadline)-new Date(todayStr()))/864e5);
       const col=lv==='exp'?'var(--red2)':lv==='urg'?'#f97316':lv==='warn'?'#fb923c':lv==='next'?'var(--ylw2)':'var(--txt3)';
       const msg=lv==='exp'?'vencido'
         :diff===1?`${diff} dia restante`
         :`${diff} dias restantes`;
+      const partes=r.cedente||r.cessionario?`${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}`:'';
+      const sub=[partes,r._task?esc(r._task):''].filter(Boolean).join(' · ');
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r.id)}</div>
-          ${(r.cedente||r.cessionario)?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
+          <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r._id)}</div>
+          ${sub?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sub}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
           <span style="font-size:10px;color:#6b7280">${msg}</span>
-          <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r.prazoFatal)}</span>
+          <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r._deadline)}</span>
         </div>
       </div>`;
     }).join('');
