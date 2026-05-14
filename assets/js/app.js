@@ -724,6 +724,12 @@ async function _autoSyncInit(){
   // Carrega config do Supabase ANTES do primeiro check — dispositivo fresh pode ter
   // localStorage vazio mas Supabase tem lastRun de outro dispositivo (cross-device).
   await _cfgAutosyncMergeFromRemote();
+  // Se a pagina foi recarregada com a aba de Configuracoes ativa, _sbShowConfig()
+  // rodou antes da autenticacao e renderizou valores vazios. Re-renderiza agora
+  // que o Supabase ja foi consultado e o localStorage esta atualizado.
+  if(document.getElementById('pane-config')?.style.display==='flex'){
+    _cfgAutosyncRenderUI(_cfgAutosyncRead());
+  }
   // Checagem inicial + a cada 60s. Browsers throttlam timers em abas inativas,
   // mas o check é leve e idempotente (lastRun garante no-op duplo).
   _autoSyncCheck();

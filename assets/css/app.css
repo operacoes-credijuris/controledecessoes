@@ -904,7 +904,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 /* Tab strip da coluna Tarefas Pendentes (Peremptorios / Outros) */
 .dash-prazos-tabs{
   display:flex;gap:2px;align-items:center;
-  padding:6px 16px 0;
+  padding:8px 16px 0;
   border-bottom:1px solid rgba(255,255,255,.055);
   flex-shrink:0;
 }
@@ -974,15 +974,14 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 /* Search a direita das tabs Peremptorios/Outros (filtra Tarefas Pendentes) */
 .dash-prazos-search{
   margin-left:auto;
-  padding-bottom:6px;
   flex-shrink:1;
   min-width:120px;max-width:200px;
   width:42%;
 }
 .dash-prazos-search .srch-wrap input{
-  padding:4px 26px 4px 9px;
-  font-size:11px;
-  height:25px;
+  padding:5px 26px 5px 9px;
+  font-size:11.5px;
+  height:28px;
   box-sizing:border-box;
   width:100%;
 }
@@ -990,7 +989,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-prazos-search .srch-ico svg{width:11px;height:11px}
 /* Search bar da coluna Atividade (filtra por numero do processo) */
 .dash-search-bar{
-  padding:7px 16px 3px;
+  padding:5px 16px 5px;
   border-bottom:1px solid rgba(255,255,255,.055);
   flex-shrink:0;
 }
