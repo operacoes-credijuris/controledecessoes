@@ -1777,13 +1777,18 @@ function updateDash(){
     } else {
       ob.innerHTML=outrosRecs.map(r=>{
         const partes=r.cedente||r.cessionario?`${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}`:'';
-        const taskLabel=r._task?esc(r._task):'<span style="color:#4b5563">sem rotulo</span>';
+        const taskTypeHtml=r._task?`<span class="al-task-type">${esc(r._task)}</span>`:'';
+        const noteRaw=(r._notes||'').trim();
+        const NOTE_LIMIT=80;
+        const noteIsLong=noteRaw.length>NOTE_LIMIT;
+        const noteShort=noteIsLong?noteRaw.slice(0,NOTE_LIMIT)+'…':noteRaw;
+        const noteHtml=noteRaw?`<div style="display:flex;align-items:baseline;flex-wrap:wrap"><span class="al-note" data-full="${esc(noteRaw)}" data-short="${esc(noteShort)}">${esc(noteShort)}</span>${noteIsLong?`<button type="button" class="al-note-btn" onclick="_toggleAlNote(this)">ler mais...</button>`:''}</div>`:'';
         return`<div class="alert-item">
           <div style="flex:1;min-width:0">
-            <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r._id)}</div>
+            <div class="al-text">${esc(r.numeroProcesso)}${taskTypeHtml}${navBtn(r._mod,r._id)}</div>
             ${partes?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${partes}</div>`:''}
+            ${noteHtml}
           </div>
-          <div style="font-size:10px;color:#94a3b8;flex-shrink:0;max-width:42%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r._task||'')}">${taskLabel}</div>
         </div>`;
       }).join('');
     }
