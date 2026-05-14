@@ -630,19 +630,31 @@ function _cfgAutosyncRenderUI(cfg){
   }
 }
 
+// Flag: true quando usuario alterou algo desde o ultimo _cfgAutosyncLoad.
+// Impede que o fetch remoto em background sobrescreva mudancas recentes na UI.
+let _autoSyncDirty = false;
+
 async function _cfgAutosyncLoad(){
-  // Render imediato com cache local (resposta rapida)
+  _autoSyncDirty = false;
   _cfgAutosyncRenderUI(_cfgAutosyncRead());
-  // Em paralelo, busca Supabase e re-renderiza com merge se vier algo
   const merged = await _cfgAutosyncMergeFromRemote();
-  if(merged) _cfgAutosyncRenderUI(merged);
+  // Nao re-renderiza se o usuario ja alterou algo enquanto o fetch estava em voo
+  if(merged && !_autoSyncDirty) _cfgAutosyncRenderUI(merged);
 }
 
-function _cfgAutosyncSave(){
+async function _cfgAutosyncSave(){
+  _autoSyncDirty = true;
   const cfg = _cfgAutosyncRead();
   cfg.enabled = !!document.getElementById('cfg-autosync-en')?.checked;
   cfg.time = document.getElementById('cfg-autosync-time')?.value || '06:00';
-  _cfgAutosyncWrite(cfg);
+  localStorage.setItem(_AUTOSYNC_KEY, JSON.stringify(cfg));
+  if(sb){
+    const{error}=await sb.from('configuracoes').upsert(
+      {chave:_AUTOSYNC_SB_KEY,valor:JSON.stringify(cfg)},
+      {onConflict:'chave'}
+    );
+    if(error)console.warn('[Credijuris] autosync save:',error);
+  }
   showToast(cfg.enabled ? `Auto-sync ativado para ${cfg.time}` : 'Auto-sync desativado');
 }
 
