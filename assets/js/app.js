@@ -155,6 +155,25 @@ async function doLogin(){
   }
 }
 
+/* Limpa chaves cj-* per-sessao do localStorage, INCLUINDO as namespaced por user
+   (chave::uuid). PRESERVA:
+   - cj-theme, cj-sidebar-state: preferencias UI persistentes
+   - cj-auth: chave da sessao Supabase — Supabase ja gerencia (signOut limpa);
+     se removermos aqui podemos quebrar o cliente em memoria. */
+function _clearSessionLocalStorage(){
+  const KEEP=new Set(['cj-theme','cj-sidebar-state','cj-auth']);
+  try{
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k||KEEP.has(k))continue;
+      // Remove apenas cj-* simples e cj-* namespaced (cj-foo::uuid)
+      if(k.startsWith('cj-')||/^cj-.*::[0-9a-f-]{36}$/i.test(k))keys.push(k);
+    }
+    keys.forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+  }catch(e){}
+}
+
 async function doLogout(){
   /* Cleanup defensivo: garante reset de estado mesmo se signOut falhar (rede). */
   try{if(sb)await sb.auth.signOut();}
@@ -162,7 +181,9 @@ async function doLogout(){
   finally{
     _currentUserId=null;
     Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+    CACHE_AUX=[];curAuxId=null;
     if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
+    _clearSessionLocalStorage();
   }
 }
 
@@ -207,13 +228,30 @@ async function _initApp(){
     if(event==='SIGNED_OUT'||event==='USER_DELETED'){
       _currentUserId=null;
       Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
-      /* Limpa todas as chaves cj-* per-session, exceto preferências persistentes
-         (cj-theme, cj-sidebar-state que devem sobreviver ao logout). */
-      ['cj-user-filters','cj-sidebar-lasttab','cj-sub-tab','cj-sidebar-active','cj-parametros']
-        .forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+      CACHE_AUX=[];curAuxId=null;
+      _clearSessionLocalStorage();
       if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
       document.getElementById('logout-btn').style.display='none';
       ls.style.display='flex';
+    } else if(event==='SIGNED_IN'&&session){
+      // SIGNED_IN dispara em 3 cenarios:
+      // 1) Boot inicial com sessao valida — _currentUserId ainda nao foi setado.
+      //    Nesse caso _initApp ja vai chamar _onAuthenticated via getSession().
+      //    Nao fazemos nada aqui pra evitar _onAuthenticated rodando em paralelo
+      //    (causava loading-screen infinito).
+      // 2) Mesmo usuario re-autenticando — _currentUserId === session.user.id.
+      //    Nada a fazer.
+      // 3) Troca de usuario sem logout explicito — _currentUserId setado mas
+      //    DIFERENTE. Limpa estado antigo antes de re-auth.
+      if(!_currentUserId)return; // caso 1
+      if(_currentUserId===session.user.id)return; // caso 2
+      // caso 3: troca de usuario
+      Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+      CACHE_AUX=[];curAuxId=null;
+      _clearSessionLocalStorage();
+      if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
+      try{await _onAuthenticated(session);}
+      catch(e){console.error('[Credijuris] SIGNED_IN re-auth error:',e);}
     } else if(event==='TOKEN_REFRESHED'&&session){
       _currentUserId=session.user.id;
       /* Token novo → realtime channel pode ter sido invalidado. Recria. */
