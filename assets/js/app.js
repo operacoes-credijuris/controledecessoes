@@ -49,8 +49,15 @@ async function _sbSync(k,d,prev){
         const{_advboxMovCount,...clean}=r; // nunca persiste campo interno no banco
         return{id:r.id,data:clean,updated_at:new Date().toISOString(),user_id:_currentUserId};
       });
-      const{error}=await sb.from(tbl).upsert(rows,{onConflict:'id'});
-      if(error)throw error;
+      // Chunking: Supabase rejeita payload >~1MB. Em sync grande (200+ processos
+      // com diligencias e historico), o body cresce rapido. Quebra em lotes de
+      // 40 pra ficar seguro mesmo com registros gordos.
+      const CHUNK=40;
+      for(let i=0;i<rows.length;i+=CHUNK){
+        const slice=rows.slice(i,i+CHUNK);
+        const{error}=await sb.from(tbl).upsert(slice,{onConflict:'id'});
+        if(error)throw error;
+      }
     }
   }catch(e){
     console.error('[Credijuris] sync error',tbl,e);
@@ -75,11 +82,37 @@ async function _loadAllFromSupabase(){
    numa janela curta antes de fazer reload+render, reduzindo custo. */
 const _rtPending=new Set();
 let _rtTimer=null;
+// Detecta se o usuario esta editando ALGO (input/textarea/select/contenteditable
+// focado, OU um modal de formulario aberto). Recarregar o CACHE durante edicao
+// faz a comparacao prev/new em save() achar que nada mudou e a alteracao do
+// usuario nao chega ao banco.
+function _isUserEditing(){
+  const ae=document.activeElement;
+  if(ae){
+    const tag=ae.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return true;
+    if(ae.isContentEditable)return true;
+  }
+  // Modais de formulario abertos contam como edicao ativa
+  const openForms=['form-ov','dil-ov','contato-ov','urg-ov','aux-modal-overlay'];
+  return openForms.some(id=>{
+    const el=document.getElementById(id);
+    return el && (el.classList.contains('on') || el.style.display==='flex' || el.style.display==='block');
+  });
+}
 function _rtSchedule(mod){
   _rtPending.add(mod);
   if(_rtTimer)return;
-  _rtTimer=setTimeout(async()=>{
-    const mods=[..._rtPending];_rtPending.clear();_rtTimer=null;
+  _rtTimer=setTimeout(async function _rtFlush(){
+    _rtTimer=null;
+    // Adia recarga do CACHE se o usuario estiver editando. Recarregar com
+    // dados remotos faria a proxima save() comparar com snapshot "ja novo"
+    // e descartar a alteracao do usuario. Reagenda em 1s ate sair da edicao.
+    if(_isUserEditing()){
+      _rtTimer=setTimeout(_rtFlush,1000);
+      return;
+    }
+    const mods=[..._rtPending];_rtPending.clear();
     for(const m of mods){
       const tbl=TABLES[m];if(!tbl)continue;
       try{
@@ -88,19 +121,14 @@ function _rtSchedule(mod){
       }catch(e){console.error('[Credijuris] realtime reload error',tbl,e);}
     }
     updateDash();
-    /* Não interrompe edição inline ativa */
-    const editing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
-    if(!editing){
-      if(topTab==='acompanhamento'&&mods.includes(subTab))render(subTab);
-      else if(topTab==='contatos'&&mods.includes('contatos'))render('contatos');
-    }
+    if(topTab==='acompanhamento'&&mods.includes(subTab))render(subTab);
+    else if(topTab==='contatos'&&mods.includes('contatos'))render('contatos');
     const consPaneVisible=document.getElementById('crt-pane-consolidado')?.classList.contains('on')
       &&document.getElementById('pane-carteiras')?.classList.contains('on');
-    if(consPaneVisible&&!editing)_crtRenderConsolidado();
-    /* Re-render de carteiras/investidores se estiver visível */
+    if(consPaneVisible)_crtRenderConsolidado();
     const invPaneVisible=document.getElementById('crt-pane-investidores')?.classList.contains('on')
       &&document.getElementById('pane-carteiras')?.classList.contains('on');
-    if(invPaneVisible&&!editing){_crtPopulateInvestidores();_crtRenderOperacoes(_crtAcSelected||null);}
+    if(invPaneVisible){_crtPopulateInvestidores();_crtRenderOperacoes(_crtAcSelected||null);}
   },350);
 }
 function _setupRealtime(){
@@ -155,6 +183,27 @@ async function doLogin(){
   }
 }
 
+/* Limpa chaves cj-* per-sessao do localStorage, INCLUINDO as namespaced por user
+   (chave::uuid). PRESERVA:
+   - cj-theme, cj-sidebar-state: preferencias UI persistentes
+   - cj-auth: chave de sessao Supabase — quem gerencia eh o cliente Supabase
+     (signOut limpa); remover aqui pode quebrar o cliente em memoria. */
+function _clearSessionLocalStorage(){
+  const KEEP=new Set(['cj-theme','cj-sidebar-state','cj-auth']);
+  try{
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k||KEEP.has(k))continue;
+      // Tambem preserva sub-chaves cj-auth-* (code-verifier de PKCE, etc.)
+      if(k.startsWith('cj-auth-')||k.startsWith('cj-auth.'))continue;
+      // Remove apenas cj-* simples e cj-* namespaced (cj-foo::uuid)
+      if(k.startsWith('cj-')||/^cj-.*::[0-9a-f-]{36}$/i.test(k))keys.push(k);
+    }
+    keys.forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+  }catch(e){}
+}
+
 async function doLogout(){
   /* Cleanup defensivo: garante reset de estado mesmo se signOut falhar (rede). */
   try{if(sb)await sb.auth.signOut();}
@@ -162,7 +211,9 @@ async function doLogout(){
   finally{
     _currentUserId=null;
     Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+    CACHE_AUX=[];curAuxId=null;
     if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
+    _clearSessionLocalStorage();
   }
 }
 
@@ -207,13 +258,29 @@ async function _initApp(){
     if(event==='SIGNED_OUT'||event==='USER_DELETED'){
       _currentUserId=null;
       Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
-      /* Limpa todas as chaves cj-* per-session, exceto preferências persistentes
-         (cj-theme, cj-sidebar-state que devem sobreviver ao logout). */
-      ['cj-user-filters','cj-sidebar-lasttab','cj-sub-tab','cj-sidebar-active','cj-parametros']
-        .forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+      CACHE_AUX=[];curAuxId=null;
+      _clearSessionLocalStorage();
       if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
       document.getElementById('logout-btn').style.display='none';
       ls.style.display='flex';
+    } else if(event==='SIGNED_IN'&&session){
+      // SIGNED_IN dispara em 3 cenarios:
+      // 1) Boot inicial com sessao valida — _currentUserId ainda nao foi setado.
+      //    Nesse caso _initApp ja vai chamar _onAuthenticated via getSession().
+      //    NAO_OP aqui pra evitar _onAuthenticated em paralelo.
+      // 2) Mesmo usuario re-autenticando — _currentUserId === session.user.id.
+      //    Nada a fazer.
+      // 3) Troca de usuario sem logout explicito — _currentUserId setado mas
+      //    DIFERENTE. Limpa estado antigo antes de re-auth.
+      if(!_currentUserId)return; // caso 1
+      if(_currentUserId===session.user.id)return; // caso 2
+      // caso 3: troca de usuario
+      Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+      CACHE_AUX=[];curAuxId=null;
+      _clearSessionLocalStorage();
+      if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
+      try{await _onAuthenticated(session);}
+      catch(e){console.error('[Credijuris] SIGNED_IN re-auth error:',e);}
     } else if(event==='TOKEN_REFRESHED'&&session){
       _currentUserId=session.user.id;
       /* Token novo → realtime channel pode ter sido invalidado. Recria. */
@@ -598,6 +665,16 @@ function _autoSyncCheck(){
   const nowMin = now.getHours()*60 + now.getMinutes();
   if(nowMin < targetMin) return; // ainda não chegou o horário
 
+  // Lock cross-aba via localStorage: se outra aba ja disparou auto-sync nos
+  // ultimos 5 minutos, esta aba pula. Evita 2 abas rodando sync simultaneo.
+  const LOCK_KEY='cj-autosync-lock';
+  const LOCK_TTL_MS=5*60*1000;
+  try{
+    const lockTs=parseInt(localStorage.getItem(LOCK_KEY)||'0',10);
+    if(lockTs && (Date.now()-lockTs)<LOCK_TTL_MS)return;
+    localStorage.setItem(LOCK_KEY,String(Date.now()));
+  }catch(e){}
+
   // Marca antes de disparar para evitar double-trigger em race
   cfg.lastRun = now.toISOString();
   _cfgAutosyncWrite(cfg);
@@ -611,8 +688,17 @@ function _autoSyncCheck(){
   }
 }
 
+// Handler nomeado pro visibilitychange — referencia salva permite
+// removeEventListener no proximo _autoSyncInit, evitando vazamento de listeners.
+function _autoSyncVisibilityHandler(){
+  if(!document.hidden) _autoSyncCheck();
+}
+
 async function _autoSyncInit(){
   if(_autoSyncTimer) clearInterval(_autoSyncTimer);
+  // Remove listener anterior antes de adicionar de novo — evita acumular
+  // handlers a cada login (logout+login chamava _autoSyncInit varias vezes).
+  document.removeEventListener('visibilitychange', _autoSyncVisibilityHandler);
   // Carrega config do Supabase ANTES do primeiro check — dispositivo fresh pode ter
   // localStorage vazio mas Supabase tem lastRun de outro dispositivo (cross-device).
   await _cfgAutosyncMergeFromRemote();
@@ -620,11 +706,7 @@ async function _autoSyncInit(){
   // mas o check é leve e idempotente (lastRun garante no-op duplo).
   _autoSyncCheck();
   _autoSyncTimer = setInterval(_autoSyncCheck, 60_000);
-  // Quando a aba volta a ficar visível, força um check imediato (caso o timer
-  // tenha sido throttlado durante a inatividade).
-  document.addEventListener('visibilitychange', () => {
-    if(!document.hidden) _autoSyncCheck();
-  });
+  document.addEventListener('visibilitychange', _autoSyncVisibilityHandler);
 }
 
 function _sbShowExec(){
@@ -1657,7 +1739,7 @@ function updateDash(){
       const col=lv==='urg'?'#f97316':lv==='warn'?'#fb923c':lv==='next'?'var(--ylw2)':'var(--txt3)';
       const msg=diff===0?'hoje':diff===1?'1 dia restante':`${diff} dias restantes`;
       const partes=r.cedente||r.cessionario?`${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}`:'';
-      const sub=[partes,r._task?esc(r._task):''].filter(Boolean).join(' · ');
+      const sub=partes;
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
           <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r._id)}</div>
@@ -4592,6 +4674,11 @@ async function syncAdvbox(opts){
   const hdrs={...(session?.access_token?{'Authorization':'Bearer '+session.access_token}:{}),'apikey':_SB_KEY};
   const _PROXY=`${_SB_URL}/functions/v1/advbox-proxy`;
 
+  // Flag de abort por erro de autenticacao no Advbox (401/403). Quando setada,
+  // o loop principal pula processos restantes e mostra mensagem clara em vez
+  // de gerar erro por processo.
+  let _authAborted=false;
+
   // Fetch helper com classificação de erros
   async function _advboxGet(url,label){
     let raw;
@@ -4604,6 +4691,7 @@ async function syncAdvbox(opts){
       let parsed={};
       try{parsed=JSON.parse(body);}catch{}
       const s=raw.status;
+      if(s===401||s===403)_authAborted=true;
       const msg=parsed.error||
         (s===401||s===403?`Token Advbox expirado (${s})`
         :s===429?'Limite de requisições atingido'
@@ -4612,7 +4700,10 @@ async function syncAdvbox(opts){
       return{err:msg,retryable:s===429||s>=500};
     }
     if(!body.trim()) return{err:`${label}: resposta vazia`,retryable:true};
-    if(body.trimStart().startsWith('<')) return{err:'Token Advbox expirado ou inválido — atualize nas configurações',retryable:false};
+    if(body.trimStart().startsWith('<')){
+      _authAborted=true;
+      return{err:'Token Advbox expirado ou inválido — atualize nas configurações',retryable:false};
+    }
     try{return{data:JSON.parse(body)};}
     catch{return{err:`${label}: resposta inválida (${body.slice(0,80)})`,retryable:false};}
   }
@@ -4622,6 +4713,12 @@ async function syncAdvbox(opts){
   const erros=[],pendentes=[],paraRetry=[];
 
   async function _buscarProcesso({mod,rec},tentativa=1){
+    // Aborta imediatamente se token Advbox ja foi detectado como invalido —
+    // evita gastar tempo gerando o mesmo erro para cada processo restante.
+    if(_authAborted){
+      if(tentativa===1)st.done++;
+      return;
+    }
     const labelFase=tentativa>1?`Tentativa ${tentativa}: Buscando movimentações`:'Buscando movimentações';
     _syncProgressUpdate(prog,{label:`${labelFase} (${st.done}/${total})`,pct:Math.round(st.done/total*100),sub:rec.numeroProcesso});
 
@@ -4679,12 +4776,15 @@ async function syncAdvbox(opts){
           id:p.id||null,
           task:String(p.task||'').slice(0,200),
           notes:String(p.notes||p.comments||'').slice(0,300),
-          deadline:String(p.date_deadline).slice(0,10),
+          // normDate aceita ISO, "dd/mm/yyyy", com timezone, etc. Garante
+          // que formatos inesperados da Advbox nao quebrem o calendario/KPI.
+          deadline:normDate(p.date_deadline)||String(p.date_deadline).slice(0,10),
           responsible:String(
             (Array.isArray(p.users) && p.users[0] && (p.users[0].name||p.users[0].nome)) ||
             p.responsible || p.author || ''
           ).slice(0,80)
-        }));
+        }))
+        .filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.deadline)); // descarta com data invalida
     }
 
     const arr=load(mod);
@@ -4711,76 +4811,99 @@ async function syncAdvbox(opts){
     await _sleep(2000);
   }
 
-  // FASE 1 — primeira passagem
-  for(const item of allRecs) await _buscarProcesso(item);
-
-  // Retry automático para falhas transitórias (até 2 tentativas extras)
-  while(paraRetry.length){
-    const lote=[...paraRetry];
-    paraRetry.length=0;
-    const backoff=lote[0].tentativa===2?5000:10000;
-    _syncProgressUpdate(prog,{label:`🔄 Repetindo ${lote.length} processo(s) com falha transitória…`,pct:100});
-    await _sleep(backoff);
-    for(const{mod,rec,tentativa}of lote) await _buscarProcesso({mod,rec},tentativa);
-  }
-
-  // FASE 2 — Salvar movimentações + diligências + assinatura do lawsuit
-  if(pendentes.length){
-    for(const[i,{mod,arr,idx,movs,openDils,movsChanged,lawsuitSig}]of pendentes.entries()){
-      _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
-      if(idx===-1){st.synced++;continue;}
-      let updated=arr[idx];
-      if(movsChanged){
-        const hist=movs.map(mv=>{
-          const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
-          const descricao=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1000));
-          return{data,descricao};
-        }).sort((a,b)=>a.data.localeCompare(b.data));
-        updated={...updated,historicoProcessual:hist,_advboxMovCount:movs.length};
-      }
-      if(openDils!==null){
-        // prazoFatal agora deriva automaticamente das diligencias do Advbox (mais proxima de vencer).
-        // Sobrescreve qualquer valor manual previo — "fonte da verdade" e o Advbox.
-        const computedPrazo = _computePrazoFatalFromDils(openDils);
-        updated={...updated,_advboxDiligencias:openDils,_advboxDiligenciasSchemaVer:DILIGENCIA_SCHEMA_VER,prazoFatal:computedPrazo};
-      }
-      if(lawsuitSig){
-        updated={...updated,_advboxLawsuitSig:lawsuitSig};
-      }
-      arr[idx]=updated;
-      save(mod,arr);
-      st.synced++;
+  // try/finally garante limpeza do popup de progresso e do botao mesmo se
+  // uma excecao inesperada lancar no meio do sync — antes ficava travado.
+  try{
+    // FASE 1 — primeira passagem
+    for(const item of allRecs){
+      if(_authAborted)break;
+      await _buscarProcesso(item);
     }
-  }
 
-  _syncProgressHide(prog);
-  btn.disabled=false;
-  btn.innerHTML='↺ Sincronizar';
+    // Retry automático para falhas transitórias (até 2 tentativas extras)
+    while(paraRetry.length && !_authAborted){
+      const lote=[...paraRetry];
+      paraRetry.length=0;
+      const backoff=lote[0].tentativa===2?5000:10000;
+      _syncProgressUpdate(prog,{label:`🔄 Repetindo ${lote.length} processo(s) com falha transitória…`,pct:100});
+      await _sleep(backoff);
+      for(const{mod,rec,tentativa}of lote){
+        if(_authAborted)break;
+        await _buscarProcesso({mod,rec},tentativa);
+      }
+    }
 
-  // Registra "Última execução" — manual ou automática
-  try {
-    const cfg = _cfgAutosyncRead();
-    cfg.lastRun = new Date().toISOString();
-    _cfgAutosyncWrite(cfg);
-    _cfgAutosyncLoad();
-  } catch(e) { console.warn('[Credijuris] não foi possível registrar última execução:', e); }
+    // FASE 2 — Salvar movimentações + diligências + assinatura do lawsuit.
+    // Re-carrega `arr` a cada registro aqui (em vez de usar o snapshot capturado
+    // na FASE 1) — preserva edicoes do usuario feitas durante a sincronizacao.
+    if(pendentes.length){
+      for(const[i,{mod,rec,movs,openDils,movsChanged,lawsuitSig}]of pendentes.entries()){
+        _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
+        const arr=load(mod);
+        const idx=arr.findIndex(r=>r.id===rec.id);
+        if(idx===-1){st.synced++;continue;}
+        let updated=arr[idx];
+        if(movsChanged){
+          const hist=movs.map(mv=>{
+            const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
+            const descricao=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1000));
+            return{data,descricao};
+          }).sort((a,b)=>a.data.localeCompare(b.data));
+          updated={...updated,historicoProcessual:hist,_advboxMovCount:movs.length};
+        }
+        if(openDils!==null){
+          // prazoFatal deriva automaticamente das diligencias do Advbox para cessoes/rpv.
+          // Para requerimentos (Diversos), preserva valor manual quando Advbox nao tem
+          // diligencias pendentes — usuario pode editar manualmente sem perder no sync.
+          updated={...updated,_advboxDiligencias:openDils,_advboxDiligenciasSchemaVer:DILIGENCIA_SCHEMA_VER};
+          if(openDils.length>0 || mod!=='requerimentos'){
+            updated.prazoFatal=_computePrazoFatalFromDils(openDils);
+          }
+        }
+        if(lawsuitSig){
+          updated={...updated,_advboxLawsuitSig:lawsuitSig};
+        }
+        arr[idx]=updated;
+        save(mod,arr);
+        st.synced++;
+      }
+    }
 
-  const todosAuthErr=st.failed>0&&erros.every(e=>e.includes('Token Advbox expirado'));
-  let msg=`Sincronização concluída: ${st.synced} processo(s) atualizado(s)`;
-  if(st.failed){
-    msg+=`, ${st.failed} com erro`;
-    if(todosAuthErr) msg+='\n⚠️ Token Advbox expirado — atualize nas configurações';
-    else if(erros.length) msg+=`\nPrimeiro erro: ${erros[0]}`;
+    // Registra "Última execução" — manual ou automática
+    try {
+      const cfg = _cfgAutosyncRead();
+      cfg.lastRun = new Date().toISOString();
+      _cfgAutosyncWrite(cfg);
+      _cfgAutosyncLoad();
+    } catch(e) { console.warn('[Credijuris] não foi possível registrar última execução:', e); }
+
+    let msg;
+    if(_authAborted){
+      msg='Sincronização interrompida: Token Advbox expirado ou inválido — atualize nas configurações';
+    }else{
+      msg=`Sincronização concluída: ${st.synced} processo(s) atualizado(s)`;
+      if(st.failed){
+        msg+=`, ${st.failed} com erro`;
+        if(erros.length) msg+=`\nPrimeiro erro: ${erros[0]}`;
+      }
+    }
+    showToast(msg,(_authAborted||st.failed)?8000:3500);
+    if(erros.length){
+      console.group('[Advbox] Erros de sincronização ('+erros.length+')');
+      erros.forEach(e=>console.warn(e));
+      console.groupEnd();
+    }
+    if(topTab==='acompanhamento')render(subTab);
+    else if(topTab!=='dashboard')render(topTab);
+    updateDash();
+  }catch(e){
+    console.error('[Credijuris] syncAdvbox erro nao tratado:',e);
+    showToast('Erro inesperado na sincronizacao: '+(e.message||e),8000);
+  }finally{
+    _syncProgressHide(prog);
+    btn.disabled=false;
+    btn.innerHTML='↺ Sincronizar';
   }
-  showToast(msg,st.failed?8000:3500);
-  if(erros.length){
-    console.group('[Advbox] Erros de sincronização ('+erros.length+')');
-    erros.forEach(e=>console.warn(e));
-    console.groupEnd();
-  }
-  if(topTab==='acompanhamento')render(subTab);
-  else if(topTab!=='dashboard')render(topTab);
-  updateDash();
 }
 
 /* ======================================================
