@@ -234,7 +234,7 @@ async function _onAuthenticated(session){
   document.getElementById('login-screen').style.display='none';
   const ls=document.getElementById('loading-screen');
   ls.style.display='flex';
-  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken()]);
+  await Promise.all([_loadAllFromSupabase(),_loadAdvboxToken(),_loadAdvboxAutoDefaults()]);
   ls.style.display='none';
   document.getElementById('logout-btn').style.display='';
   _fLoad();
@@ -5092,14 +5092,27 @@ async function syncAdvbox(opts){
 ====================================================== */
 const _ADVBOX_SETTINGS_KEY='cj-advbox-settings';
 const _ADVBOX_AUTO_KEY='cj-advbox-auto';
+const _ADVBOX_AUTO_SB_KEY='advbox_auto_defaults';
 const _ADVBOX_CREDIJURIS_KEY='cj-advbox-credijuris-id';
 let _advboxModalCtx=null;
 
 function _advboxLoadAutoDefaults(){
   try{const s=localStorage.getItem(_ADVBOX_AUTO_KEY);return s?JSON.parse(s):null;}catch{return null;}
 }
-function _advboxSaveAutoDefaultsStorage(obj){
+async function _loadAdvboxAutoDefaults(){
+  if(!sb)return;
+  try{
+    const{data,error}=await sb.from('configuracoes').select('valor').eq('chave',_ADVBOX_AUTO_SB_KEY).maybeSingle();
+    if(!error&&data?.valor){
+      const obj=JSON.parse(data.valor);
+      try{localStorage.setItem(_ADVBOX_AUTO_KEY,JSON.stringify(obj));}catch{}
+    }
+  }catch(e){console.warn('[Credijuris] _loadAdvboxAutoDefaults:',e);}
+}
+async function _advboxSaveAutoDefaults(obj){
   try{localStorage.setItem(_ADVBOX_AUTO_KEY,JSON.stringify(obj));}catch{}
+  if(!sb)return;
+  await sb.from('configuracoes').upsert({chave:_ADVBOX_AUTO_SB_KEY,valor:JSON.stringify(obj)},{onConflict:'chave'});
 }
 
 async function _advboxResolveCredijurisId(){
@@ -5178,7 +5191,7 @@ async function _cfgAdvboxLoadAutoUI(){
   }
 }
 
-function _cfgAdvboxSaveAutoDefaults(){
+async function _cfgAdvboxSaveAutoDefaults(){
   const userId=document.getElementById('cfg-advbox-auto-user')?.value||'';
   const stageId=document.getElementById('cfg-advbox-auto-stage')?.value||'';
   const typeId=document.getElementById('cfg-advbox-auto-type')?.value||'';
@@ -5187,7 +5200,8 @@ function _cfgAdvboxSaveAutoDefaults(){
     if(status){status.textContent='Selecione os três campos.';status.className='cfg-status';}
     return;
   }
-  _advboxSaveAutoDefaultsStorage({userId,stageId,typeId});
+  if(status){status.textContent='Salvando...';status.className='cfg-status';}
+  await _advboxSaveAutoDefaults({userId,stageId,typeId});
   localStorage.removeItem(_ADVBOX_CREDIJURIS_KEY);
   if(status){status.textContent='Salvo.';status.className='cfg-status ok';}
   setTimeout(()=>{if(status&&status.textContent==='Salvo.')status.textContent='';},3000);
