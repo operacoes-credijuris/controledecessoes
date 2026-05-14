@@ -2161,7 +2161,6 @@ function cessoesRow(r,allData,isChild){
     <td class="td-icon">${contatoBadge('cessoes',r)}</td>
     <td>${instrBadge(r.instrumento)}</td>
     <td class="td-icon">${cartorioBadge(r)}</td>
-    <td>${fatalCell('cessoes',r.id,r.prazoFatal)}</td>
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.expectativaLiquidacao)}</td>
     <td>${liquidacaoDiff(r.expectativaLiquidacao)}</td>
@@ -2210,7 +2209,6 @@ function rpvRow(r,allData,isChild){
     <td class="td-icon"><button class="btn btn-blue btn-xs" onclick="openHist('rpv','${r.id}')"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="1.5" y="1.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="3.5" y1="4" x2="7.5" y2="4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="3.5" y1="6" x2="6.5" y2="6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button></td>
     <td>${calcUltimaMovimentacao(r)}</td>
     <td class="td-icon">${contatoBadge('rpv',r)}</td>
-    <td>${fatalCell('rpv',r.id,r.prazoFatal)}</td>
     <td>${fmtDate(r.dataAquisicao)}</td>
     <td>${fmtDate(r.dataLiquidacao)}</td>
     <td>${between(r.dataAquisicao,r.dataLiquidacao)}</td>
@@ -2951,6 +2949,7 @@ function buildForm(mod,r){
   if(mod==='requerimentos') return`<div class="fgrid">
     ${fg('Número do Processo',fi('numeroProcesso',r.numeroProcesso,'text','Ex: 0001234-56.2020.8.09.0001'))}
     ${fg('Protocolo',fi('protocolo',r.protocolo,'date'))}
+    ${fg('Prazo Fatal',fi('prazoFatal',r.prazoFatal,'date'))}
     ${fg('Senha de Acesso',fi('senhaAcesso',r.senhaAcesso,'text','Senha do sistema'))}
     ${fg('Natureza',fi('natureza',r.natureza,'text','Natureza'))}
     ${fg('Matéria',fi('materia',r.materia,'text','Matéria'))}
@@ -3036,6 +3035,7 @@ function saveRecord(){
   };
   else if(curMod==='requerimentos') rec={
     numeroProcesso:gf('numeroProcesso'),protocolo:gf('protocolo'),
+    prazoFatal:gf('prazoFatal'),
     senhaAcesso:gf('senhaAcesso'),natureza:gf('natureza'),materia:gf('materia'),
     tribunal:gf('tribunal'),orgaoJulgador:gf('orgaoJulgador')
   };
