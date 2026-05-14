@@ -47,7 +47,11 @@ async function _sbSync(k,d,prev){
     if(changed.length){
       const rows=changed.map(r=>{
         const{_advboxMovCount,...clean}=r; // nunca persiste campo interno no banco
-        return{id:r.id,data:clean,updated_at:new Date().toISOString(),user_id:_currentUserId};
+        // `contatos` eh a unica tabela sem coluna user_id (schema legado);
+        // PostgREST rejeita o upsert inteiro com PGRST204 se incluirmos.
+        const row={id:r.id,data:clean,updated_at:new Date().toISOString()};
+        if(tbl!=='contatos')row.user_id=_currentUserId;
+        return row;
       });
       // Chunking: Supabase rejeita payload >~1MB. Em sync grande (200+ processos
       // com diligencias e historico), o body cresce rapido. Quebra em lotes de
