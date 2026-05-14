@@ -1461,7 +1461,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 .pub-inteiro-btn:hover{background:rgba(110,125,187,.18);color:#dceaff}
 .pub-advbox-btn{
-  padding:1px 7px;
+  padding:4px 7px;
   border-radius:20px;
   font-size:10px;font-weight:600;letter-spacing:.15px;white-space:nowrap;
   display:inline-flex;align-items:center;gap:4px;
