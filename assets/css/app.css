@@ -184,7 +184,7 @@ tr.row-ylw{background:#f59e0b08!important;border-left:3px solid #f59e0b}
 
 /* COPY BUTTON */
 .cpy-btn{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0}
-tr:hover .cpy-btn,.alert-item:hover .cpy-btn{opacity:.5}
+tr:hover .cpy-btn,.alert-item:hover .cpy-btn,.pub-item:hover .cpy-btn,.mov-group-hdr:hover .cpy-btn{opacity:.5}
 .cpy-btn:hover{opacity:1!important}
 /* PRAZO FATAL EDIT BUTTON */
 .pf-btn{opacity:0;background:none;border:none;cursor:pointer;padding:0 0 0 4px;display:inline;vertical-align:middle;line-height:1;transition:opacity .15s;flex-shrink:0}
@@ -926,6 +926,36 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 }
 .dash-prazos-tab.on .dash-prazos-tab-cnt{background:rgba(110,125,187,.22);color:#dde2f4}
 .dash-prazos-tab-cnt:empty{display:none}
+/* Search a direita das tabs Peremptorios/Outros (filtra Tarefas Pendentes) */
+.dash-prazos-search{
+  margin-left:auto;
+  padding-bottom:6px;
+  flex-shrink:1;
+  min-width:120px;max-width:200px;
+  width:42%;
+}
+.dash-prazos-search .srch-wrap input{
+  padding:4px 26px 4px 9px;
+  font-size:11px;
+  height:25px;
+  box-sizing:border-box;
+  width:100%;
+}
+.dash-prazos-search .srch-ico{right:7px}
+.dash-prazos-search .srch-ico svg{width:11px;height:11px}
+/* Search bar da coluna Atividade (filtra por numero do processo) */
+.dash-search-bar{
+  padding:8px 16px 4px;
+  flex-shrink:0;
+}
+.dash-search-bar .srch-wrap input{
+  padding:5px 28px 5px 10px;
+  font-size:11.5px;
+  height:28px;
+  box-sizing:border-box;
+  width:100%;
+}
+.dash-search-bar .srch-ico{right:8px}
 .dash-panel-hdr{
   display:flex;
   align-items:center;

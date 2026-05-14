@@ -169,6 +169,12 @@
           <button type="button" class="dash-prazos-tab" role="tab" data-tab="outros" onclick="_selectPrazosTab('outros')">
             Outros <span class="dash-prazos-tab-cnt" id="prazos-tab-cnt-out"></span>
           </button>
+          <div class="dash-prazos-search">
+            <div class="srch-wrap" style="width:100%">
+              <input id="prazos-search" type="text" placeholder="Buscar n° do processo…" autocomplete="off" oninput="_prazosSearch(this.value)">
+              <span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+            </div>
+          </div>
         </div>
         <div id="dash-prazos-body" class="dash-urgency-body"></div>
       </div>
@@ -196,6 +202,12 @@
             </div>
           </div>
           <span id="act-current-count" class="dash-count"></span>
+        </div>
+        <div class="dash-search-bar">
+          <div class="srch-wrap" style="width:100%">
+            <input id="act-search" type="text" placeholder="Buscar n° do processo…" autocomplete="off" oninput="_actSearch(this.value)">
+            <span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+          </div>
         </div>
         <div id="ds-mov-body" class="dash-mov-body"></div>
         <div id="ds-pub-body" class="dash-pub-body" hidden></div>

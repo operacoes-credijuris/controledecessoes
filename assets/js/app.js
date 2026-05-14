@@ -1845,6 +1845,8 @@ function updateDash(){
       </div>`;
     }).join('');
   }
+  // Reaplica filtro de busca apos sobrescrever o body.
+  {const sInput=document.getElementById('act-search');if(sInput&&sInput.value&&dashActivityType==='movimentacoes')_actSearch(sInput.value);}
   // Contadores do card Urgências (Prazos Fatais agora vive em coluna propria;
   // mantemos urg-count-prazos atualizado pra qualquer chamada legada).
   const _uPraz=document.getElementById('urg-count-prazos');if(_uPraz)_uPraz.textContent=alertRecs.length||'0';
@@ -2706,12 +2708,27 @@ function _renderPrazosCol(perCount,outCount){
   const active=_prazosTab==='outros'?_prazosCounts.out:_prazosCounts.per;
   if(headerCnt)headerCnt.textContent=active>0?String(active):'';
   document.querySelectorAll('.dash-prazos-tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===_prazosTab));
+  // Reaplica filtro de busca apos sobrescrever o body via cloneNode.
+  const sInput=document.getElementById('prazos-search');
+  if(sInput&&sInput.value)_prazosSearch(sInput.value);
 }
 
 function _selectPrazosTab(tab){
   if(tab!=='peremptorios'&&tab!=='outros')return;
   _prazosTab=tab;
   _renderPrazosCol();
+}
+
+// Filtra os itens visiveis no #dash-prazos-body por numero do processo.
+// Aplica display:none nos .alert-item que nao casam. Reaplicado pelo
+// _renderPrazosCol apos qualquer re-render pra manter o filtro estavel.
+function _prazosSearch(value){
+  const q=(value||'').trim().toLowerCase();
+  document.querySelectorAll('#dash-prazos-body .alert-item').forEach(el=>{
+    if(!q){el.style.display='';return;}
+    const proc=(el.querySelector('.al-text')?.textContent||'').toLowerCase();
+    el.style.display=proc.includes(q)?'':'none';
+  });
 }
 
 function selectUrgency(tipo){
@@ -2837,7 +2854,29 @@ function selectActivity(tipo){
     if(cntEl)cntEl.textContent=(cnt&&cnt!=='0')?cnt:'';
     _renderPubs();
   }
+  // Reaplica filtro de busca na visualizacao recem-ativada.
+  const sInput=document.getElementById('act-search');
+  if(sInput&&sInput.value)_actSearch(sInput.value);
   closeActDD();
+}
+
+// Filtra pelo numero do processo no body ativo (publicacoes ou movimentacoes).
+// Esconde via display:none nos containers; nao toca o DOM, so visibilidade.
+function _actSearch(value){
+  const q=(value||'').trim().toLowerCase();
+  if(dashActivityType==='movimentacoes'){
+    document.querySelectorAll('#ds-mov-body .mov-group').forEach(el=>{
+      if(!q){el.style.display='';return;}
+      const proc=(el.querySelector('.mov-group-hdr')?.textContent||'').toLowerCase();
+      el.style.display=proc.includes(q)?'':'none';
+    });
+  } else {
+    document.querySelectorAll('#ds-pub-body .pub-item').forEach(el=>{
+      if(!q){el.style.display='';return;}
+      const proc=(el.querySelector('.pub-item-titulo')?.textContent||'').toLowerCase();
+      el.style.display=proc.includes(q)?'':'none';
+    });
+  }
 }
 
 function toggleActDD(e){
@@ -3094,6 +3133,9 @@ async function _renderPubs(){
       ${destHtml?`<div class="pub-dest"><span class="pub-dest-lbl">Destinatários:</span> ${destHtml}</div>`:''}
     </div>`;
   }).join('');
+  // Reaplica filtro de busca apos render (cache hit ou fetch novo).
+  const sInput=document.getElementById('act-search');
+  if(sInput&&sInput.value&&dashActivityType==='publicacoes')_actSearch(sInput.value);
 }
 
 function togglePubText(btn){
