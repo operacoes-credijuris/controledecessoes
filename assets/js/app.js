@@ -49,8 +49,15 @@ async function _sbSync(k,d,prev){
         const{_advboxMovCount,...clean}=r; // nunca persiste campo interno no banco
         return{id:r.id,data:clean,updated_at:new Date().toISOString(),user_id:_currentUserId};
       });
-      const{error}=await sb.from(tbl).upsert(rows,{onConflict:'id'});
-      if(error)throw error;
+      // Chunking: Supabase rejeita payload >~1MB. Em sync grande (200+ processos
+      // com diligencias e historico), o body cresce rapido. Quebra em lotes de
+      // 40 para ficar seguro mesmo com registros gordos.
+      const CHUNK=40;
+      for(let i=0;i<rows.length;i+=CHUNK){
+        const slice=rows.slice(i,i+CHUNK);
+        const{error}=await sb.from(tbl).upsert(slice,{onConflict:'id'});
+        if(error)throw error;
+      }
     }
   }catch(e){
     console.error('[Credijuris] sync error',tbl,e);
@@ -75,11 +82,38 @@ async function _loadAllFromSupabase(){
    numa janela curta antes de fazer reload+render, reduzindo custo. */
 const _rtPending=new Set();
 let _rtTimer=null;
+// Detecta se o usuario esta editando ALGO (input/textarea/select/contenteditable
+// focados, OU um modal de formulario aberto). Recarregar o CACHE durante edicao
+// faz a comparacao prev/new em save() achar que nada mudou e a alteracao do
+// usuario nao chega ao banco.
+function _isUserEditing(){
+  const ae=document.activeElement;
+  if(ae){
+    const tag=ae.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return true;
+    if(ae.isContentEditable)return true;
+  }
+  // Modais de formulario abertos contam como edicao ativa
+  const openForms=['form-ov','dil-ov','contato-ov','urg-ov','aux-modal-overlay'];
+  return openForms.some(id=>{
+    const el=document.getElementById(id);
+    return el && (el.classList.contains('on') || el.style.display==='flex' || el.style.display==='block');
+  });
+}
 function _rtSchedule(mod){
   _rtPending.add(mod);
   if(_rtTimer)return;
-  _rtTimer=setTimeout(async()=>{
-    const mods=[..._rtPending];_rtPending.clear();_rtTimer=null;
+  _rtTimer=setTimeout(async function _rtFlush(){
+    _rtTimer=null;
+    // Adia a recarga do CACHE se o usuario estiver editando. Recarregar CACHE
+    // com dados remotos faria a proxima save() comparar com snapshot "ja novo"
+    // e descartar a alteracao do usuario. Reagenda em 1s ate o usuario sair
+    // da edicao.
+    if(_isUserEditing()){
+      _rtTimer=setTimeout(_rtFlush,1000);
+      return;
+    }
+    const mods=[..._rtPending];_rtPending.clear();
     for(const m of mods){
       const tbl=TABLES[m];if(!tbl)continue;
       try{
@@ -88,19 +122,14 @@ function _rtSchedule(mod){
       }catch(e){console.error('[Credijuris] realtime reload error',tbl,e);}
     }
     updateDash();
-    /* Não interrompe edição inline ativa */
-    const editing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
-    if(!editing){
-      if(topTab==='acompanhamento'&&mods.includes(subTab))render(subTab);
-      else if(topTab==='contatos'&&mods.includes('contatos'))render('contatos');
-    }
+    if(topTab==='acompanhamento'&&mods.includes(subTab))render(subTab);
+    else if(topTab==='contatos'&&mods.includes('contatos'))render('contatos');
     const consPaneVisible=document.getElementById('crt-pane-consolidado')?.classList.contains('on')
       &&document.getElementById('pane-carteiras')?.classList.contains('on');
-    if(consPaneVisible&&!editing)_crtRenderConsolidado();
-    /* Re-render de carteiras/investidores se estiver visível */
+    if(consPaneVisible)_crtRenderConsolidado();
     const invPaneVisible=document.getElementById('crt-pane-investidores')?.classList.contains('on')
       &&document.getElementById('pane-carteiras')?.classList.contains('on');
-    if(invPaneVisible&&!editing){_crtPopulateInvestidores();_crtRenderOperacoes(_crtAcSelected||null);}
+    if(invPaneVisible){_crtPopulateInvestidores();_crtRenderOperacoes(_crtAcSelected||null);}
   },350);
 }
 function _setupRealtime(){
@@ -155,6 +184,24 @@ async function doLogin(){
   }
 }
 
+/* Limpa todas as chaves cj-* per-session do localStorage, inclusive as
+   namespaced por user (`chave::uuid`). Preserva apenas preferencias persistentes
+   (cj-theme, cj-sidebar-state) que devem sobreviver entre logins. */
+function _clearSessionLocalStorage(){
+  const KEEP=new Set(['cj-theme','cj-sidebar-state']);
+  try{
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k)continue;
+      if(KEEP.has(k))continue;
+      // Remove chaves cj-* simples e qualquer chave namespaced "::uuid"
+      if(k.startsWith('cj-')||/::[0-9a-f-]{36}$/i.test(k))keys.push(k);
+    }
+    keys.forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+  }catch(e){}
+}
+
 async function doLogout(){
   /* Cleanup defensivo: garante reset de estado mesmo se signOut falhar (rede). */
   try{if(sb)await sb.auth.signOut();}
@@ -162,7 +209,9 @@ async function doLogout(){
   finally{
     _currentUserId=null;
     Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+    CACHE_AUX=[];curAuxId=null;
     if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
+    _clearSessionLocalStorage();
   }
 }
 
@@ -207,13 +256,25 @@ async function _initApp(){
     if(event==='SIGNED_OUT'||event==='USER_DELETED'){
       _currentUserId=null;
       Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
-      /* Limpa todas as chaves cj-* per-session, exceto preferências persistentes
-         (cj-theme, cj-sidebar-state que devem sobreviver ao logout). */
-      ['cj-user-filters','cj-sidebar-lasttab','cj-sub-tab','cj-sidebar-active','cj-parametros']
-        .forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+      CACHE_AUX=[];curAuxId=null;
+      _clearSessionLocalStorage();
       if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
       document.getElementById('logout-btn').style.display='none';
       ls.style.display='flex';
+    } else if(event==='SIGNED_IN'&&session){
+      // Outra aba/dispositivo logou nessa origem, ou refresh trouxe sessao valida.
+      // Se ja temos auth ativa para o mesmo usuario, ignora — _onAuthenticated
+      // ja rodou pela getSession inicial ou pelo doLogin.
+      if(_currentUserId===session.user.id)return;
+      // Trocou de usuario sem logout explicito: limpa estado anterior antes de re-auth.
+      if(_currentUserId){
+        Object.keys(CACHE).forEach(k=>CACHE[k]=[]);
+        CACHE_AUX=[];curAuxId=null;
+        _clearSessionLocalStorage();
+        if(_realtimeChannel){try{await sb.removeChannel(_realtimeChannel);}catch(e){}_realtimeChannel=null;}
+      }
+      try{await _onAuthenticated(session);}
+      catch(e){console.error('[Credijuris] SIGNED_IN re-auth error:',e);}
     } else if(event==='TOKEN_REFRESHED'&&session){
       _currentUserId=session.user.id;
       /* Token novo → realtime channel pode ter sido invalidado. Recria. */
@@ -598,6 +659,16 @@ function _autoSyncCheck(){
   const nowMin = now.getHours()*60 + now.getMinutes();
   if(nowMin < targetMin) return; // ainda não chegou o horário
 
+  // Lock cross-aba via localStorage: se outra aba ja disparou auto-sync nos
+  // ultimos 5 minutos, esta aba pula. Evita duas abas rodando sync simultaneo.
+  const LOCK_KEY='cj-autosync-lock';
+  const LOCK_TTL_MS=5*60*1000;
+  try{
+    const lockTs=parseInt(localStorage.getItem(LOCK_KEY)||'0',10);
+    if(lockTs && (Date.now()-lockTs)<LOCK_TTL_MS)return;
+    localStorage.setItem(LOCK_KEY,String(Date.now()));
+  }catch(e){}
+
   // Marca antes de disparar para evitar double-trigger em race
   cfg.lastRun = now.toISOString();
   _cfgAutosyncWrite(cfg);
@@ -611,8 +682,17 @@ function _autoSyncCheck(){
   }
 }
 
+// Handler nomeado pro visibilitychange — referencia salva para permitir
+// removeEventListener no proximo _autoSyncInit, evitando vazamento de listeners.
+function _autoSyncVisibilityHandler(){
+  if(!document.hidden) _autoSyncCheck();
+}
+
 async function _autoSyncInit(){
   if(_autoSyncTimer) clearInterval(_autoSyncTimer);
+  // Remove listener anterior antes de adicionar de novo — evita acumular
+  // handlers a cada login (logout+login chamava _autoSyncInit varias vezes).
+  document.removeEventListener('visibilitychange', _autoSyncVisibilityHandler);
   // Carrega config do Supabase ANTES do primeiro check — dispositivo fresh pode ter
   // localStorage vazio mas Supabase tem lastRun de outro dispositivo (cross-device).
   await _cfgAutosyncMergeFromRemote();
@@ -620,11 +700,7 @@ async function _autoSyncInit(){
   // mas o check é leve e idempotente (lastRun garante no-op duplo).
   _autoSyncCheck();
   _autoSyncTimer = setInterval(_autoSyncCheck, 60_000);
-  // Quando a aba volta a ficar visível, força um check imediato (caso o timer
-  // tenha sido throttlado durante a inatividade).
-  document.addEventListener('visibilitychange', () => {
-    if(!document.hidden) _autoSyncCheck();
-  });
+  document.addEventListener('visibilitychange', _autoSyncVisibilityHandler);
 }
 
 function _sbShowExec(){
@@ -940,7 +1016,9 @@ function _calcTirAnual(r){
   let valorFinal,d0,d1;
   if(st.label==='Verde'){
     valorFinal=_parseNumCrt(r.jaRecebido);
-    d0=r.dataAquisicao;d1=r.dataLiquidacao;
+    // Fallback para encerrados sem dataLiquidacao preenchida: usa dataEstRecebimento
+    // pra não retornar TIR null em registros antigos importados.
+    d0=r.dataAquisicao;d1=r.dataLiquidacao||r.dataEstRecebimento;
   }else{
     valorFinal=_calcValorProjetado(r);
     d0=r.dataAquisicao;d1=r.dataEstRecebimento;
@@ -951,7 +1029,9 @@ function _calcTirAnual(r){
   if(!isFinite(t0)||!isFinite(t1))return null;
   const dias=(t1-t0)/86400000;
   if(dias<=0)return null;
-  const tir=Math.pow(valorFinal/capital,365/dias)-1;
+  // Base 365.25 (media incluindo anos bissextos) para alinhar com convencao
+  // financeira (XIRR) e com a base usada no consolidado.
+  const tir=Math.pow(valorFinal/capital,365.25/dias)-1;
   return isFinite(tir)?tir:null;
 }
 
@@ -962,7 +1042,7 @@ function _calcValorProjetado(r){
     const jr=_parseNumCrt(r.jaRecebido);
     return jr>0?jr:null;
   }
-  // Demais: face × (1 + taxa × dias/365)
+  // Demais: face × (1 + taxa × dias/365.25)
   const face=_parseNumCrt(r.valorFace);
   if(!face)return null;
   const d0=r.dataRefFace,d1=r.dataEstRecebimento;
@@ -980,7 +1060,7 @@ function _calcValorProjetado(r){
   if(ind.includes('IPCA'))taxa=ipca+2;        // "IPCA + 2%" → índice padrão de projeção
   else if(ind.includes('SELIC'))taxa=selic;
   if(taxa==null||!isFinite(taxa))return null;
-  return face*(1+(taxa/100)*dias/365);
+  return face*(1+(taxa/100)*dias/365.25);
 }
 
 function _crtExportarXLSX(){
@@ -995,7 +1075,13 @@ function _crtExportarXLSX(){
   (CACHE.encerrados||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'encerrados'});});
   rows.sort((a,b)=>(a.dataAquisicao||'').localeCompare(b.dataAquisicao||''));
   if(!rows.length){alert('Não há operações para exportar.');return;}
-  const _d=v=>v?v.split('-').reverse().join('/'):'';
+  // Retorna Date object para datas ISO validas — Excel reconhece e permite ordenar/filtrar.
+  // Antes era string "dd/mm/yyyy" que o Excel tratava como texto.
+  const _d=v=>{
+    if(!v||!/^\d{4}-\d{2}-\d{2}/.test(v))return '';
+    const dt=new Date(v.slice(0,10)+'T12:00:00');
+    return isFinite(dt)?dt:'';
+  };
   const _abaLbl={cessoes:'Ativa',rpv:'RPV',encerrados:'Encerrado'};
   const headers=['Aba','Nº processo','Cedente','Advogado','Tipo de crédito','Tribunal',
     'Capital investido (R$)','Data da cessão','Valor de face (R$)','Data ref. do face','Índice de atualização',
@@ -1118,6 +1204,9 @@ function _crtExportarXLSX(){
   // formato + estilo das linhas de dados
   const moneyCols=[6,8,12,14,19];
   const pctCols=[21,22];
+  // Datas: Data da cessao, Data ref. do face, Data est. recebimento,
+  //         Data receb. efetivo, Ult. atualizacao.
+  const dateCols=[7,9,11,13,18];
   for(let i=1;i<=rows.length;i++){
     const rIdx=headerRowIdx+i;
     const zebra=i%2===0;
@@ -1125,7 +1214,8 @@ function _crtExportarXLSX(){
       const ref=XLSX.utils.encode_cell({r:rIdx,c});
       const isMoney=moneyCols.includes(c);
       const isPct=pctCols.includes(c);
-      const align=isMoney||isPct||c===0||c===19?'right':'left';
+      const isDate=dateCols.includes(c);
+      const align=isMoney||isPct||c===0||c===19?'right':(isDate?'center':'left');
       const style={
         font:{...fontBase,sz:10},
         alignment:{horizontal:align,vertical:'center',wrapText:false},
@@ -1135,6 +1225,12 @@ function _crtExportarXLSX(){
       if(ws[ref])ws[ref].s=style;
       if(ws[ref]&&isMoney&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
       if(ws[ref]&&isPct&&typeof ws[ref].v==='number')ws[ref].z='0.00%';
+      // Datas: marca como tipo data (t='d') e formato pt-BR. xlsx-js-style
+      // converte o Date object para serial Excel quando t==='d'.
+      if(ws[ref]&&isDate&&ws[ref].v instanceof Date){
+        ws[ref].t='d';
+        ws[ref].z='dd/mm/yyyy';
+      }
     }
   }
   // congela painel até abaixo do header da tabela
@@ -1535,7 +1631,11 @@ function updateDash(){
   });
   alertRecs.sort((a,b)=>a._deadline.localeCompare(b._deadline));
 
-  document.getElementById('ds-fatal').textContent=alertRecs.length;
+  // KPI "COM PRAZO FATAL": numero de PROCESSOS distintos com prazo futuro.
+  // Um processo com 5 diligencias conta como 1, nao 5 — alinhado com o que o
+  // rotulo sugere. O card lateral mostra cada diligencia separadamente.
+  const alertProcCount=new Set(alertRecs.map(a=>a._id)).size;
+  document.getElementById('ds-fatal').textContent=alertProcCount;
 
   const today=new Date(); today.setHours(0,0,0,0);
 
@@ -1997,12 +2097,16 @@ function openActMenu(e,mod,id,isChild){
 /* ======================================================
    FILTER + PAGINATE
 ====================================================== */
-function gv(id){const e=document.getElementById(id);return e?e.value.trim().toLowerCase():'';}
+// Normaliza string pra busca: lowercase + remove diacriticos (acentos, cedilha).
+// Preserva pontuacao (./- importantes em numero de processo).
+// Buscar "cessao" acha "Cessao", "Cessão", "CESSAO" etc.
+function _strNorm(s){return(s==null?'':String(s)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function gv(id){const e=document.getElementById(id);return e?_strNorm(e.value.trim()):'';}
 
 /* Encontra filhos que batem com a query, expande seus pais e retorna o Set de IDs de pais forçados */
 function _expandChildMatches(mod,allData,q){
   if(!q)return new Set();
-  const ms=v=>(v||'').toLowerCase().includes(q);
+  const ms=v=>_strNorm(v).includes(q);
   const forced=new Set();
   allData.filter(r=>r.vinculoPai).forEach(child=>{
     if(ms(child.numeroProcesso)||ms(child.advogado)||ms(child.cedente)||ms(child.cessionario)||ms(child.devedor)){
@@ -2014,7 +2118,7 @@ function _expandChildMatches(mod,allData,q){
 }
 
 function filterRecs(recs,mod,forcedIds=new Set()){
-  const ms=(val,f)=>!f||(val||'').toLowerCase().includes(f);
+  const ms=(val,f)=>!f||_strNorm(val).includes(f);
   const procId={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
   const vProc=procId?gv(procId):'';
   return recs.filter(r=>{
@@ -3490,7 +3594,8 @@ function _crtRenderConsolidado(){
   const fmtNum=v=>v>0?fmtBRL(v):'—';
 
   const tableRows=[];
-  let totCap=0,totRecebido=0,totOps=0;
+  let totCap=0,totRecebido=0,totAReceber=0,totGanho=0,totOps=0;
+  const tirsAll=[];
 
   for(const[normName,displayName]of investMap){
     const ops=[];
@@ -3501,9 +3606,18 @@ function _crtRenderConsolidado(){
     if(!ops.length)continue;
     const capital=ops.reduce((s,r)=>s+_parseNumCrt(r.capitalInvestido),0);
     const recebido=ops.reduce((s,r)=>s+_parseNumCrt(r.jaRecebido),0);
-    totCap+=capital;totRecebido+=recebido;totOps+=ops.length;
-    tableRows.push({displayName,capital,recebido,retorno:null,tir:null,count:ops.length});
+    // A receber estimado: para operacoes ainda nao liquidadas (jaRecebido<=0), soma o valor projetado
+    const aReceber=ops.reduce((s,r)=>{const jr=_parseNumCrt(r.jaRecebido);if(jr>0)return s;const vp=_calcValorProjetado(r);return s+(vp||0);},0);
+    const ganho=ops.reduce((s,r)=>s+(_calcGanhoProjetado(r)||0),0);
+    const tirList=ops.map(_calcTirAnual).filter(v=>v!=null&&isFinite(v));
+    const tirAvg=tirList.length?(tirList.reduce((s,v)=>s+v,0)/tirList.length):null;
+    const retorno=capital>0?ganho/capital:null;
+    totCap+=capital;totRecebido+=recebido;totAReceber+=aReceber;totGanho+=ganho;totOps+=ops.length;
+    tirsAll.push(...tirList);
+    tableRows.push({displayName,capital,aReceber,recebido,retorno,tir:tirAvg,count:ops.length});
   }
+  const totRetorno=totCap>0?totGanho/totCap:null;
+  const totTir=tirsAll.length?(tirsAll.reduce((s,v)=>s+v,0)/tirsAll.length):null;
 
   /* ordenação */
   tableRows.sort((a,b)=>{
@@ -3527,10 +3641,10 @@ function _crtRenderConsolidado(){
     <tr>
       <td style="font-weight:500;color:#e2e8f0">${esc(r.displayName)}</td>
       <td class="crt-td-num">${fmtNum(r.capital)}</td>
-      <td class="crt-td-num">—</td>
+      <td class="crt-td-num">${fmtNum(r.aReceber)}</td>
       <td class="crt-td-num">${fmtNum(r.recebido)}</td>
-      <td class="crt-td-num">—</td>
-      <td class="crt-td-num">—</td>
+      <td class="crt-td-num">${fmtPct(r.retorno)}</td>
+      <td class="crt-td-num">${fmtPct(r.tir)}</td>
       <td class="crt-td-num">${r.count}</td>
     </tr>`).join('');
 
@@ -3543,10 +3657,10 @@ function _crtRenderConsolidado(){
         <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-top:1px">Total da carteira</div>
       </td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totCap)}</td>
-      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
+      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totAReceber)}</td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totRecebido)}</td>
-      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
-      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
+      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtPct(totRetorno)}</td>
+      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtPct(totTir)}</td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${totOps}</td>
     </tr>`;
 }
@@ -4558,6 +4672,11 @@ async function syncAdvbox(opts){
   const hdrs={...(session?.access_token?{'Authorization':'Bearer '+session.access_token}:{}),'apikey':_SB_KEY};
   const _PROXY=`${_SB_URL}/functions/v1/advbox-proxy`;
 
+  // Flag de abort por erro de autenticacao no Advbox (401/403). Quando setada,
+  // o loop principal pula os processos restantes e mostra mensagem clara em
+  // vez de gerar erro por processo.
+  let _authAborted=false;
+
   // Fetch helper com classificação de erros
   async function _advboxGet(url,label){
     let raw;
@@ -4570,6 +4689,7 @@ async function syncAdvbox(opts){
       let parsed={};
       try{parsed=JSON.parse(body);}catch{}
       const s=raw.status;
+      if(s===401||s===403)_authAborted=true;
       const msg=parsed.error||
         (s===401||s===403?`Token Advbox expirado (${s})`
         :s===429?'Limite de requisições atingido'
@@ -4578,7 +4698,10 @@ async function syncAdvbox(opts){
       return{err:msg,retryable:s===429||s>=500};
     }
     if(!body.trim()) return{err:`${label}: resposta vazia`,retryable:true};
-    if(body.trimStart().startsWith('<')) return{err:'Token Advbox expirado ou inválido — atualize nas configurações',retryable:false};
+    if(body.trimStart().startsWith('<')){
+      _authAborted=true;
+      return{err:'Token Advbox expirado ou inválido — atualize nas configurações',retryable:false};
+    }
     try{return{data:JSON.parse(body)};}
     catch{return{err:`${label}: resposta inválida (${body.slice(0,80)})`,retryable:false};}
   }
@@ -4588,6 +4711,12 @@ async function syncAdvbox(opts){
   const erros=[],pendentes=[],paraRetry=[];
 
   async function _buscarProcesso({mod,rec},tentativa=1){
+    // Aborta imediatamente se token Advbox ja foi detectado como invalido —
+    // evita gastar tempo gerando o mesmo erro para cada processo restante.
+    if(_authAborted){
+      if(tentativa===1)st.done++;
+      return;
+    }
     const labelFase=tentativa>1?`Tentativa ${tentativa}: Buscando movimentações`:'Buscando movimentações';
     _syncProgressUpdate(prog,{label:`${labelFase} (${st.done}/${total})`,pct:Math.round(st.done/total*100),sub:rec.numeroProcesso});
 
@@ -4645,12 +4774,15 @@ async function syncAdvbox(opts){
           id:p.id||null,
           task:String(p.task||'').slice(0,200),
           notes:String(p.notes||p.comments||'').slice(0,300),
-          deadline:String(p.date_deadline).slice(0,10),
+          // normDate aceita ISO, "dd/mm/yyyy", "yyyy-mm-dd HH:MM:SS" e com timezone.
+          // Garante que formatos inesperados da Advbox nao quebrem o calendario/KPI.
+          deadline:normDate(p.date_deadline)||String(p.date_deadline).slice(0,10),
           responsible:String(
             (Array.isArray(p.users) && p.users[0] && (p.users[0].name||p.users[0].nome)) ||
             p.responsible || p.author || ''
           ).slice(0,80)
-        }));
+        }))
+        .filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.deadline)); // descarta linhas com data invalida
     }
 
     const arr=load(mod);
@@ -4677,76 +4809,99 @@ async function syncAdvbox(opts){
     await _sleep(2000);
   }
 
-  // FASE 1 — primeira passagem
-  for(const item of allRecs) await _buscarProcesso(item);
-
-  // Retry automático para falhas transitórias (até 2 tentativas extras)
-  while(paraRetry.length){
-    const lote=[...paraRetry];
-    paraRetry.length=0;
-    const backoff=lote[0].tentativa===2?5000:10000;
-    _syncProgressUpdate(prog,{label:`🔄 Repetindo ${lote.length} processo(s) com falha transitória…`,pct:100});
-    await _sleep(backoff);
-    for(const{mod,rec,tentativa}of lote) await _buscarProcesso({mod,rec},tentativa);
-  }
-
-  // FASE 2 — Salvar movimentações + diligências + assinatura do lawsuit
-  if(pendentes.length){
-    for(const[i,{mod,arr,idx,movs,openDils,movsChanged,lawsuitSig}]of pendentes.entries()){
-      _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
-      if(idx===-1){st.synced++;continue;}
-      let updated=arr[idx];
-      if(movsChanged){
-        const hist=movs.map(mv=>{
-          const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
-          const descricao=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1000));
-          return{data,descricao};
-        }).sort((a,b)=>a.data.localeCompare(b.data));
-        updated={...updated,historicoProcessual:hist,_advboxMovCount:movs.length};
-      }
-      if(openDils!==null){
-        // prazoFatal agora deriva automaticamente das diligencias do Advbox (mais proxima de vencer).
-        // Sobrescreve qualquer valor manual previo — "fonte da verdade" e o Advbox.
-        const computedPrazo = _computePrazoFatalFromDils(openDils);
-        updated={...updated,_advboxDiligencias:openDils,_advboxDiligenciasSchemaVer:DILIGENCIA_SCHEMA_VER,prazoFatal:computedPrazo};
-      }
-      if(lawsuitSig){
-        updated={...updated,_advboxLawsuitSig:lawsuitSig};
-      }
-      arr[idx]=updated;
-      save(mod,arr);
-      st.synced++;
+  // try/finally garante limpeza do popup de progresso e do botao mesmo se
+  // uma excecao inesperada lancar no meio do sync — antes ficava travado.
+  try{
+    // FASE 1 — primeira passagem
+    for(const item of allRecs){
+      if(_authAborted)break;
+      await _buscarProcesso(item);
     }
-  }
 
-  _syncProgressHide(prog);
-  btn.disabled=false;
-  btn.innerHTML='↺ Sincronizar';
+    // Retry automático para falhas transitórias (até 2 tentativas extras)
+    while(paraRetry.length && !_authAborted){
+      const lote=[...paraRetry];
+      paraRetry.length=0;
+      const backoff=lote[0].tentativa===2?5000:10000;
+      _syncProgressUpdate(prog,{label:`🔄 Repetindo ${lote.length} processo(s) com falha transitória…`,pct:100});
+      await _sleep(backoff);
+      for(const{mod,rec,tentativa}of lote){
+        if(_authAborted)break;
+        await _buscarProcesso({mod,rec},tentativa);
+      }
+    }
 
-  // Registra "Última execução" — manual ou automática
-  try {
-    const cfg = _cfgAutosyncRead();
-    cfg.lastRun = new Date().toISOString();
-    _cfgAutosyncWrite(cfg);
-    _cfgAutosyncLoad();
-  } catch(e) { console.warn('[Credijuris] não foi possível registrar última execução:', e); }
+    // FASE 2 — Salvar movimentações + diligências + assinatura do lawsuit.
+    // Re-carrega `arr` a cada registro aqui (em vez de usar o snapshot capturado
+    // na FASE 1) — isso preserva edicoes do usuario feitas durante a sincronizacao.
+    if(pendentes.length){
+      for(const[i,{mod,rec,movs,openDils,movsChanged,lawsuitSig}]of pendentes.entries()){
+        _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
+        const arr=load(mod);
+        const idx=arr.findIndex(r=>r.id===rec.id);
+        if(idx===-1){st.synced++;continue;}
+        let updated=arr[idx];
+        if(movsChanged){
+          const hist=movs.map(mv=>{
+            const data=(mv.date||(mv.created_at?mv.created_at.slice(0,10):'')||'').slice(0,10);
+            const descricao=_limparDescricao((mv.description||mv.text||mv.content||mv.title||'(sem descrição)').slice(0,1000));
+            return{data,descricao};
+          }).sort((a,b)=>a.data.localeCompare(b.data));
+          updated={...updated,historicoProcessual:hist,_advboxMovCount:movs.length};
+        }
+        if(openDils!==null){
+          // prazoFatal deriva automaticamente das diligencias do Advbox para cessoes/rpv.
+          // Para requerimentos (Diversos), preserva valor manual quando Advbox nao tem
+          // diligencias pendentes — usuario pode editar manualmente sem perder no sync.
+          updated={...updated,_advboxDiligencias:openDils,_advboxDiligenciasSchemaVer:DILIGENCIA_SCHEMA_VER};
+          if(openDils.length>0 || mod!=='requerimentos'){
+            updated.prazoFatal=_computePrazoFatalFromDils(openDils);
+          }
+        }
+        if(lawsuitSig){
+          updated={...updated,_advboxLawsuitSig:lawsuitSig};
+        }
+        arr[idx]=updated;
+        save(mod,arr);
+        st.synced++;
+      }
+    }
 
-  const todosAuthErr=st.failed>0&&erros.every(e=>e.includes('Token Advbox expirado'));
-  let msg=`Sincronização concluída: ${st.synced} processo(s) atualizado(s)`;
-  if(st.failed){
-    msg+=`, ${st.failed} com erro`;
-    if(todosAuthErr) msg+='\n⚠️ Token Advbox expirado — atualize nas configurações';
-    else if(erros.length) msg+=`\nPrimeiro erro: ${erros[0]}`;
+    // Registra "Última execução" — manual ou automática
+    try {
+      const cfg = _cfgAutosyncRead();
+      cfg.lastRun = new Date().toISOString();
+      _cfgAutosyncWrite(cfg);
+      _cfgAutosyncLoad();
+    } catch(e) { console.warn('[Credijuris] não foi possível registrar última execução:', e); }
+
+    let msg;
+    if(_authAborted){
+      msg='Sincronização interrompida: Token Advbox expirado ou inválido — atualize nas configurações';
+    }else{
+      msg=`Sincronização concluída: ${st.synced} processo(s) atualizado(s)`;
+      if(st.failed){
+        msg+=`, ${st.failed} com erro`;
+        if(erros.length) msg+=`\nPrimeiro erro: ${erros[0]}`;
+      }
+    }
+    showToast(msg,(_authAborted||st.failed)?8000:3500);
+    if(erros.length){
+      console.group('[Advbox] Erros de sincronização ('+erros.length+')');
+      erros.forEach(e=>console.warn(e));
+      console.groupEnd();
+    }
+    if(topTab==='acompanhamento')render(subTab);
+    else if(topTab!=='dashboard')render(topTab);
+    updateDash();
+  }catch(e){
+    console.error('[Credijuris] syncAdvbox erro nao tratado:',e);
+    showToast('Erro inesperado na sincronizacao: '+(e.message||e),8000);
+  }finally{
+    _syncProgressHide(prog);
+    btn.disabled=false;
+    btn.innerHTML='↺ Sincronizar';
   }
-  showToast(msg,st.failed?8000:3500);
-  if(erros.length){
-    console.group('[Advbox] Erros de sincronização ('+erros.length+')');
-    erros.forEach(e=>console.warn(e));
-    console.groupEnd();
-  }
-  if(topTab==='acompanhamento')render(subTab);
-  else if(topTab!=='dashboard')render(topTab);
-  updateDash();
 }
 
 /* ======================================================
