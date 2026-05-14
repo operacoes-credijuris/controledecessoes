@@ -565,7 +565,9 @@ function _autoSyncCheck(){
 
   const now = new Date();
   const todayKey = _autoSyncDayKey(now);
-  const lastKey = (cfg.lastRun||'').slice(0,10);
+  // lastRun é ISO (UTC); converte para data local antes de comparar com todayKey (local)
+  // pra evitar loop quando UTC e local estão em dias diferentes (após 21h BRT).
+  const lastKey = cfg.lastRun ? _autoSyncDayKey(new Date(cfg.lastRun)) : '';
   if(lastKey === todayKey) return; // já rodou hoje
 
   const [hh, mm] = (cfg.time||'06:00').split(':').map(Number);
