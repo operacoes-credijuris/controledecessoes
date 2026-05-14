@@ -240,6 +240,7 @@ async function _onAuthenticated(session){
   _fLoad();
   _setupRealtime();
   updateDash();
+  _startDilPolling();
   /* Se a seção ativa for carteiras, _initSidebar() rodou antes dos dados chegarem.
      Agora o CACHE está cheio — reinicializa o tab de investidores completamente. */
   if((localStorage.getItem('cj-sidebar-active')||'exec')==='carteiras')
@@ -4980,7 +4981,7 @@ async function syncAdvbox(opts){
       return;
     }
 
-    pendentes.push({mod,rec,arr,idx,movs,openDils,movsChanged,lawsuitSig:newSig,pi:pendentes.length});
+    pendentes.push({mod,rec,arr,idx,movs,openDils,movsChanged,lawsuitSig:newSig,lawsuitId:String(lawsuits[0].id||''),pi:pendentes.length});
     if(tentativa===1)st.done++;
     _upd(rec.numeroProcesso);
     await _sleep(2000);
@@ -5012,7 +5013,7 @@ async function syncAdvbox(opts){
     // Re-carrega `arr` a cada registro aqui (em vez de usar o snapshot capturado
     // na FASE 1) — preserva edicoes do usuario feitas durante a sincronizacao.
     if(pendentes.length){
-      for(const[i,{mod,rec,movs,openDils,movsChanged,lawsuitSig}]of pendentes.entries()){
+      for(const[i,{mod,rec,movs,openDils,movsChanged,lawsuitSig,lawsuitId}]of pendentes.entries()){
         _syncProgressUpdate(prog,{label:`Salvando (${i+1}/${pendentes.length})`,pct:Math.round((i+1)/pendentes.length*100)});
         const arr=load(mod);
         const idx=arr.findIndex(r=>r.id===rec.id);
@@ -5035,9 +5036,8 @@ async function syncAdvbox(opts){
             updated.prazoFatal=_computePrazoFatalFromDils(openDils);
           }
         }
-        if(lawsuitSig){
-          updated={...updated,_advboxLawsuitSig:lawsuitSig};
-        }
+        if(lawsuitSig) updated={...updated,_advboxLawsuitSig:lawsuitSig};
+        if(lawsuitId)  updated={...updated,_advboxLawsuitId:lawsuitId};
         arr[idx]=updated;
         save(mod,arr);
         st.synced++;
@@ -5223,6 +5223,96 @@ function _advboxShowTaskErr(msg){
   el.style.display='';
 }
 
+// Busca /posts de um processo pelo lawsuit_id já armazenado e atualiza _advboxDiligencias.
+// Retorna true se houve mudança (para quem quiser chamar updateDash condicional).
+async function _advboxRefreshOneDil(proxy,headers,mod,recId,lawsuitId){
+  try{
+    const r=await fetch(`${proxy}?action=posts&lawsuit_id=${encodeURIComponent(lawsuitId)}`,{headers});
+    if(!r.ok)return false;
+    const body=await r.text();
+    if(!body||body.trimStart().startsWith('<'))return false;
+    const data=JSON.parse(body);
+    const histAll=Array.isArray(data)?data:(data.data||data.results||[]);
+    const openDils=histAll.map(p=>{
+      const rawDeadline=p.date_deadline||'';
+      const normalizedDeadline=rawDeadline?(normDate(rawDeadline)||String(rawDeadline).slice(0,10)):'';
+      const validDeadline=/^\d{4}-\d{2}-\d{2}$/.test(normalizedDeadline);
+      return{
+        id:p.id||null,
+        task:String(p.task||'').slice(0,200),
+        notes:String(p.notes||p.comments||'').slice(0,300),
+        deadline:validDeadline?normalizedDeadline:'',
+        responsible:String((Array.isArray(p.users)&&p.users[0]&&(p.users[0].name||p.users[0].nome))||p.responsible||p.author||'').slice(0,80)
+      };
+    });
+    const arr=load(mod);
+    const idx=arr.findIndex(r=>r.id===recId);
+    if(idx===-1)return false;
+    const curDils=JSON.stringify(arr[idx]._advboxDiligencias||[]);
+    if(JSON.stringify(openDils)===curDils)return false;
+    arr[idx]={...arr[idx],_advboxDiligencias:openDils,_advboxDiligenciasSchemaVer:DILIGENCIA_SCHEMA_VER};
+    if(openDils.length>0||mod!=='requerimentos') arr[idx].prazoFatal=_computePrazoFatalFromDils(openDils);
+    save(mod,arr);
+    return true;
+  }catch(e){return false;}
+}
+
+// Busca diligências de um processo pelo número (busca em todos os módulos).
+// Usado após criar tarefa via modal para refletir a nova tarefa imediatamente.
+async function _advboxRefreshDilsByNum(numeroProcesso){
+  if(!numeroProcesso)return;
+  try{
+    const{proxy,headers}=await _advboxProxyAuth();
+    for(const mod of['cessoes','rpv','requerimentos']){
+      const arr=load(mod);
+      const rec=arr.find(r=>(r.numeroProcesso||'')===numeroProcesso);
+      if(!rec)continue;
+      let lawsuitId=rec._advboxLawsuitId||'';
+      if(!lawsuitId){
+        // Sem ID armazenado: resolve via /lawsuits (so na primeira vez)
+        try{
+          const lsData=await _advboxProxyFetch(`${proxy}?action=lawsuits&process_number=${encodeURIComponent(numeroProcesso)}`);
+          const lsArr=Array.isArray(lsData)?lsData:(lsData.results||lsData.data||[]);
+          lawsuitId=String(lsArr[0]?.id||'');
+          if(lawsuitId){
+            const arr2=load(mod);const idx2=arr2.findIndex(r=>r.id===rec.id);
+            if(idx2!==-1){arr2[idx2]={...arr2[idx2],_advboxLawsuitId:lawsuitId};save(mod,arr2);}
+          }
+        }catch(e){continue;}
+      }
+      if(!lawsuitId)continue;
+      const changed=await _advboxRefreshOneDil(proxy,headers,mod,rec.id,lawsuitId);
+      if(changed)updateDash();
+      break;
+    }
+  }catch(e){}
+}
+
+// Polling silencioso a cada 5 minutos — só busca /posts (sem movements).
+// Só executa quando o usuário está no dashboard para não fazer chamadas desnecessárias.
+let _dilPollTimer=null;
+function _startDilPolling(){
+  if(_dilPollTimer)return;
+  _dilPollTimer=setInterval(_dilPollTick,5*60*1000);
+}
+async function _dilPollTick(){
+  if(topTab!=='dashboard')return;
+  try{
+    const{proxy,headers}=await _advboxProxyAuth();
+    let anyChanged=false;
+    for(const mod of['cessoes','rpv','requerimentos']){
+      const arr=load(mod);
+      for(const rec of arr){
+        if(!rec._advboxLawsuitId)continue;
+        const changed=await _advboxRefreshOneDil(proxy,headers,mod,rec.id,rec._advboxLawsuitId);
+        if(changed)anyChanged=true;
+        await new Promise(res=>setTimeout(res,400));
+      }
+    }
+    if(anyChanged)updateDash();
+  }catch(e){}
+}
+
 async function _advboxCreateTask(){
   const ctx=_advboxModalCtx;
   if(!ctx||!ctx.settings)return;
@@ -5267,6 +5357,7 @@ async function _advboxCreateTask(){
     const postId=(post&&(post.posts_id||post.id||(post.data&&post.data.id)))||'';
     closeModal('advbox-task-ov');
     showToast(postId?`Tarefa criada no Advbox (ID ${postId}).`:'Tarefa criada no Advbox.');
+    _advboxRefreshDilsByNum(ctx.numeroProcesso);
   }catch(e){
     _advboxShowTaskErr(e.message||String(e));
     btn.disabled=false;btn.textContent='Criar tarefa';
