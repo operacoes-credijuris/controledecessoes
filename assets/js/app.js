@@ -940,7 +940,8 @@ function _calcTirAnual(r){
   let valorFinal,d0,d1;
   if(st.label==='Verde'){
     valorFinal=_parseNumCrt(r.jaRecebido);
-    d0=r.dataAquisicao;d1=r.dataLiquidacao;
+    // Fallback para encerrados sem dataLiquidacao preenchida: usa dataEstRecebimento.
+    d0=r.dataAquisicao;d1=r.dataLiquidacao||r.dataEstRecebimento;
   }else{
     valorFinal=_calcValorProjetado(r);
     d0=r.dataAquisicao;d1=r.dataEstRecebimento;
@@ -951,7 +952,8 @@ function _calcTirAnual(r){
   if(!isFinite(t0)||!isFinite(t1))return null;
   const dias=(t1-t0)/86400000;
   if(dias<=0)return null;
-  const tir=Math.pow(valorFinal/capital,365/dias)-1;
+  // Base 365.25 alinha com _xirr e convencao financeira (CAGR com anos civis medios).
+  const tir=Math.pow(valorFinal/capital,365.25/dias)-1;
   return isFinite(tir)?tir:null;
 }
 
@@ -962,7 +964,7 @@ function _calcValorProjetado(r){
     const jr=_parseNumCrt(r.jaRecebido);
     return jr>0?jr:null;
   }
-  // Demais: face × (1 + taxa × dias/365)
+  // Demais: face × (1 + taxa × dias/365.25)
   const face=_parseNumCrt(r.valorFace);
   if(!face)return null;
   const d0=r.dataRefFace,d1=r.dataEstRecebimento;
@@ -980,7 +982,7 @@ function _calcValorProjetado(r){
   if(ind.includes('IPCA'))taxa=ipca+2;        // "IPCA + 2%" → índice padrão de projeção
   else if(ind.includes('SELIC'))taxa=selic;
   if(taxa==null||!isFinite(taxa))return null;
-  return face*(1+(taxa/100)*dias/365);
+  return face*(1+(taxa/100)*dias/365.25);
 }
 
 function _crtExportarXLSX(){
@@ -995,7 +997,13 @@ function _crtExportarXLSX(){
   (CACHE.encerrados||[]).forEach(r=>{if(!r.vinculoPai&&norm(r.cessionario)===inv)rows.push({...r,_aba:'encerrados'});});
   rows.sort((a,b)=>(a.dataAquisicao||'').localeCompare(b.dataAquisicao||''));
   if(!rows.length){alert('Não há operações para exportar.');return;}
-  const _d=v=>v?v.split('-').reverse().join('/'):'';
+  // Retorna Date object para datas ISO validas — Excel reconhece e permite ordenar/filtrar.
+  // Antes era string "dd/mm/yyyy" que o Excel tratava como texto.
+  const _d=v=>{
+    if(!v||!/^\d{4}-\d{2}-\d{2}/.test(v))return '';
+    const dt=new Date(v.slice(0,10)+'T12:00:00');
+    return isFinite(dt)?dt:'';
+  };
   const _abaLbl={cessoes:'Ativa',rpv:'RPV',encerrados:'Encerrado'};
   const headers=['Aba','Nº processo','Cedente','Advogado','Tipo de crédito','Tribunal',
     'Capital investido (R$)','Data da cessão','Valor de face (R$)','Data ref. do face','Índice de atualização',
@@ -1118,6 +1126,8 @@ function _crtExportarXLSX(){
   // formato + estilo das linhas de dados
   const moneyCols=[6,8,12,14,19];
   const pctCols=[21,22];
+  // Colunas de data: cessao, ref face, est receb, receb efetivo, ult atualizacao.
+  const dateCols=[7,9,11,13,18];
   for(let i=1;i<=rows.length;i++){
     const rIdx=headerRowIdx+i;
     const zebra=i%2===0;
@@ -1125,7 +1135,8 @@ function _crtExportarXLSX(){
       const ref=XLSX.utils.encode_cell({r:rIdx,c});
       const isMoney=moneyCols.includes(c);
       const isPct=pctCols.includes(c);
-      const align=isMoney||isPct||c===0||c===19?'right':'left';
+      const isDate=dateCols.includes(c);
+      const align=isMoney||isPct||c===0||c===19?'right':(isDate?'center':'left');
       const style={
         font:{...fontBase,sz:10},
         alignment:{horizontal:align,vertical:'center',wrapText:false},
@@ -1135,6 +1146,11 @@ function _crtExportarXLSX(){
       if(ws[ref])ws[ref].s=style;
       if(ws[ref]&&isMoney&&typeof ws[ref].v==='number')ws[ref].z='"R$" #,##0.00';
       if(ws[ref]&&isPct&&typeof ws[ref].v==='number')ws[ref].z='0.00%';
+      // Datas: marca tipo data + formato pt-BR (Excel reconhece como serial date).
+      if(ws[ref]&&isDate&&ws[ref].v instanceof Date){
+        ws[ref].t='d';
+        ws[ref].z='dd/mm/yyyy';
+      }
     }
   }
   // congela painel até abaixo do header da tabela
@@ -1535,7 +1551,11 @@ function updateDash(){
   });
   alertRecs.sort((a,b)=>a._deadline.localeCompare(b._deadline));
 
-  document.getElementById('ds-fatal').textContent=alertRecs.length;
+  // KPI "COM PRAZO FATAL": numero de PROCESSOS distintos com prazo futuro.
+  // Um processo com 5 diligencias conta como 1. O card lateral continua mostrando
+  // cada diligencia separadamente — sao metricas complementares.
+  const alertProcCount=new Set(alertRecs.map(a=>a._id)).size;
+  document.getElementById('ds-fatal').textContent=alertProcCount;
 
   const today=new Date(); today.setHours(0,0,0,0);
 
@@ -1997,12 +2017,16 @@ function openActMenu(e,mod,id,isChild){
 /* ======================================================
    FILTER + PAGINATE
 ====================================================== */
-function gv(id){const e=document.getElementById(id);return e?e.value.trim().toLowerCase():'';}
+// Normaliza string pra busca: lowercase + remove diacriticos (acentos, cedilha).
+// Preserva pontuacao (./- importantes em numero de processo).
+// Buscar "cessao" acha "Cessao", "Cessão", "CESSAO" etc.
+function _strNorm(s){return(s==null?'':String(s)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function gv(id){const e=document.getElementById(id);return e?_strNorm(e.value.trim()):'';}
 
 /* Encontra filhos que batem com a query, expande seus pais e retorna o Set de IDs de pais forçados */
 function _expandChildMatches(mod,allData,q){
   if(!q)return new Set();
-  const ms=v=>(v||'').toLowerCase().includes(q);
+  const ms=v=>_strNorm(v).includes(q);
   const forced=new Set();
   allData.filter(r=>r.vinculoPai).forEach(child=>{
     if(ms(child.numeroProcesso)||ms(child.advogado)||ms(child.cedente)||ms(child.cessionario)||ms(child.devedor)){
@@ -2014,7 +2038,7 @@ function _expandChildMatches(mod,allData,q){
 }
 
 function filterRecs(recs,mod,forcedIds=new Set()){
-  const ms=(val,f)=>!f||(val||'').toLowerCase().includes(f);
+  const ms=(val,f)=>!f||_strNorm(val).includes(f);
   const procId={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc'}[mod];
   const vProc=procId?gv(procId):'';
   return recs.filter(r=>{
@@ -3490,7 +3514,8 @@ function _crtRenderConsolidado(){
   const fmtNum=v=>v>0?fmtBRL(v):'—';
 
   const tableRows=[];
-  let totCap=0,totRecebido=0,totOps=0;
+  let totCap=0,totRecebido=0,totAReceber=0,totGanho=0,totOps=0;
+  const tirsAll=[];
 
   for(const[normName,displayName]of investMap){
     const ops=[];
@@ -3501,9 +3526,18 @@ function _crtRenderConsolidado(){
     if(!ops.length)continue;
     const capital=ops.reduce((s,r)=>s+_parseNumCrt(r.capitalInvestido),0);
     const recebido=ops.reduce((s,r)=>s+_parseNumCrt(r.jaRecebido),0);
-    totCap+=capital;totRecebido+=recebido;totOps+=ops.length;
-    tableRows.push({displayName,capital,recebido,retorno:null,tir:null,count:ops.length});
+    // A receber estimado: operacoes nao liquidadas (jaRecebido=0) somam valor projetado.
+    const aReceber=ops.reduce((s,r)=>{const jr=_parseNumCrt(r.jaRecebido);if(jr>0)return s;const vp=_calcValorProjetado(r);return s+(vp||0);},0);
+    const ganho=ops.reduce((s,r)=>s+(_calcGanhoProjetado(r)||0),0);
+    const tirList=ops.map(_calcTirAnual).filter(v=>v!=null&&isFinite(v));
+    const tirAvg=tirList.length?(tirList.reduce((s,v)=>s+v,0)/tirList.length):null;
+    const retorno=capital>0?ganho/capital:null;
+    totCap+=capital;totRecebido+=recebido;totAReceber+=aReceber;totGanho+=ganho;totOps+=ops.length;
+    tirsAll.push(...tirList);
+    tableRows.push({displayName,capital,aReceber,recebido,retorno,tir:tirAvg,count:ops.length});
   }
+  const totRetorno=totCap>0?totGanho/totCap:null;
+  const totTir=tirsAll.length?(tirsAll.reduce((s,v)=>s+v,0)/tirsAll.length):null;
 
   /* ordenação */
   tableRows.sort((a,b)=>{
@@ -3527,10 +3561,10 @@ function _crtRenderConsolidado(){
     <tr>
       <td style="font-weight:500;color:#e2e8f0">${esc(r.displayName)}</td>
       <td class="crt-td-num">${fmtNum(r.capital)}</td>
-      <td class="crt-td-num">—</td>
+      <td class="crt-td-num">${fmtNum(r.aReceber)}</td>
       <td class="crt-td-num">${fmtNum(r.recebido)}</td>
-      <td class="crt-td-num">—</td>
-      <td class="crt-td-num">—</td>
+      <td class="crt-td-num">${fmtPct(r.retorno)}</td>
+      <td class="crt-td-num">${fmtPct(r.tir)}</td>
       <td class="crt-td-num">${r.count}</td>
     </tr>`).join('');
 
@@ -3543,10 +3577,10 @@ function _crtRenderConsolidado(){
         <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-top:1px">Total da carteira</div>
       </td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totCap)}</td>
-      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
+      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totAReceber)}</td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtNum(totRecebido)}</td>
-      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
-      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#4b5563;padding:10px 8px">—</td>
+      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtPct(totRetorno)}</td>
+      <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${fmtPct(totTir)}</td>
       <td class="crt-td-num" style="font-weight:700;font-size:11px;color:#dce3ee;padding:10px 8px">${totOps}</td>
     </tr>`;
 }
