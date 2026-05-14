@@ -1611,21 +1611,28 @@ function updateDash(){
   document.getElementById('ds-rpv').textContent=rpPai;
   document.getElementById('ds-enc').textContent=enPai;
 
-  /* Prazos Fatais — gera a lista uma vez aqui. Uma entrada POR DILIGENCIA
-     (nao por processo). Inclui processos filhos. Ignora deadlines vencidos
-     (Advbox nao marca conclusao). Mesma fonte usada pelo card lateral E pelo
-     KPI "COM PRAZO FATAL" — contagens sempre consistentes. */
+  /* Tarefas Pendentes — gera duas listas a partir das diligencias pendentes
+     do Advbox. Uma entrada POR DILIGENCIA (nao por processo). Inclui processos
+     filhos. Ignora deadlines vencidos (Advbox nao marca conclusao).
+     - alertRecs : diligencias COM deadline futuro (aba "Peremptorios" + KPI).
+     - outrosRecs: diligencias pendentes SEM deadline (aba "Outros"). */
   const _hojeStr=todayStr();
   const alertRecs=[];
+  const outrosRecs=[];
   [['cessoes',ce],['rpv',rp],['requerimentos',re]].forEach(([mod,recs])=>{
     recs.forEach(r=>{
       const dils=Array.isArray(r._advboxDiligencias)?r._advboxDiligencias:[];
       if(dils.length){
         dils.forEach(d=>{
-          if(!d||!d.deadline)return;
-          const nd=normDate(d.deadline);
-          if(!nd||nd<_hojeStr)return;
-          alertRecs.push({_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_deadline:nd,_task:d.task||''});
+          if(!d)return;
+          const base={_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_task:d.task||''};
+          if(d.deadline){
+            const nd=normDate(d.deadline);
+            if(!nd||nd<_hojeStr)return;
+            alertRecs.push({...base,_deadline:nd});
+          } else {
+            outrosRecs.push(base);
+          }
         });
       } else if(r.prazoFatal){
         const nd=normDate(r.prazoFatal);
@@ -1636,6 +1643,7 @@ function updateDash(){
     });
   });
   alertRecs.sort((a,b)=>a._deadline.localeCompare(b._deadline));
+  outrosRecs.sort((a,b)=>(a.numeroProcesso||'').localeCompare(b.numeroProcesso||''));
 
   // KPI "COM PRAZO FATAL": numero de PROCESSOS distintos com prazo futuro.
   // Um processo com 5 diligencias conta como 1. O card lateral continua mostrando
@@ -1757,6 +1765,27 @@ function updateDash(){
     }).join('');
   }
 
+  // Buffer da aba "Outros": diligencias pendentes do Advbox SEM date_deadline.
+  // Sem _deadline, mostra so o nome da tarefa no lado direito.
+  const ob=document.getElementById('ds-outros-body');
+  if(ob){
+    if(!outrosRecs.length){
+      ob.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt3);font-size:12px">Nenhuma tarefa pendente sem prazo fatal</div>';
+    } else {
+      ob.innerHTML=outrosRecs.map(r=>{
+        const partes=r.cedente||r.cessionario?`${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}`:'';
+        const taskLabel=r._task?esc(r._task):'<span style="color:#4b5563">sem rotulo</span>';
+        return`<div class="alert-item">
+          <div style="flex:1;min-width:0">
+            <div class="al-text">${esc(r.numeroProcesso)}${navBtn(r._mod,r._id)}</div>
+            ${partes?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${partes}</div>`:''}
+          </div>
+          <div style="font-size:10px;color:#94a3b8;flex-shrink:0;max-width:42%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r._task||'')}">${taskLabel}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
   // ÚLTIMAS MOVIMENTAÇÕES — últimos 20 dias, agrupadas por processo
   const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-20);
   const modLabel={cessoes:'Cessões Ativas',rpv:'RPV Complementar',requerimentos:'Diversos'};
@@ -1821,8 +1850,8 @@ function updateDash(){
   const _uPraz=document.getElementById('urg-count-prazos');if(_uPraz)_uPraz.textContent=alertRecs.length||'0';
   const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
   const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
-  _renderPrazosCol(alertRecs.length);
-  selectUrgency(dashUrgencyType||'liquidacao');
+  _renderPrazosCol(alertRecs.length,outrosRecs.length);
+  selectUrgency(dashUrgencyType||'tarefas');
   selectActivity(dashActivityType||'publicacoes');
 
   renderCalendario();
@@ -2647,21 +2676,42 @@ function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function ovClick(e,id){if(e.target===document.getElementById(id))closeModal(id);}
 
-let dashUrgencyType='liquidacao';
-// Coluna autonoma de Prazos Fatais: clona ds-alerts-body direto no novo painel
-// e atualiza o contador do header. Nao usa o dropdown de Urgencias.
-function _renderPrazosCol(count){
-  const src=document.getElementById('ds-alerts-body');
+let dashUrgencyType='tarefas';
+// Aba ativa da coluna Tarefas Pendentes ('peremptorios' = com prazo fatal,
+// 'outros' = sem prazo fatal). Persiste enquanto a sessao esta aberta.
+let _prazosTab='peremptorios';
+let _prazosCounts={per:0,out:0};
+
+// Coluna Tarefas Pendentes: clona o buffer da aba ativa pro #dash-prazos-body
+// e mantem os contadores nos botoes do tab strip e no badge do header.
+function _renderPrazosCol(perCount,outCount){
+  if(typeof perCount==='number')_prazosCounts.per=perCount;
+  if(typeof outCount==='number')_prazosCounts.out=outCount;
   const body=document.getElementById('dash-prazos-body');
-  if(!src||!body)return;
+  if(!body)return;
+  const srcId=_prazosTab==='outros'?'ds-outros-body':'ds-alerts-body';
+  const src=document.getElementById(srcId);
+  if(!src)return;
   body.innerHTML='';
   const clone=src.cloneNode(true);
   clone.removeAttribute('id');
   clone.classList.add('dash-side-list');
   clone.style.cssText='';
   body.appendChild(clone);
-  const cntEl=document.getElementById('prazos-current-count');
-  if(cntEl)cntEl.textContent=(count&&count>0)?String(count):'';
+  const perEl=document.getElementById('prazos-tab-cnt-per');
+  const outEl=document.getElementById('prazos-tab-cnt-out');
+  if(perEl)perEl.textContent=_prazosCounts.per>0?String(_prazosCounts.per):'';
+  if(outEl)outEl.textContent=_prazosCounts.out>0?String(_prazosCounts.out):'';
+  const headerCnt=document.getElementById('prazos-current-count');
+  const active=_prazosTab==='outros'?_prazosCounts.out:_prazosCounts.per;
+  if(headerCnt)headerCnt.textContent=active>0?String(active):'';
+  document.querySelectorAll('.dash-prazos-tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===_prazosTab));
+}
+
+function _selectPrazosTab(tab){
+  if(tab!=='peremptorios'&&tab!=='outros')return;
+  _prazosTab=tab;
+  _renderPrazosCol();
 }
 
 function selectUrgency(tipo){
@@ -2671,25 +2721,41 @@ function selectUrgency(tipo){
   };
   // `prazos` agora vive em coluna propria — redireciona chamadas legadas.
   if(tipo==='prazos'){_renderPrazosCol(parseInt(document.getElementById('urg-count-prazos')?.textContent||'0',10)||0);return;}
+  const calBody=document.getElementById('dash-calendar-body');
+  const listBody=document.getElementById('dash-urgency-body');
+  const titleEl=document.getElementById('urg-current-title');
+  const cntEl=document.getElementById('urg-current-count');
+  const footer=document.getElementById('urg-footer');
+  // tipo === 'tarefas' renderiza o calendario (rotulado "Prazos Fatais" no UI).
+  if(tipo==='tarefas'){
+    dashUrgencyType=tipo;
+    if(titleEl)titleEl.textContent='Prazos Fatais';
+    if(cntEl)cntEl.textContent='';
+    if(calBody)calBody.hidden=false;
+    if(listBody)listBody.style.display='none';
+    if(footer)footer.hidden=true;
+    document.querySelectorAll('.urg-dd-item').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
+    renderCalendario();
+    closeUrgDD();
+    return;
+  }
   const cfg=map[tipo]; if(!cfg)return;
   dashUrgencyType=tipo;
   const src=document.getElementById(cfg.srcId);
-  const body=document.getElementById('dash-urgency-body');
-  if(!src||!body)return;
+  if(!src||!listBody)return;
   const cnt=(document.getElementById(cfg.cntId)?.textContent||'').trim();
-  const titleEl=document.getElementById('urg-current-title');
-  const cntEl=document.getElementById('urg-current-count');
   if(titleEl)titleEl.textContent=cfg.title;
   if(cntEl)cntEl.textContent=(cnt&&cnt!=='0')?cnt:'';
-  body.innerHTML='';
+  if(calBody)calBody.hidden=true;
+  listBody.style.display='';
+  listBody.innerHTML='';
   const clone=src.cloneNode(true);
   clone.removeAttribute('id');
   clone.classList.add('dash-side-list');
   clone.style.cssText='';
-  body.appendChild(clone);
+  listBody.appendChild(clone);
   document.querySelectorAll('.urg-dd-item').forEach(el=>el.classList.toggle('on',el.dataset.urgency===tipo));
   // Rodapé fixo: legenda do tipo 'liquidacao' (cessionário c/ 2+ processos)
-  const footer=document.getElementById('urg-footer');
   if(footer){
     if(tipo==='liquidacao'){
       footer.innerHTML='<span class="prio-badge" style="font-size:9px;padding:1px 6px">Prioritário</span><span>cessionário c/ 2+ processos sem recebimento</span>';

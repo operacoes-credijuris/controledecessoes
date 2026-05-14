@@ -875,7 +875,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-stats .sc-val.red{color:#ff7373}
 
 #pane-dashboard .db-grid{
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-columns:repeat(3,minmax(0,1fr));
   gap:16px;
   margin:0;
   align-items:stretch;
@@ -899,6 +899,33 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   flex-direction:column;
   min-width:0;
 }
+/* Tab strip da coluna Tarefas Pendentes (Peremptorios / Outros) */
+.dash-prazos-tabs{
+  display:flex;gap:2px;align-items:center;
+  padding:6px 16px 0;
+  border-bottom:1px solid rgba(255,255,255,.055);
+  flex-shrink:0;
+}
+.dash-prazos-tab{
+  background:transparent;border:none;cursor:pointer;
+  padding:8px 12px 9px;
+  font:600 11.5px/1 var(--font-body);
+  letter-spacing:.3px;
+  color:#6b7280;
+  border-bottom:2px solid transparent;
+  margin-bottom:-1px;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:color .15s,border-color .15s;
+}
+.dash-prazos-tab:hover{color:#c5cad8}
+.dash-prazos-tab.on{color:#6e7dbb;border-bottom-color:#6e7dbb}
+.dash-prazos-tab-cnt{
+  font-size:10px;font-weight:700;
+  padding:1px 6px;border-radius:999px;
+  background:rgba(255,255,255,.06);color:#94a3b8;min-width:14px;text-align:center;
+}
+.dash-prazos-tab.on .dash-prazos-tab-cnt{background:rgba(110,125,187,.22);color:#dde2f4}
+.dash-prazos-tab-cnt:empty{display:none}
 .dash-panel-hdr{
   display:flex;
   align-items:center;
@@ -911,6 +938,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   flex-shrink:0;
 }
 .dash-panel-kicker.blue{color:#8c9ad0}
+.dash-panel-kicker.brand{color:#6e7dbb}
 .dash-panel-kicker.danger{color:#ff8080}
 .dash-panel-title{
   color:#f2f6fb;
@@ -1429,14 +1457,14 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   justify-content:center;
 }
 
-@media(max-width:1500px){
-  /* 4 -> 2 colunas com Agenda full-width na primeira linha */
+@media(max-width:1200px){
+  /* 3 -> 2 colunas, Tarefas Pendentes full-width na primeira linha */
   #pane-dashboard .db-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  #pane-dashboard .dash-agenda{grid-column:1 / -1}
+  #pane-dashboard .dash-prazos-panel{grid-column:1 / -1}
 }
 @media(max-width:900px){
   #pane-dashboard .db-grid{grid-template-columns:1fr}
-  #pane-dashboard .dash-agenda{grid-column:auto}
+  #pane-dashboard .dash-prazos-panel{grid-column:auto}
   .dash-caption{text-align:left}
 }
 @media(max-width:860px){

@@ -112,42 +112,22 @@
       <div class="sc sc-danger"><div class="sc-lbl">Com Prazo Fatal</div><div class="sc-val red" id="ds-fatal">0</div></div>
     </div>
     <div class="db-grid">
-      <!-- COLUNA 1 — Calendário horizontal -->
-      <div class="dash-panel dash-agenda">
-        <div class="dash-panel-hdr">
-          <div>
-            <div class="dash-panel-kicker">Agenda</div>
-            <div class="dash-panel-title">Tarefas do mês</div>
-          </div>
-        </div>
-        <div class="dash-calendar">
-          <div id="cal-container"></div>
-        </div>
-      </div>
-
-      <!-- COLUNA 2 — Prazos Fatais (sem dropdown, coluna autonoma) -->
-      <div class="dash-panel dash-prazos-panel">
-        <div class="dash-panel-hdr">
-          <div>
-            <div class="dash-panel-kicker danger">Prazos</div>
-            <div class="dash-panel-title">Prazos Fatais</div>
-          </div>
-          <span id="prazos-current-count" class="dash-count"></span>
-        </div>
-        <div id="dash-prazos-body" class="dash-urgency-body"></div>
-      </div>
-
-      <!-- COLUNA 3 — Urgências (dropdown + lista) -->
+      <!-- COLUNA 1 — Urgências (dropdown: Prazos Fatais + Liquidacao + Paralisados) -->
       <div class="dash-panel dash-urgencies-panel">
         <div class="dash-panel-hdr">
           <div class="urg-dd-wrap">
             <div class="dash-panel-kicker danger">Urgências</div>
             <button type="button" id="urg-dd-btn" class="urg-dd-btn" aria-haspopup="menu" aria-expanded="false" onclick="toggleUrgDD(event)">
-              <span class="urg-dd-lbl" id="urg-current-title">Liquidação Próxima ou Vencida</span>
+              <span class="urg-dd-lbl" id="urg-current-title">Prazos Fatais</span>
               <span class="urg-dd-chevron" aria-hidden="true">▾</span>
             </button>
             <div class="urg-dd-menu" id="urg-dd-menu" role="menu" hidden>
-              <button type="button" class="urg-dd-item on" role="menuitem" data-urgency="liquidacao" onclick="selectUrgency('liquidacao')">
+              <button type="button" class="urg-dd-item on" role="menuitem" data-urgency="tarefas" onclick="selectUrgency('tarefas')">
+                <span class="urg-dot urg-dot-red"></span>
+                <span class="urg-dd-item-lbl">Prazos Fatais</span>
+                <span class="urg-dd-item-count" id="urg-count-tarefas"></span>
+              </button>
+              <button type="button" class="urg-dd-item" role="menuitem" data-urgency="liquidacao" onclick="selectUrgency('liquidacao')">
                 <span class="urg-dot urg-dot-yellow"></span>
                 <span class="urg-dd-item-lbl">Liquidação Próxima ou Vencida</span>
                 <span class="urg-dd-item-count" id="urg-count-liq">0</span>
@@ -161,11 +141,36 @@
           </div>
           <span id="urg-current-count" class="dash-count"></span>
         </div>
+        <!-- Calendario (Tarefas do mes) — visivel quando tipo === 'tarefas'. -->
+        <div id="dash-calendar-body" class="dash-calendar" hidden>
+          <div id="cal-container"></div>
+        </div>
+        <!-- Lista (Liquidacao / Paralisados) — visivel nos demais tipos. -->
         <div id="dash-urgency-body" class="dash-urgency-body"></div>
         <div id="urg-footer" class="urg-footer" hidden></div>
         <!-- Contador de Prazos Fatais preservado fora do dropdown para que o
              código legado de _renderUrg / openDashPanel continue funcionando. -->
         <span id="urg-count-prazos" style="display:none">0</span>
+      </div>
+
+      <!-- COLUNA 2 — Tarefas Pendentes (tabs Peremptorios / Outros) -->
+      <div class="dash-panel dash-prazos-panel">
+        <div class="dash-panel-hdr">
+          <div>
+            <div class="dash-panel-kicker brand">Prazos</div>
+            <div class="dash-panel-title">Tarefas Pendentes</div>
+          </div>
+          <span id="prazos-current-count" class="dash-count"></span>
+        </div>
+        <div class="dash-prazos-tabs" role="tablist">
+          <button type="button" class="dash-prazos-tab on" role="tab" data-tab="peremptorios" onclick="_selectPrazosTab('peremptorios')">
+            Peremptórios <span class="dash-prazos-tab-cnt" id="prazos-tab-cnt-per"></span>
+          </button>
+          <button type="button" class="dash-prazos-tab" role="tab" data-tab="outros" onclick="_selectPrazosTab('outros')">
+            Outros <span class="dash-prazos-tab-cnt" id="prazos-tab-cnt-out"></span>
+          </button>
+        </div>
+        <div id="dash-prazos-body" class="dash-urgency-body"></div>
       </div>
 
       <!-- COLUNA 3 — Atividade (dropdown + lista) -->
@@ -203,6 +208,7 @@
       <span id="ds-cnt-liq"></span>
       <span id="ds-cnt-par"></span>
       <div id="ds-alerts-body"></div>
+      <div id="ds-outros-body"></div>
       <div id="ds-liq-body"></div>
       <div id="ds-par-body"></div>
     </div>
