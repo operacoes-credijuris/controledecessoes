@@ -5155,13 +5155,15 @@ async function _cfgAdvboxLoadAutoUI(){
     const cfg=await _advboxFetchSettings();
     const users=Array.isArray(cfg.users)?cfg.users:[];
     const stages=Array.isArray(cfg.stages)?cfg.stages:[];
-    const types=Array.isArray(cfg.type_lawsuits)?cfg.type_lawsuits:[];
-    const fill=(el,items)=>{
+    const types=Array.isArray(cfg.lawsuit_types)?cfg.lawsuit_types:[];
+    const fillSel=(el,items,lblFn)=>{
       const cur=el.value;
-      el.innerHTML='<option value="">Selecione...</option>'+items.map(i=>`<option value="${esc(String(i.id||''))}">${esc(String(i.name||i.title||i.description||''))}</option>`).join('');
+      el.innerHTML='<option value="">Selecione...</option>'+items.map(i=>`<option value="${esc(String(i.id||''))}">${esc(lblFn(i))}</option>`).join('');
       if(cur)el.value=cur;
     };
-    fill(selUser,users);fill(selStage,stages);fill(selType,types);
+    fillSel(selUser,users,i=>i.name||'');
+    fillSel(selStage,stages,i=>i.stage+(i.step?` (${i.step})`:''));
+    fillSel(selType,types,i=>i.type+(i.group?` — ${i.group}`:''));
     const defs=_advboxLoadAutoDefaults();
     if(defs){
       if(defs.userId)selUser.value=String(defs.userId);

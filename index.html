@@ -455,9 +455,18 @@
       </div>
       <div class="cfg-row-ctrl" style="flex-direction:column;align-items:flex-start;gap:8px">
         <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
-          <select id="cfg-advbox-auto-user" class="cfg-select" style="flex:1;min-width:150px"><option value="">Responsável padrão…</option></select>
-          <select id="cfg-advbox-auto-stage" class="cfg-select" style="flex:1;min-width:150px"><option value="">Fase processual…</option></select>
-          <select id="cfg-advbox-auto-type" class="cfg-select" style="flex:1;min-width:150px"><option value="">Tipo de processo…</option></select>
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:150px">
+            <span style="font-size:10px;color:#6b7280;font-weight:600;letter-spacing:.3px;text-transform:uppercase">Responsável</span>
+            <select id="cfg-advbox-auto-user" class="cfg-select"><option value="">Selecione…</option></select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:150px">
+            <span style="font-size:10px;color:#6b7280;font-weight:600;letter-spacing:.3px;text-transform:uppercase">Fase processual</span>
+            <select id="cfg-advbox-auto-stage" class="cfg-select"><option value="">Selecione…</option></select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:150px">
+            <span style="font-size:10px;color:#6b7280;font-weight:600;letter-spacing:.3px;text-transform:uppercase">Tipo de processo</span>
+            <select id="cfg-advbox-auto-type" class="cfg-select"><option value="">Selecione…</option></select>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <button id="cfg-advbox-auto-load" class="cfg-save-btn" style="background:transparent;border:1px solid rgba(255,255,255,.12);color:#94a3b8" onclick="_cfgAdvboxLoadAutoUI()">Carregar opções</button>
