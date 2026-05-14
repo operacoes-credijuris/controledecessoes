@@ -448,6 +448,24 @@
         <button id="cfg-advbox-save-btn" class="cfg-save-btn" onclick="cfgSaveAdvboxToken()">Salvar</button>
       </div>
     </div>
+    <div class="cfg-row">
+      <div class="cfg-row-lbl-side">
+        <div class="cfg-row-lbl">Criação automática de processos</div>
+        <div class="cfg-row-sub">Ao cadastrar um processo novo, cria automaticamente no Advbox</div>
+      </div>
+      <div class="cfg-row-ctrl" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
+          <select id="cfg-advbox-auto-user" class="cfg-select" style="flex:1;min-width:150px"><option value="">Responsável padrão…</option></select>
+          <select id="cfg-advbox-auto-stage" class="cfg-select" style="flex:1;min-width:150px"><option value="">Fase processual…</option></select>
+          <select id="cfg-advbox-auto-type" class="cfg-select" style="flex:1;min-width:150px"><option value="">Tipo de processo…</option></select>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="cfg-advbox-auto-load" class="cfg-save-btn" style="background:transparent;border:1px solid rgba(255,255,255,.12);color:#94a3b8" onclick="_cfgAdvboxLoadAutoUI()">Carregar opções</button>
+          <button class="cfg-save-btn" onclick="_cfgAdvboxSaveAutoDefaults()">Salvar</button>
+          <span id="cfg-advbox-auto-status" class="cfg-status"></span>
+        </div>
+      </div>
+    </div>
   </div>
   <!-- Sincronização -->
   <div class="cfg-section">

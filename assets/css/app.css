@@ -1772,6 +1772,13 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .cfg-token-input[type=number]::placeholder{text-align:right;direction:ltr}
 .cfg-token-input[type=number]::-webkit-outer-spin-button,
 .cfg-token-input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cfg-select{
+  background:#0d1117;border:1px solid rgba(255,255,255,.1);
+  border-radius:7px;padding:5px 8px;color:#e2e8f0;
+  font-size:12px;font-family:inherit;outline:none;
+  transition:border-color .2s;
+}
+.cfg-select:focus{border-color:#6e7dbb}
 .cfg-save-btn{
   background:rgba(110,125,187,.18);border:1px solid rgba(110,125,187,.4);
   color:#60a5fa;border-radius:7px;padding:6px 14px;

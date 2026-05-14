@@ -67,6 +67,16 @@ serve(async (req) => {
       advboxUrl = `${ADVBOX_BASE}/posts`;
       method = 'POST';
       forwardBody = await req.text();
+    } else if (action === 'customers') {
+      const name = url.searchParams.get('name') ?? '';
+      advboxUrl = `${ADVBOX_BASE}/customers?name=${encodeURIComponent(name)}&limit=20`;
+    } else if (action === 'create-lawsuit') {
+      if (req.method !== 'POST') {
+        return new Response(JSON.stringify({ error: 'Metodo POST obrigatorio para create-lawsuit' }), { status: 405, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+      advboxUrl = `${ADVBOX_BASE}/lawsuits`;
+      method = 'POST';
+      forwardBody = await req.text();
     } else if (action === 'raw') {
       // Passagem direta — para exploração de endpoints: ?action=raw&path=/posts%3Flawsuit_id%3D123%26concluded%3D1
       const rawPath = url.searchParams.get('path') ?? '';

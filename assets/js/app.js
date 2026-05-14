@@ -555,6 +555,7 @@ function _sbShowConfig(){
   document.getElementById('pane-config').style.display='flex';
   document.getElementById('sb-item-config').classList.add('active');
   localStorage.setItem('cj-sidebar-active','config');
+  _cfgAdvboxLoadAutoUI();
   const emailEl=document.getElementById('cfg-user-email');
   if(emailEl&&sb){
     sb.auth.getUser().then(({data})=>{
@@ -3403,6 +3404,7 @@ function saveRecord(){
     rec.id=uid();
     rec.historicoProcessual=[];
     data.push(rec);
+    if(['cessoes','rpv','requerimentos'].includes(curMod)) _advboxAutoCreateLawsuit(curMod,rec);
   }
 
   save(curMod,data);
@@ -5089,7 +5091,105 @@ async function syncAdvbox(opts){
      pra tarefa ficar visivel para todos.
 ====================================================== */
 const _ADVBOX_SETTINGS_KEY='cj-advbox-settings';
+const _ADVBOX_AUTO_KEY='cj-advbox-auto';
+const _ADVBOX_CREDIJURIS_KEY='cj-advbox-credijuris-id';
 let _advboxModalCtx=null;
+
+function _advboxLoadAutoDefaults(){
+  try{const s=localStorage.getItem(_ADVBOX_AUTO_KEY);return s?JSON.parse(s):null;}catch{return null;}
+}
+function _advboxSaveAutoDefaultsStorage(obj){
+  try{localStorage.setItem(_ADVBOX_AUTO_KEY,JSON.stringify(obj));}catch{}
+}
+
+async function _advboxResolveCredijurisId(){
+  const cached=localStorage.getItem(_ADVBOX_CREDIJURIS_KEY);
+  if(cached)return cached;
+  const{proxy}=await _advboxProxyAuth();
+  const data=await _advboxProxyFetch(`${proxy}?action=customers&name=credijuris`);
+  const arr=Array.isArray(data)?data:(data.data||data.results||[]);
+  const id=arr[0]?.id?String(arr[0].id):'';
+  if(id)localStorage.setItem(_ADVBOX_CREDIJURIS_KEY,id);
+  return id;
+}
+
+async function _advboxAutoCreateLawsuit(mod,rec){
+  if(!rec.numeroProcesso||rec._advboxLawsuitId)return;
+  if(!_secrets.advbox())return;
+  const defs=_advboxLoadAutoDefaults();
+  if(!defs||!defs.userId||!defs.stageId||!defs.typeId)return;
+  try{
+    const{proxy}=await _advboxProxyAuth();
+    const custId=await _advboxResolveCredijurisId();
+    if(!custId)return;
+    const payload={
+      users_id:String(defs.userId),
+      customers_id:[Number(custId)],
+      stages_id:String(defs.stageId),
+      type_lawsuits_id:String(defs.typeId),
+      process_number:rec.numeroProcesso,
+      ...(rec.objeto?{notes:rec.objeto}:{})
+    };
+    const result=await _advboxProxyFetch(`${proxy}?action=create-lawsuit`,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+    });
+    const lawsuitId=String(result?.id||result?.lawsuit_id||(result?.data?.id)||'');
+    if(lawsuitId){
+      const arr=load(mod);const idx=arr.findIndex(r=>r.id===rec.id);
+      if(idx!==-1){arr[idx]={...arr[idx],_advboxLawsuitId:lawsuitId};save(mod,arr);}
+      showToast('Processo criado no Advbox.');
+    }
+  }catch(e){}
+}
+
+async function _cfgAdvboxLoadAutoUI(){
+  const selUser=document.getElementById('cfg-advbox-auto-user');
+  const selStage=document.getElementById('cfg-advbox-auto-stage');
+  const selType=document.getElementById('cfg-advbox-auto-type');
+  const btn=document.getElementById('cfg-advbox-auto-load');
+  const status=document.getElementById('cfg-advbox-auto-status');
+  if(!selUser||!selStage||!selType)return;
+  if(btn){btn.disabled=true;btn.textContent='Carregando...';}
+  if(status){status.textContent='';status.className='cfg-status';}
+  try{
+    const cfg=await _advboxFetchSettings();
+    const users=Array.isArray(cfg.users)?cfg.users:[];
+    const stages=Array.isArray(cfg.stages)?cfg.stages:[];
+    const types=Array.isArray(cfg.type_lawsuits)?cfg.type_lawsuits:[];
+    const fill=(el,items)=>{
+      const cur=el.value;
+      el.innerHTML='<option value="">Selecione...</option>'+items.map(i=>`<option value="${esc(String(i.id||''))}">${esc(String(i.name||i.title||i.description||''))}</option>`).join('');
+      if(cur)el.value=cur;
+    };
+    fill(selUser,users);fill(selStage,stages);fill(selType,types);
+    const defs=_advboxLoadAutoDefaults();
+    if(defs){
+      if(defs.userId)selUser.value=String(defs.userId);
+      if(defs.stageId)selStage.value=String(defs.stageId);
+      if(defs.typeId)selType.value=String(defs.typeId);
+    }
+    if(status){status.textContent='Opções carregadas';status.className='cfg-status ok';}
+  }catch(e){
+    if(status){status.textContent='Erro: '+(e.message||String(e));status.className='cfg-status';}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Carregar opções';}
+  }
+}
+
+function _cfgAdvboxSaveAutoDefaults(){
+  const userId=document.getElementById('cfg-advbox-auto-user')?.value||'';
+  const stageId=document.getElementById('cfg-advbox-auto-stage')?.value||'';
+  const typeId=document.getElementById('cfg-advbox-auto-type')?.value||'';
+  const status=document.getElementById('cfg-advbox-auto-status');
+  if(!userId||!stageId||!typeId){
+    if(status){status.textContent='Selecione os três campos.';status.className='cfg-status';}
+    return;
+  }
+  _advboxSaveAutoDefaultsStorage({userId,stageId,typeId});
+  localStorage.removeItem(_ADVBOX_CREDIJURIS_KEY);
+  if(status){status.textContent='Salvo.';status.className='cfg-status ok';}
+  setTimeout(()=>{if(status&&status.textContent==='Salvo.')status.textContent='';},3000);
+}
 
 // SVG do botao "Criar tarefa no Advbox" em cada publicacao. Clipboard + circulo
 // com "+". Cinza discreto por padrao, destaca no hover (regras em app.css).
