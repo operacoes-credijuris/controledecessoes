@@ -3294,6 +3294,9 @@ const _CPY_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" styl
 function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" onclick="cpyNum(event)">${_CPY_SVG}</button>`;}
 const _NAV_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M2.5 8.5L8.5 2.5M5 2.5H8.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('${mod}','${id}')" title="Ir para o processo">${_NAV_SVG}</button>`;}
+// Lapis usado pelos botoes de edicao inline em Carteiras (crtCell/crtCellBRL/crtTextCell).
+// Originalmente vivia como _PF_SVG; ficou orfao quando prazoFatal saiu de edicao manual.
+const _EDIT_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M7.5 1.5L9.5 3.5L3.5 9.5H1.5V7.5L7.5 1.5Z" stroke="#4b5563" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2.5L8.5 4.5" stroke="#4b5563" stroke-width="1.3" stroke-linecap="round"/></svg>`;
 // prazoFatal e derivado automaticamente da menor data limite entre as diligencias
 // do Advbox (campo `_advboxDiligencias`). Nao e mais editavel manualmente.
 function fatalCell(mod,id,val){
@@ -3306,14 +3309,14 @@ function fatalCell(mod,id,val){
 function crtCell(aba,id,field,val,type){
   const display=type==='date'?(val?val.split('-').reverse().join('/'):'—'):(val||'—');
   const key=`${aba}:${id}:${field}`;
-  const btn=`<button class="crt-eb" onclick="crtEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}','${escJs(type)}')" title="Editar">${_PF_SVG}</button>`;
+  const btn=`<button class="crt-eb" onclick="crtEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}','${escJs(type)}')" title="Editar">${_EDIT_SVG}</button>`;
   return`<span data-crte="${esc(key)}">${esc(display)}${btn}</span>`;
 }
 function crtCellBRL(aba,id,field,val,type){
   const n=_parseNumCrt(val);
   const display=n?fmtBRL(n):(val||'—');
   const key=`${aba}:${id}:${field}`;
-  const btn=`<button class="crt-eb" onclick="crtEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}','${escJs(type)}')" title="Editar">${_PF_SVG}</button>`;
+  const btn=`<button class="crt-eb" onclick="crtEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}','${escJs(type)}')" title="Editar">${_EDIT_SVG}</button>`;
   return`<span data-crte="${esc(key)}">${esc(display)}${btn}</span>`;
 }
 let _crtEsc=false;
@@ -3726,7 +3729,7 @@ async function _prmInit(){
 function crtTextCell(aba,id,field,val,proc){
   const preview=val?String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'—';
   const procArg=proc?`,'${escJs(proc)}'`:'';
-  const btn=`<button class="crt-eb" onclick="crtTextEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}'${procArg})" title="Editar">${_PF_SVG}</button>`;
+  const btn=`<button class="crt-eb" onclick="crtTextEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}'${procArg})" title="Editar">${_EDIT_SVG}</button>`;
   return`<div class="crt-txt-cell"><span class="crt-txt-preview">${preview}</span>${btn}</div>`;
 }
 let _crtTxtCtx={aba:'',id:'',field:''};
