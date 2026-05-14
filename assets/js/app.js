@@ -1859,7 +1859,6 @@ function updateDash(){
   // expandidos legados ainda leem dali); o badge do dropdown "Tarefas Pendentes"
   // mostra per+out — soma da aba inteira.
   const _uPraz=document.getElementById('urg-count-prazos');if(_uPraz)_uPraz.textContent=alertRecs.length||'0';
-  const _uTar=document.getElementById('urg-count-tarefas');if(_uTar){const tot=alertRecs.length+outrosRecs.length;_uTar.textContent=tot>0?String(tot):'';}
   const _uLiq=document.getElementById('urg-count-liq');if(_uLiq)_uLiq.textContent=liqRecs.length||'0';
   const _uPar=document.getElementById('urg-count-par');if(_uPar)_uPar.textContent=parRecs.length||'0';
   // Atualiza os contadores das tabs antes de renderizar a view (selectUrgency
@@ -2764,7 +2763,7 @@ function selectUrgency(tipo){
   // 'tarefas' = Tarefas Pendentes com tabs Peremptorios/Outros + search.
   if(tipo==='tarefas'){
     dashUrgencyType=tipo;
-    if(titleEl)titleEl.textContent='Tarefas Pendentes';
+    if(titleEl)titleEl.textContent='Pendências';
     if(cntEl)cntEl.textContent='';
     if(tabsWrap)tabsWrap.style.display='';
     if(footer)footer.hidden=true;
