@@ -1614,6 +1614,9 @@ function updateDash(){
   /* Tarefas Pendentes — gera duas listas a partir das diligencias pendentes
      do Advbox. Uma entrada POR DILIGENCIA (nao por processo). Inclui processos
      filhos. Ignora deadlines vencidos (Advbox nao marca conclusao).
+     Fonte unica: r._advboxDiligencias (sync /posts). O campo legado r.prazoFatal
+     NAO alimenta esta coluna nem o calendario — serve apenas para grifar linha
+     nas tabelas de Acompanhamento. Garante consistencia com o calendario.
      - alertRecs : diligencias COM deadline futuro (aba "Peremptorios" + KPI).
      - outrosRecs: diligencias pendentes SEM deadline (aba "Outros"). */
   const _hojeStr=todayStr();
@@ -1622,24 +1625,17 @@ function updateDash(){
   [['cessoes',ce],['rpv',rp],['requerimentos',re]].forEach(([mod,recs])=>{
     recs.forEach(r=>{
       const dils=Array.isArray(r._advboxDiligencias)?r._advboxDiligencias:[];
-      if(dils.length){
-        dils.forEach(d=>{
-          if(!d)return;
-          const base={_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_task:d.task||''};
-          if(d.deadline){
-            const nd=normDate(d.deadline);
-            if(!nd||nd<_hojeStr)return;
-            alertRecs.push({...base,_deadline:nd});
-          } else {
-            outrosRecs.push(base);
-          }
-        });
-      } else if(r.prazoFatal){
-        const nd=normDate(r.prazoFatal);
-        if(nd&&nd>=_hojeStr){
-          alertRecs.push({_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_deadline:nd,_task:''});
+      dils.forEach(d=>{
+        if(!d)return;
+        const base={_mod:mod,_id:r.id,numeroProcesso:r.numeroProcesso||'',cedente:r.cedente||'',cessionario:r.cessionario||'',_task:d.task||''};
+        if(d.deadline){
+          const nd=normDate(d.deadline);
+          if(!nd||nd<_hojeStr)return;
+          alertRecs.push({...base,_deadline:nd});
+        } else {
+          outrosRecs.push(base);
         }
-      }
+      });
     });
   });
   alertRecs.sort((a,b)=>a._deadline.localeCompare(b._deadline));
