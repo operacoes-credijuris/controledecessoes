@@ -1027,6 +1027,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   border-radius:999px;
   padding:4px 9px;
 }
+.dash-count:empty{display:none}
 .dash-calendar{
   padding:6px 8px 10px;
   flex:1;
