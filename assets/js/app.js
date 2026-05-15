@@ -5699,9 +5699,8 @@ async function _advboxCreateTask(){
   if(!userId){_advboxShowTaskErr('Selecione o responsavel principal.');return;}
   if(!startDate){_advboxShowTaskErr('Informe a data de inicio.');return;}
   if(!ctx.numeroProcesso){_advboxShowTaskErr('Publicacao sem numero de processo.');return;}
-  const users=Array.isArray(ctx.settings.users)?ctx.settings.users:[];
-  // guests inclui SEMPRE todos os usuarios do escritorio (visibilidade compartilhada).
-  const guests=users.map(u=>{const n=Number(u.id);return isFinite(n)?n:u.id;});
+  const _uid=Number(userId);
+  const guests=[isFinite(_uid)?_uid:userId];
   document.getElementById('advbox-task-err').style.display='none';
   const btn=document.getElementById('advbox-task-submit');
   btn.disabled=true;btn.innerHTML='<span class="spin" style="vertical-align:middle"></span> Criando...';
