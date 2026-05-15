@@ -976,6 +976,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 /* Search a direita das tabs Peremptorios/Outros (filtra Tarefas Pendentes) */
 .dash-prazos-search{
   margin-left:auto;
+  margin-bottom:5px;
   flex-shrink:1;
   min-width:120px;max-width:200px;
   width:42%;
