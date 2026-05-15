@@ -919,7 +919,7 @@ function _consExportarXLSX(){
     if(!ops.length)continue;
     const capital=ops.reduce((s,r)=>s+_parseNumCrt(r.capitalInvestido),0);
     const recebido=ops.reduce((s,r)=>s+_parseNumCrt(r.jaRecebido),0);
-    const aReceber=ops.reduce((s,r)=>{const jr=_parseNumCrt(r.jaRecebido);if(jr>0)return s;const vp=_calcValorProjetado(r);return s+(vp||0);},0);
+    const aReceber=ops.reduce((s,r)=>{const jr=_parseNumCrt(r.jaRecebido);const vp=jr>0?0:(_calcValorProjetado(r)||0);const vc=_parseNumCrt(r.valorEstComplementar)||0;return s+vp+vc;},0);
     const ganho=ops.reduce((s,r)=>s+(_calcGanhoProjetado(r)||0),0);
     const tirList=ops.map(_calcTirAnual).filter(v=>v!=null&&isFinite(v));
     const tirAvg=tirList.length?(tirList.reduce((s,v)=>s+v,0)/tirList.length):null;
@@ -3859,8 +3859,8 @@ function _crtRenderConsolidado(){
     if(!ops.length)continue;
     const capital=ops.reduce((s,r)=>s+_parseNumCrt(r.capitalInvestido),0);
     const recebido=ops.reduce((s,r)=>s+_parseNumCrt(r.jaRecebido),0);
-    // A receber estimado: operacoes nao liquidadas (jaRecebido=0) somam valor projetado.
-    const aReceber=ops.reduce((s,r)=>{const jr=_parseNumCrt(r.jaRecebido);if(jr>0)return s;const vp=_calcValorProjetado(r);return s+(vp||0);},0);
+    // A receber estimado: Valor projetado (jaRecebido=0) + Valor est. complementar (todas as linhas).
+    const aReceber=ops.reduce((s,r)=>{const jr=_parseNumCrt(r.jaRecebido);const vp=jr>0?0:(_calcValorProjetado(r)||0);const vc=_parseNumCrt(r.valorEstComplementar)||0;return s+vp+vc;},0);
     const ganho=ops.reduce((s,r)=>s+(_calcGanhoProjetado(r)||0),0);
     const tirList=ops.map(_calcTirAnual).filter(v=>v!=null&&isFinite(v));
     const tirAvg=tirList.length?(tirList.reduce((s,v)=>s+v,0)/tirList.length):null;
