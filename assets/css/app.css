@@ -991,7 +991,10 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .dash-prazos-search .srch-ico svg{width:11px;height:11px}
 /* Search bar da coluna Atividade (filtra por numero do processo) */
 .dash-search-bar{
-  padding:5px 16px 5px;
+  display:flex;align-items:center;
+  padding:0 16px;
+  height:39px;
+  box-sizing:border-box;
   border-bottom:1px solid rgba(255,255,255,.055);
   flex-shrink:0;
 }
