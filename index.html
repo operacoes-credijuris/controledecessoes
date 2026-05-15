@@ -189,9 +189,23 @@
           <span id="act-current-count" class="dash-count"></span>
         </div>
         <div class="dash-search-bar">
-          <div class="srch-wrap" style="width:100%">
-            <input id="act-search" type="text" placeholder="Buscar n° do processo…" autocomplete="off" oninput="_actSearch(this.value)">
+          <div class="srch-wrap" style="flex:0 0 148px">
+            <input id="act-search" type="text" placeholder="Buscar processo…" autocomplete="off" oninput="_actSearch(this.value)">
             <span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+          </div>
+          <div class="mov-filters" id="mov-filters" hidden>
+            <div class="mov-filter-group">
+              <button class="mov-chip on" data-fmod="" onclick="_setMovMod('')">Todas</button>
+              <button class="mov-chip" data-fmod="cessoes" onclick="_setMovMod('cessoes')">Cessões</button>
+              <button class="mov-chip" data-fmod="rpv" onclick="_setMovMod('rpv')">RPV</button>
+              <button class="mov-chip" data-fmod="requerimentos" onclick="_setMovMod('requerimentos')">Outros</button>
+            </div>
+            <div class="mov-filter-sep"></div>
+            <div class="mov-filter-group">
+              <button class="mov-chip on" data-fstatus="" onclick="_setMovStatus('')">Todos</button>
+              <button class="mov-chip" data-fstatus="com" onclick="_setMovStatus('com')">Com mov.</button>
+              <button class="mov-chip" data-fstatus="sem" onclick="_setMovStatus('sem')">Sem mov.</button>
+            </div>
           </div>
         </div>
         <div id="ds-mov-body" class="dash-mov-body"></div>

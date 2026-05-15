@@ -1848,37 +1848,52 @@ function updateDash(){
   const totalMovs=movRows.length;
   document.getElementById('ds-cnt-mov').textContent=totalMovs?`${totalMovs}`:'';
   const _amc=document.getElementById('act-count-mov');if(_amc)_amc.textContent=totalMovs||'0';
+  // Processos sem movimentação nos últimos 20 dias
+  const _processadosIds=new Set([...grupos.keys()]);
+  const semMovArr=[];
+  [['cessoes',ce],['rpv',rp],['requerimentos',re]].forEach(([mod,recs])=>{
+    recs.forEach(r=>{
+      const key=r.id||r.numeroProcesso||'';
+      if(!key||_processadosIds.has(key))return;
+      semMovArr.push({mod,r});
+    });
+  });
+  semMovArr.sort((a,b)=>(a.r.numeroProcesso||'').localeCompare(b.r.numeroProcesso||''));
   const mb=document.getElementById('ds-mov-body');
-  if(!gruposArr.length){
+  const _renderMovGrupo=({mod,r,movs},dimmed)=>{
+    const partes=(r.cedente||r.cessionario)
+      ?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
+    const movsHtml=movs
+      ?movs.map(m=>`<div style="padding:6px 16px 6px 24px;border-top:1px solid rgba(30,36,51,.4);font-size:11px">
+          <span style="color:#6b7280;margin-right:8px">${fmtDate(m.data)}</span><span style="color:var(--txt2)">${esc(m.desc)||'<span style="color:#4b5563">—</span>'}</span>
+        </div>`).join('')
+      :'';
+    const cnt=movs?movs.length:0;
+    const dimStyle=dimmed?'opacity:0.38;':'';
+    return`<div class="mov-group" data-mod="${mod}" data-status="${movs?'com':'sem'}" style="${dimStyle}">
+      <div class="mov-group-hdr"${movs?` onclick="toggleMovGroup(this)"`:''}style="${dimmed?'cursor:default;':''}">
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:4px;overflow:hidden">
+            <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500">${esc(r.numeroProcesso||'')}</span>${cpyBtn(r.numeroProcesso||'')}${navBtn(mod,r.id)}
+          </div>
+          ${partes}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span class="bdg ${modBdg[mod]}">${modLabel[mod]}</span>
+          ${movs?`<span style="font-size:10px;color:#6b7280;white-space:nowrap">${cnt}</span><span class="mov-arrow">▶</span>`:''}
+        </div>
+      </div>
+      ${movs?`<div class="mov-group-body" style="display:none">${movsHtml}</div>`:''}
+    </div>`;
+  };
+  if(!gruposArr.length&&!semMovArr.length){
     mb.innerHTML='<div class="db-empty">Nenhuma movimentação nos últimos 20 dias</div>';
   } else {
-    mb.innerHTML=gruposArr.map(({mod,r,movs})=>{
-      const partes=(r.cedente||r.cessionario)
-        ?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:'';
-      const movsHtml=movs.map(m=>`<div style="padding:6px 16px 6px 24px;border-top:1px solid rgba(30,36,51,.4);font-size:11px">
-          <span style="color:#6b7280;margin-right:8px">${fmtDate(m.data)}</span><span style="color:var(--txt2)">${esc(m.desc)||'<span style="color:#4b5563">—</span>'}</span>
-        </div>`).join('');
-      const cnt=movs.length;
-      return`<div class="mov-group">
-        <div class="mov-group-hdr" onclick="toggleMovGroup(this)">
-          <div style="flex:1;min-width:0;overflow:hidden">
-            <div style="display:flex;align-items:center;gap:4px;overflow:hidden">
-              <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500">${esc(r.numeroProcesso||'')}</span>${cpyBtn(r.numeroProcesso||'')}${navBtn(mod,r.id)}
-            </div>
-            ${partes}
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <span class="bdg ${modBdg[mod]}">${modLabel[mod]}</span>
-            <span style="font-size:10px;color:#6b7280;white-space:nowrap">${cnt}</span>
-            <span class="mov-arrow">▶</span>
-          </div>
-        </div>
-        <div class="mov-group-body" style="display:none">${movsHtml}</div>
-      </div>`;
-    }).join('');
+    mb.innerHTML=gruposArr.map(g=>_renderMovGrupo(g,false)).join('')
+      +semMovArr.map(g=>_renderMovGrupo({...g,movs:null},true)).join('');
   }
-  // Reaplica filtro de busca apos sobrescrever o body.
-  {const sInput=document.getElementById('act-search');if(sInput&&sInput.value&&dashActivityType==='movimentacoes')_actSearch(sInput.value);}
+  // Reaplica filtros (busca + mod + status) apos sobrescrever o body.
+  if(dashActivityType==='movimentacoes')_applyMovFilters();
   // Contadores: mantem urg-count-prazos atualizado pra retro-compat (modais
   // expandidos legados ainda leem dali); o badge do dropdown "Tarefas Pendentes"
   // mostra per+out — soma da aba inteira.
@@ -2860,6 +2875,8 @@ function openDashPanel(tipo){ selectUrgency(tipo); }
    COLUNA DE ATIVIDADE — dropdown e Publicações DJEN
 ====================================================== */
 let dashActivityType='publicacoes';
+let _movModFilter='';
+let _movStatusFilter='';
 let _pubsCache={data:null,ts:0};
 const _PUB_CACHE_MS=15*60*1000;
 const _DJEN_OABS=[
@@ -2879,15 +2896,18 @@ function selectActivity(tipo){
   document.querySelectorAll('.urg-dd-item[data-activity]').forEach(el=>{
     el.classList.toggle('on',el.dataset.activity===tipo);
   });
+  const filtersEl=document.getElementById('mov-filters');
   if(tipo==='movimentacoes'){
     if(mb)mb.hidden=false;
     if(pb)pb.hidden=true;
+    if(filtersEl)filtersEl.hidden=false;
     if(titleEl)titleEl.textContent='Últimas Movimentações';
     const cnt=(document.getElementById('act-count-mov')?.textContent||'').trim();
     if(cntEl)cntEl.textContent=(cnt&&cnt!=='0')?cnt:'';
   } else {
     if(mb)mb.hidden=true;
     if(pb)pb.hidden=false;
+    if(filtersEl)filtersEl.hidden=true;
     if(titleEl)titleEl.textContent='Publicações';
     const cnt=(document.getElementById('act-count-pub')?.textContent||'').trim();
     if(cntEl)cntEl.textContent=(cnt&&cnt!=='0')?cnt:'';
@@ -2902,20 +2922,38 @@ function selectActivity(tipo){
 // Filtra pelo numero do processo no body ativo (publicacoes ou movimentacoes).
 // Esconde via display:none nos containers; nao toca o DOM, so visibilidade.
 function _actSearch(value){
+  if(dashActivityType==='movimentacoes'){_applyMovFilters();return;}
   const q=(value||'').trim().toLowerCase();
-  if(dashActivityType==='movimentacoes'){
-    document.querySelectorAll('#ds-mov-body .mov-group').forEach(el=>{
-      if(!q){el.style.display='';return;}
-      const proc=(el.querySelector('.mov-group-hdr')?.textContent||'').toLowerCase();
-      el.style.display=proc.includes(q)?'':'none';
-    });
-  } else {
-    document.querySelectorAll('#ds-pub-body .pub-item').forEach(el=>{
-      if(!q){el.style.display='';return;}
-      const proc=(el.querySelector('.pub-item-titulo')?.textContent||'').toLowerCase();
-      el.style.display=proc.includes(q)?'':'none';
-    });
-  }
+  document.querySelectorAll('#ds-pub-body .pub-item').forEach(el=>{
+    if(!q){el.style.display='';return;}
+    const proc=(el.querySelector('.pub-item-titulo')?.textContent||'').toLowerCase();
+    el.style.display=proc.includes(q)?'':'none';
+  });
+}
+function _applyMovFilters(){
+  const q=(document.getElementById('act-search')?.value||'').trim().toLowerCase();
+  const mod=_movModFilter;
+  const status=_movStatusFilter;
+  document.querySelectorAll('#ds-mov-body .mov-group').forEach(el=>{
+    const matchQ=!q||(el.querySelector('.mov-group-hdr')?.textContent||'').toLowerCase().includes(q);
+    const matchMod=!mod||el.dataset.mod===mod;
+    const matchStatus=!status||el.dataset.status===status;
+    el.style.display=(matchQ&&matchMod&&matchStatus)?'':'none';
+  });
+}
+function _setMovMod(v){
+  _movModFilter=v;
+  document.querySelectorAll('#mov-filters .mov-chip[data-fmod]').forEach(el=>{
+    el.classList.toggle('on',el.dataset.fmod===v);
+  });
+  _applyMovFilters();
+}
+function _setMovStatus(v){
+  _movStatusFilter=v;
+  document.querySelectorAll('#mov-filters .mov-chip[data-fstatus]').forEach(el=>{
+    el.classList.toggle('on',el.dataset.fstatus===v);
+  });
+  _applyMovFilters();
 }
 
 function toggleActDD(e){
