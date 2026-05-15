@@ -2,7 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const CLAUDE_MODEL = 'claude-haiku-4-5';
-const CLAUDE_MAX_TOKENS = 600;
+const CLAUDE_MAX_TOKENS_BASE = 600;
+const CLAUDE_MAX_TOKENS_TOTAL = 1200;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -130,9 +131,37 @@ A RPV — documento que formaliza a obrigação de pagamento pelo poder público
 
 Agora analise as movimentações que serão fornecidas e produza o campo "Estágio Processual" seguindo rigorosamente as regras acima. Retorne APENAS o texto do resumo, sem cabeçalho, sem prefixos, sem marcadores.`;
 
+const PROMPT_ESTAGIO_TOTAL = `Você é um assistente especializado em comunicação jurídica para investidores da Credijuris, empresa de cessão de créditos judiciais. Sua única função é analisar TODO o histórico de movimentações processuais fornecido — desde a primeira movimentação registrada até a mais recente — e redigir um resumo completo do andamento do processo, do início até o estado atual.
+
+CONTEXTO DOS PROCESSOS:
+Os processos são em geral cumprimentos de sentença contra entidades da Fazenda Pública (municípios, estados ou União), sob o rito do CPC ou da Lei dos Juizados Especiais da Fazenda Pública. O objetivo final é sempre a liquidação do crédito por meio da expedição e pagamento de RPV (Requisição de Pequeno Valor) ou Precatório.
+
+FLUXO TÍPICO (da fase inicial à conclusão):
+1. Pedido de homologação dos cálculos de liquidação
+2. Registro público, quando exigido por decisão judicial
+3. Diligências junto à serventia, gabinete e demais órgãos do tribunal
+4. Expedição da RPV ou do Precatório
+5. Período de graça — prazo para pagamento voluntário pela Fazenda
+6. Pedido de sequestro de valores, caso não haja pagamento espontâneo
+7. Acompanhamento da penhora
+8. Diligências para levantamento dos valores junto ao juízo competente
+
+REGRAS DE REDAÇÃO:
+- Cubra todo o histórico em ordem cronológica, do início ao presente — sem omitir etapas relevantes
+- Estruture a narrativa identificando claramente as etapas do fluxo já percorridas e a etapa atual
+- Redija um texto corrido, em parágrafos, sem bullet points, listas ou marcadores
+- Use linguagem clara e acessível: o leitor é culto, mas não tem formação jurídica. Pode usar termos técnicos essenciais (RPV, precatório, penhora, sequestro de valores), mas sempre de forma contextualizada — nunca os solte sem referência ao que representam
+- Escreva em terceira pessoa, tom neutro e informativo
+- Não mencione nomes de advogados, servidores ou responsáveis internos
+- Não emita juízo de valor sobre a condução do processo
+- Sem limite estrito de linhas, mas seja conciso: 8 a 12 linhas em geral é suficiente
+
+Agora analise as movimentações que serão fornecidas e produza um resumo completo do processo, do início ao estado atual, seguindo rigorosamente as regras acima. Retorne APENAS o texto do resumo, sem cabeçalho, sem prefixos, sem marcadores.`;
+
 const PROMPTS_POR_CAMPO: Record<string, string> = {
   providencias: PROMPT_PROVIDENCIAS,
   estagio: PROMPT_ESTAGIO,
+  estagio_total: PROMPT_ESTAGIO_TOTAL,
 };
 
 function fmtDateBR(iso: string): string {
@@ -142,13 +171,16 @@ function fmtDateBR(iso: string): string {
   return iso;
 }
 
-function buildUserMessage(numeroProcesso: string, movimentacoes: Array<{ data: string; descricao: string }>): string {
-  const lines = movimentacoes
-    .slice()
-    .sort((a, b) => (b.data || '').localeCompare(a.data || ''))
-    .map((m) => `${fmtDateBR(m.data)} - ${(m.descricao || '').trim()}`);
+function buildUserMessage(numeroProcesso: string, movimentacoes: Array<{ data: string; descricao: string }>, campo: string): string {
+  const cronologico = campo === 'estagio_total';
+  const sorted = movimentacoes.slice().sort((a, b) => {
+    const cmp = (a.data || '').localeCompare(b.data || '');
+    return cronologico ? cmp : -cmp;
+  });
+  const lines = sorted.map((m) => `${fmtDateBR(m.data)} - ${(m.descricao || '').trim()}`);
   const header = numeroProcesso ? `Processo: ${numeroProcesso}\n\n` : '';
-  return `${header}Movimentações (mais recentes primeiro):\n${lines.join('\n')}`;
+  const ordemLbl = cronologico ? 'ordem cronológica, mais antigas primeiro' : 'mais recentes primeiro';
+  return `${header}Movimentações (${ordemLbl}):\n${lines.join('\n')}`;
 }
 
 serve(async (req) => {
@@ -200,7 +232,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Nenhuma movimentação fornecida' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const userMessage = buildUserMessage(numeroProcesso, movimentacoes);
+    const userMessage = buildUserMessage(numeroProcesso, movimentacoes, campo);
 
     // Chama Claude
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -212,7 +244,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: CLAUDE_MODEL,
-        max_tokens: CLAUDE_MAX_TOKENS,
+        max_tokens: campo === 'estagio_total' ? CLAUDE_MAX_TOKENS_TOTAL : CLAUDE_MAX_TOKENS_BASE,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
       }),

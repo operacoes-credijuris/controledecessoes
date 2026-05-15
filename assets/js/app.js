@@ -3923,8 +3923,8 @@ function crtTextCell(aba,id,field,val,proc){
    gerar: 'estagioProcessual' → prompt de Estágio Processual;
    'providencias' → prompt de Providências/Próximos Passos. Ambos consomem
    o mesmo array historicoProcessual local. */
-const _CRT_RESUMO_LABELS={estagioProcessual:'Estágio Processual',providencias:'Providências / Próx. Passos'};
-const _CRT_RESUMO_CAMPO_API={estagioProcessual:'estagio',providencias:'providencias'};
+const _CRT_RESUMO_LABELS={estagioProcessual:'Estágio Processual',providencias:'Providências / Próx. Passos',estagioProcessualTotal:'Resumo Total do Processo'};
+const _CRT_RESUMO_CAMPO_API={estagioProcessual:'estagio',providencias:'providencias',estagioProcessualTotal:'estagio_total'};
 let _crtResumoCtx={aba:'',id:'',field:'',proc:''};
 const _CRT_RESUMO_CACHE={};
 function crtTextEdit(aba,id,field,proc){
@@ -3934,9 +3934,21 @@ function crtTextEdit(aba,id,field,proc){
   if(lblEl)lblEl.textContent=_CRT_RESUMO_LABELS[_crtResumoCtx.field]||'Resumo';
   const procEl=document.getElementById('crt-txt-proc');
   if(procEl)procEl.textContent=_crtResumoCtx.proc;
+  const totalBtn=document.getElementById('crt-resumo-total');
+  if(totalBtn){
+    const showTotal=_crtResumoCtx.field==='estagioProcessual'||_crtResumoCtx.field==='estagioProcessualTotal';
+    totalBtn.style.display=showTotal?'inline-flex':'none';
+    totalBtn.textContent=_crtResumoCtx.field==='estagioProcessualTotal'?'Voltar ao Estágio':'Resumo Total';
+  }
+  /* Se há resumo já persistido no record (de geração anterior) e nada em cache,
+     usa como ponto de partida — evita regerar e gastar tokens à toa. */
+  const key=`${aba}:${id}:${_crtResumoCtx.field}`;
+  if(!_CRT_RESUMO_CACHE[key]&&rec&&rec[_crtResumoCtx.field]){
+    _CRT_RESUMO_CACHE[key]={resumo:rec[_crtResumoCtx.field],model:'',geradoEm:''};
+  }
   _crtResumoRender();
   document.getElementById('crt-txt-ov').classList.add('on');
-  const cached=_CRT_RESUMO_CACHE[`${aba}:${id}:${_crtResumoCtx.field}`];
+  const cached=_CRT_RESUMO_CACHE[key];
   if(!cached)_crtResumoFetch(false);
 }
 function _crtResumoRender(){
@@ -3966,10 +3978,15 @@ function _crtResumoRender(){
   }
   errEl.style.display='none';
   txtEl.textContent=cached.resumo||'';
-  metaEl.style.display='block';
   const when=cached.geradoEm?new Date(cached.geradoEm):null;
-  const whenStr=when?when.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-  metaEl.textContent=`Gerado em ${whenStr}${cached.model?` · ${cached.model}`:''}`;
+  const whenStr=when&&isFinite(when)?when.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  if(whenStr||cached.model){
+    metaEl.style.display='block';
+    metaEl.textContent=whenStr?`Gerado em ${whenStr}${cached.model?` · ${cached.model}`:''}`:(cached.model||'');
+  }else{
+    metaEl.style.display='none';
+    metaEl.textContent='';
+  }
 }
 async function _crtResumoFetch(force){
   const{aba,id,field,proc}=_crtResumoCtx;
@@ -4005,6 +4022,11 @@ async function _crtResumoFetch(force){
       _CRT_RESUMO_CACHE[key]={error:data.error};
     }else if(data&&data.resumo){
       _CRT_RESUMO_CACHE[key]={resumo:data.resumo,model:data.model||'',geradoEm:new Date().toISOString()};
+      /* Persiste no record (apenas para os 2 campos "oficiais" — o resumo
+         total fica só em memória, conforme decisão de produto). */
+      if(field==='estagioProcessual'||field==='providencias'){
+        try{_crtSave(aba,id,field,data.resumo);}catch(e){console.warn('[Credijuris] _crtSave resumo:',e);}
+      }
     }else{
       _CRT_RESUMO_CACHE[key]={error:'Resposta inesperada do servidor.'};
     }
@@ -4014,6 +4036,27 @@ async function _crtResumoFetch(force){
   if(document.getElementById('crt-txt-ov').classList.contains('on')&&_crtResumoCtx.id===id&&_crtResumoCtx.field===field)_crtResumoRender();
 }
 function _crtResumoRegen(){_crtResumoFetch(true);}
+function _crtResumoTotal(){
+  /* Toggle entre Estágio Processual (resumo focado em eventos recentes,
+     persistido no record) e Resumo Total (cobre histórico completo, vive
+     só em memória — não persiste, não exporta). Só disponível quando o
+     modal foi aberto pela coluna Estágio Processual. */
+  if(_crtResumoCtx.field==='providencias')return;
+  const newField=_crtResumoCtx.field==='estagioProcessualTotal'?'estagioProcessual':'estagioProcessualTotal';
+  _crtResumoCtx.field=newField;
+  const lblEl=document.getElementById('crt-txt-lbl');
+  if(lblEl)lblEl.textContent=_CRT_RESUMO_LABELS[newField]||'Resumo';
+  const totalBtn=document.getElementById('crt-resumo-total');
+  if(totalBtn)totalBtn.textContent=newField==='estagioProcessualTotal'?'Voltar ao Estágio':'Resumo Total';
+  const{aba,id}=_crtResumoCtx;
+  const key=`${aba}:${id}:${newField}`;
+  if(newField==='estagioProcessual'&&!_CRT_RESUMO_CACHE[key]){
+    const rec=load(aba).find(r=>r.id===id);
+    if(rec&&rec.estagioProcessual)_CRT_RESUMO_CACHE[key]={resumo:rec.estagioProcessual,model:'',geradoEm:''};
+  }
+  _crtResumoRender();
+  if(!_CRT_RESUMO_CACHE[key])_crtResumoFetch(false);
+}
 function _crtTxtClose(){
   document.getElementById('crt-txt-ov').classList.remove('on');
 }
