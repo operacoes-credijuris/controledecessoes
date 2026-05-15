@@ -1752,14 +1752,14 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   background:
     radial-gradient(ellipse at 75% 0%,rgba(110,125,187,.1),transparent 40%),
     #171a1f;
-  flex:1;overflow-y:auto;padding:24px 24px;display:none;flex-direction:column;gap:16px
+  flex:1;min-height:0;overflow-y:auto;padding:24px 20px;display:none;flex-direction:column;align-items:center;gap:16px
 }
 .cfg-section{
   background:#111417;
   border:1px solid rgba(255,255,255,.07);
   border-radius:12px;
   overflow:hidden;
-  max-width:860px;
+  width:100%;max-width:680px;
 }
 .cfg-section-hdr{
   padding:13px 18px 11px;
