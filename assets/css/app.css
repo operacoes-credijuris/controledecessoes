@@ -1007,10 +1007,15 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
   width:100%;
 }
 .dash-search-bar .srch-ico{right:8px}
-.mov-filters{display:flex;align-items:center;gap:5px;flex:1;overflow:hidden;padding-left:8px}
-.mov-filter-group{display:flex;align-items:center;gap:3px;flex-shrink:0}
-.mov-filter-sep{width:1px;height:13px;background:rgba(255,255,255,.1);margin:0 2px;flex-shrink:0}
-.mov-chip{background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:5px;color:#6b7280;font-size:10px;font-family:inherit;padding:2px 7px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;white-space:nowrap;line-height:1.4}
+.mov-filters{display:flex;align-items:center;padding-left:8px;flex-shrink:0}
+.mov-filter-btn{display:flex;align-items:center;gap:5px;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#6b7280;font-size:11px;font-family:inherit;padding:3px 9px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;white-space:nowrap;line-height:1.4;position:relative}
+.mov-filter-btn:hover{border-color:rgba(255,255,255,.2);color:#9ca3af}
+.mov-filter-btn.active{border-color:rgba(110,125,187,.4);color:#a5b4fc;background:rgba(110,125,187,.12)}
+.mov-filter-dot{width:5px;height:5px;border-radius:50%;background:#a5b4fc;flex-shrink:0}
+.mov-filter-dd{position:absolute;top:calc(100% + 6px);left:0;z-index:200;background:#161b24;border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:12px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.mov-filter-dd-lbl{font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#3e4d5c;margin-bottom:5px}
+.mov-filter-dd-group{display:flex;flex-wrap:wrap;gap:4px}
+.mov-chip{background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:5px;color:#6b7280;font-size:10px;font-family:inherit;padding:2px 8px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;white-space:nowrap;line-height:1.5}
 .mov-chip.on{background:rgba(110,125,187,.18);border-color:rgba(110,125,187,.4);color:#a5b4fc}
 .mov-chip:hover:not(.on){border-color:rgba(255,255,255,.2);color:#9ca3af}
 .dash-panel-hdr{
