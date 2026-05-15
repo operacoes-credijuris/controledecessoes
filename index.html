@@ -878,22 +878,30 @@
   </div>
 </div>
 
-<!-- CARTEIRAS TEXT EDIT MODAL -->
+<!-- CARTEIRAS RESUMO MODAL -->
 <div id="crt-txt-ov" class="crt-txt-ov" onclick="if(event.target===this)_crtTxtClose()">
   <div class="crt-txt-mdl">
     <div class="mdl-hdr">
       <div>
-        <div class="mdl-title" id="crt-txt-lbl"></div>
+        <div class="mdl-title" id="crt-txt-lbl">Resumo</div>
         <div class="mdl-sub" id="crt-txt-proc"></div>
       </div>
       <button class="mdl-x" onclick="_crtTxtClose()">✕</button>
     </div>
     <div class="mdl-body">
-      <textarea id="crt-txt-area" rows="5" placeholder="Digite aqui…"></textarea>
+      <div id="crt-resumo-box" class="crt-resumo-box">
+        <div id="crt-resumo-loading" class="crt-resumo-loading" style="display:none">
+          <div class="spin"></div>
+          <span>Analisando movimentações…</span>
+        </div>
+        <div id="crt-resumo-error" class="crt-resumo-error" style="display:none"></div>
+        <div id="crt-resumo-text" class="crt-resumo-text"></div>
+        <div id="crt-resumo-meta" class="crt-resumo-meta" style="display:none"></div>
+      </div>
     </div>
     <div class="mdl-footer">
-      <button class="btn" onclick="_crtTxtClose()">Cancelar</button>
-      <button class="btn btn-blue" onclick="_crtTxtConfirm()">Salvar</button>
+      <button class="btn" onclick="_crtTxtClose()">Fechar</button>
+      <button id="crt-resumo-regen" class="btn btn-blue" onclick="_crtResumoRegen()">Regenerar</button>
     </div>
   </div>
 </div>

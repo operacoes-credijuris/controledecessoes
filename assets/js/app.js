@@ -3917,24 +3917,103 @@ function crtTextCell(aba,id,field,val,proc){
   const btn=`<button class="crt-eb" onclick="crtTextEdit('${escJs(aba)}','${escJs(id)}','${escJs(field)}'${procArg})" title="Editar">${_EDIT_SVG}</button>`;
   return`<div class="crt-txt-cell"><span class="crt-txt-preview">${preview}</span>${btn}</div>`;
 }
-let _crtTxtCtx={aba:'',id:'',field:''};
-const _CRT_TXT_LABELS={estagioProcessual:'Estágio Processual',providencias:'Providências / Próx. Passos'};
+/* Modal de Resumo das Movimentações (substitui editor de texto da Carteira).
+   Mantém o entry-point `crtTextEdit(aba,id,field,proc)` para preservar o
+   contrato dos botões inline (crtTextCell). O `field` define qual resumo
+   gerar: 'estagioProcessual' → prompt de Estágio Processual;
+   'providencias' → prompt de Providências/Próximos Passos. Ambos consomem
+   o mesmo array historicoProcessual local. */
+const _CRT_RESUMO_LABELS={estagioProcessual:'Estágio Processual',providencias:'Providências / Próx. Passos'};
+const _CRT_RESUMO_CAMPO_API={estagioProcessual:'estagio',providencias:'providencias'};
+let _crtResumoCtx={aba:'',id:'',field:'',proc:''};
+const _CRT_RESUMO_CACHE={};
 function crtTextEdit(aba,id,field,proc){
   const rec=load(aba).find(r=>r.id===id);
-  _crtTxtCtx={aba,id,field};
-  document.getElementById('crt-txt-lbl').textContent=_CRT_TXT_LABELS[field]||field;
+  _crtResumoCtx={aba,id,field:field||'providencias',proc:proc||(rec&&rec.numeroProcesso)||''};
+  const lblEl=document.getElementById('crt-txt-lbl');
+  if(lblEl)lblEl.textContent=_CRT_RESUMO_LABELS[_crtResumoCtx.field]||'Resumo';
   const procEl=document.getElementById('crt-txt-proc');
-  if(procEl)procEl.textContent=proc||'';
-  document.getElementById('crt-txt-area').value=rec?rec[field]||'':'';
+  if(procEl)procEl.textContent=_crtResumoCtx.proc;
+  _crtResumoRender();
   document.getElementById('crt-txt-ov').classList.add('on');
-  setTimeout(()=>document.getElementById('crt-txt-area').focus(),80);
+  const cached=_CRT_RESUMO_CACHE[`${aba}:${id}:${_crtResumoCtx.field}`];
+  if(!cached)_crtResumoFetch(false);
 }
-function _crtTxtConfirm(){
-  const val=document.getElementById('crt-txt-area').value.trim();
-  const{aba,id,field}=_crtTxtCtx;
-  _crtSave(aba,id,field,val);
-  _crtTxtClose();
+function _crtResumoRender(){
+  const{aba,id,field}=_crtResumoCtx;
+  const cached=_CRT_RESUMO_CACHE[`${aba}:${id}:${field}`];
+  const loadEl=document.getElementById('crt-resumo-loading');
+  const errEl=document.getElementById('crt-resumo-error');
+  const txtEl=document.getElementById('crt-resumo-text');
+  const metaEl=document.getElementById('crt-resumo-meta');
+  const regenBtn=document.getElementById('crt-resumo-regen');
+  if(!cached){
+    loadEl.style.display='flex';
+    errEl.style.display='none';
+    txtEl.textContent='';
+    metaEl.style.display='none';
+    if(regenBtn)regenBtn.disabled=true;
+    return;
+  }
+  loadEl.style.display='none';
+  if(regenBtn)regenBtn.disabled=false;
+  if(cached.error){
+    errEl.style.display='block';
+    errEl.textContent=cached.error;
+    txtEl.textContent='';
+    metaEl.style.display='none';
+    return;
+  }
+  errEl.style.display='none';
+  txtEl.textContent=cached.resumo||'';
+  metaEl.style.display='block';
+  const when=cached.geradoEm?new Date(cached.geradoEm):null;
+  const whenStr=when?when.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  metaEl.textContent=`Gerado em ${whenStr}${cached.model?` · ${cached.model}`:''}`;
 }
+async function _crtResumoFetch(force){
+  const{aba,id,field,proc}=_crtResumoCtx;
+  if(!id)return;
+  const key=`${aba}:${id}:${field}`;
+  if(!force&&_CRT_RESUMO_CACHE[key]&&!_CRT_RESUMO_CACHE[key].error)return;
+  const rec=load(aba).find(r=>r.id===id);
+  if(!rec){
+    _CRT_RESUMO_CACHE[key]={error:'Processo não encontrado.'};
+    _crtResumoRender();
+    return;
+  }
+  const movs=(rec.historicoProcessual||[])
+    .filter(h=>h&&h.descricao)
+    .map(h=>({data:h.data||'',descricao:h.descricao||''}));
+  if(!movs.length){
+    _CRT_RESUMO_CACHE[key]={error:'Nenhuma movimentação registrada para este processo. Adicione entradas no histórico antes de gerar o resumo.'};
+    _crtResumoRender();
+    return;
+  }
+  delete _CRT_RESUMO_CACHE[key];
+  _crtResumoRender();
+  const campoApi=_CRT_RESUMO_CAMPO_API[field]||'providencias';
+  try{
+    const{data,error}=await sb.functions.invoke('resumir-movimentacoes',{
+      body:{numeroProcesso:proc||rec.numeroProcesso||'',movimentacoes:movs,campo:campoApi},
+    });
+    if(error){
+      const detail=(error.context&&typeof error.context.json==='function')?await error.context.json().catch(()=>null):null;
+      const msg=(detail&&detail.error)||error.message||'Falha ao gerar resumo';
+      _CRT_RESUMO_CACHE[key]={error:msg};
+    }else if(data&&data.error){
+      _CRT_RESUMO_CACHE[key]={error:data.error};
+    }else if(data&&data.resumo){
+      _CRT_RESUMO_CACHE[key]={resumo:data.resumo,model:data.model||'',geradoEm:new Date().toISOString()};
+    }else{
+      _CRT_RESUMO_CACHE[key]={error:'Resposta inesperada do servidor.'};
+    }
+  }catch(e){
+    _CRT_RESUMO_CACHE[key]={error:String(e&&e.message||e)};
+  }
+  if(document.getElementById('crt-txt-ov').classList.contains('on')&&_crtResumoCtx.id===id&&_crtResumoCtx.field===field)_crtResumoRender();
+}
+function _crtResumoRegen(){_crtResumoFetch(true);}
 function _crtTxtClose(){
   document.getElementById('crt-txt-ov').classList.remove('on');
 }
