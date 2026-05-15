@@ -194,17 +194,28 @@
             <span class="srch-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.75" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="8.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
           </div>
           <div class="mov-filters" id="mov-filters" hidden>
-            <div class="mov-filter-group">
-              <button class="mov-chip on" data-fmod="" onclick="_setMovMod('')">Todas</button>
-              <button class="mov-chip" data-fmod="cessoes" onclick="_setMovMod('cessoes')">Cessões</button>
-              <button class="mov-chip" data-fmod="rpv" onclick="_setMovMod('rpv')">RPV</button>
-              <button class="mov-chip" data-fmod="requerimentos" onclick="_setMovMod('requerimentos')">Outros</button>
-            </div>
-            <div class="mov-filter-sep"></div>
-            <div class="mov-filter-group">
-              <button class="mov-chip on" data-fstatus="" onclick="_setMovStatus('')">Todos</button>
-              <button class="mov-chip" data-fstatus="com" onclick="_setMovStatus('com')">Com mov.</button>
-              <button class="mov-chip" data-fstatus="sem" onclick="_setMovStatus('sem')">Sem mov.</button>
+            <div style="position:relative">
+              <button class="mov-filter-btn" id="mov-filter-btn" onclick="_toggleMovFilterDD(event)">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="flex-shrink:0"><path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Filtros
+                <span class="mov-filter-dot" id="mov-filter-dot" hidden></span>
+                <span style="font-size:9px;opacity:.6">▾</span>
+              </button>
+              <div class="mov-filter-dd" id="mov-filter-dd" hidden>
+                <div class="mov-filter-dd-lbl">Tabela</div>
+                <div class="mov-filter-dd-group">
+                  <button class="mov-chip on" data-fmod="" onclick="_setMovMod('')">Todas</button>
+                  <button class="mov-chip" data-fmod="cessoes" onclick="_setMovMod('cessoes')">Cessões</button>
+                  <button class="mov-chip" data-fmod="rpv" onclick="_setMovMod('rpv')">RPV</button>
+                  <button class="mov-chip" data-fmod="requerimentos" onclick="_setMovMod('requerimentos')">Outros</button>
+                </div>
+                <div class="mov-filter-dd-lbl" style="margin-top:8px">Status</div>
+                <div class="mov-filter-dd-group">
+                  <button class="mov-chip on" data-fstatus="" onclick="_setMovStatus('')">Todos</button>
+                  <button class="mov-chip" data-fstatus="com" onclick="_setMovStatus('com')">Com mov.</button>
+                  <button class="mov-chip" data-fstatus="sem" onclick="_setMovStatus('sem')">Sem mov.</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

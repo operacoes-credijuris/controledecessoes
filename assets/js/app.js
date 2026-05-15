@@ -2941,11 +2941,29 @@ function _applyMovFilters(){
     el.style.display=(matchQ&&matchMod&&matchStatus)?'':'none';
   });
 }
+function _toggleMovFilterDD(e){
+  e&&e.stopPropagation();
+  const dd=document.getElementById('mov-filter-dd');
+  if(!dd)return;
+  dd.hidden=!dd.hidden;
+  if(!dd.hidden){
+    const close=ev=>{if(!dd.contains(ev.target)&&ev.target.id!=='mov-filter-btn'){dd.hidden=true;document.removeEventListener('click',close);}};
+    setTimeout(()=>document.addEventListener('click',close),0);
+  }
+}
+function _updateMovFilterBtn(){
+  const hasFilter=_movModFilter||_movStatusFilter;
+  const btn=document.getElementById('mov-filter-btn');
+  const dot=document.getElementById('mov-filter-dot');
+  if(btn)btn.classList.toggle('active',!!hasFilter);
+  if(dot)dot.hidden=!hasFilter;
+}
 function _setMovMod(v){
   _movModFilter=v;
   document.querySelectorAll('#mov-filters .mov-chip[data-fmod]').forEach(el=>{
     el.classList.toggle('on',el.dataset.fmod===v);
   });
+  _updateMovFilterBtn();
   _applyMovFilters();
 }
 function _setMovStatus(v){
@@ -2953,6 +2971,7 @@ function _setMovStatus(v){
   document.querySelectorAll('#mov-filters .mov-chip[data-fstatus]').forEach(el=>{
     el.classList.toggle('on',el.dataset.fstatus===v);
   });
+  _updateMovFilterBtn();
   _applyMovFilters();
 }
 
