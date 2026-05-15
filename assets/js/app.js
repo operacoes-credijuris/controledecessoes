@@ -3923,8 +3923,8 @@ function crtTextCell(aba,id,field,val,proc){
    gerar: 'estagioProcessual' → prompt de Estágio Processual;
    'providencias' → prompt de Providências/Próximos Passos. Ambos consomem
    o mesmo array historicoProcessual local. */
-const _CRT_RESUMO_LABELS={estagioProcessual:'Estágio Processual',providencias:'Providências / Próx. Passos',estagioProcessualTotal:'Resumo Total do Processo'};
-const _CRT_RESUMO_CAMPO_API={estagioProcessual:'estagio',providencias:'providencias',estagioProcessualTotal:'estagio_total'};
+const _CRT_RESUMO_LABELS={estagioProcessual:'Estágio Processual',providencias:'Providências / Próx. Passos'};
+const _CRT_RESUMO_CAMPO_API={estagioProcessual:'estagio',providencias:'providencias'};
 let _crtResumoCtx={aba:'',id:'',field:'',proc:''};
 const _CRT_RESUMO_CACHE={};
 function crtTextEdit(aba,id,field,proc){
@@ -3934,12 +3934,6 @@ function crtTextEdit(aba,id,field,proc){
   if(lblEl)lblEl.textContent=_CRT_RESUMO_LABELS[_crtResumoCtx.field]||'Resumo';
   const procEl=document.getElementById('crt-txt-proc');
   if(procEl)procEl.textContent=_crtResumoCtx.proc;
-  const totalBtn=document.getElementById('crt-resumo-total');
-  if(totalBtn){
-    const showTotal=_crtResumoCtx.field==='estagioProcessual'||_crtResumoCtx.field==='estagioProcessualTotal';
-    totalBtn.style.display=showTotal?'inline-flex':'none';
-    totalBtn.textContent=_crtResumoCtx.field==='estagioProcessualTotal'?'Voltar ao Estágio':'Resumo Total';
-  }
   /* Se há resumo já persistido no record (de geração anterior) e nada em cache,
      usa como ponto de partida — evita regerar e gastar tokens à toa. */
   const key=`${aba}:${id}:${_crtResumoCtx.field}`;
@@ -4036,26 +4030,87 @@ async function _crtResumoFetch(force){
   if(document.getElementById('crt-txt-ov').classList.contains('on')&&_crtResumoCtx.id===id&&_crtResumoCtx.field===field)_crtResumoRender();
 }
 function _crtResumoRegen(){_crtResumoFetch(true);}
-function _crtResumoTotal(){
-  /* Toggle entre Estágio Processual (resumo focado em eventos recentes,
-     persistido no record) e Resumo Total (cobre histórico completo, vive
-     só em memória — não persiste, não exporta). Só disponível quando o
-     modal foi aberto pela coluna Estágio Processual. */
-  if(_crtResumoCtx.field==='providencias')return;
-  const newField=_crtResumoCtx.field==='estagioProcessualTotal'?'estagioProcessual':'estagioProcessualTotal';
-  _crtResumoCtx.field=newField;
-  const lblEl=document.getElementById('crt-txt-lbl');
-  if(lblEl)lblEl.textContent=_CRT_RESUMO_LABELS[newField]||'Resumo';
-  const totalBtn=document.getElementById('crt-resumo-total');
-  if(totalBtn)totalBtn.textContent=newField==='estagioProcessualTotal'?'Voltar ao Estágio':'Resumo Total';
-  const{aba,id}=_crtResumoCtx;
-  const key=`${aba}:${id}:${newField}`;
-  if(newField==='estagioProcessual'&&!_CRT_RESUMO_CACHE[key]){
-    const rec=load(aba).find(r=>r.id===id);
-    if(rec&&rec.estagioProcessual)_CRT_RESUMO_CACHE[key]={resumo:rec.estagioProcessual,model:'',geradoEm:''};
+
+/* Batch: gera resumos de Estágio + Providências para todos os processos
+   do investidor selecionado. Por padrão pula linhas que já têm o campo
+   preenchido. Shift+click força regeneração de tudo. Roda com
+   concorrência limitada para não martelar a Edge Function. */
+let _crtLoteRunning=false;
+async function _crtGerarResumosLote(ev){
+  if(_crtLoteRunning)return;
+  const investidor=_crtAcSelected;
+  if(!investidor){alert('Selecione um investidor antes de gerar resumos.');return;}
+  const force=!!(ev&&ev.shiftKey);
+  const norm=s=>(s||'').trim().toLowerCase();
+  const inv=norm(investidor);
+  const CAMPOS=[
+    {field:'estagioProcessual',campoApi:'estagio'},
+    {field:'providencias',campoApi:'providencias'},
+  ];
+  const tasks=[];
+  ['cessoes','rpv','encerrados'].forEach(aba=>{
+    (CACHE[aba]||[]).forEach(r=>{
+      if(r.vinculoPai)return;
+      if(norm(r.cessionario)!==inv)return;
+      const movs=(r.historicoProcessual||[]).filter(h=>h&&h.descricao);
+      if(!movs.length)return;
+      for(const{field,campoApi} of CAMPOS){
+        if(!force&&(r[field]||'').trim())continue;
+        tasks.push({aba,id:r.id,field,campoApi,proc:r.numeroProcesso||'',movs});
+      }
+    });
+  });
+  if(!tasks.length){
+    alert('Todos os processos do investidor já têm resumos gerados. Segure Shift ao clicar para regerar tudo.');
+    return;
   }
-  _crtResumoRender();
-  if(!_CRT_RESUMO_CACHE[key])_crtResumoFetch(false);
+  const custoEst=(tasks.length*0.005).toFixed(2);
+  const msg=force
+    ?`Vai REGERAR ${tasks.length} resumo(s) (~US$ ${custoEst}). Confirmar?`
+    :`Vai gerar ${tasks.length} resumo(s) faltante(s) (~US$ ${custoEst}). Confirmar?`;
+  if(!confirm(msg))return;
+  _crtLoteRunning=true;
+  const btn=document.getElementById('crt-btn-gerar-resumos');
+  const lbl=document.getElementById('crt-btn-gerar-resumos-lbl');
+  if(btn){btn.disabled=true;btn.style.cursor='not-allowed';btn.style.filter='brightness(.85)';}
+  let done=0,ok=0,fail=0;
+  const total=tasks.length;
+  const updateLbl=()=>{if(lbl)lbl.textContent=`Gerando ${done}/${total}…`;};
+  updateLbl();
+  const CONCURRENCY=3;
+  const queue=tasks.slice();
+  async function worker(){
+    while(queue.length){
+      const t=queue.shift();
+      if(!t)break;
+      try{
+        const movs=t.movs.map(h=>({data:h.data||'',descricao:h.descricao||''}));
+        const{data,error}=await sb.functions.invoke('resumir-movimentacoes',{
+          body:{numeroProcesso:t.proc,movimentacoes:movs,campo:t.campoApi},
+        });
+        if(error){
+          const detail=(error.context&&typeof error.context.json==='function')?await error.context.json().catch(()=>null):null;
+          throw new Error((detail&&detail.error)||error.message||'erro Edge Function');
+        }
+        if(data&&data.error)throw new Error(data.error);
+        if(!data||!data.resumo)throw new Error('resposta vazia');
+        _crtSave(t.aba,t.id,t.field,data.resumo);
+        _CRT_RESUMO_CACHE[`${t.aba}:${t.id}:${t.field}`]={resumo:data.resumo,model:data.model||'',geradoEm:new Date().toISOString()};
+        ok++;
+      }catch(e){
+        fail++;
+        console.warn('[Credijuris] Resumo lote falhou:',t.id,t.field,e&&e.message||e);
+      }
+      done++;
+      updateLbl();
+    }
+  }
+  const workers=Array.from({length:Math.min(CONCURRENCY,tasks.length)},()=>worker());
+  await Promise.all(workers);
+  _crtLoteRunning=false;
+  if(btn){btn.disabled=false;btn.style.cursor='pointer';btn.style.filter='';}
+  if(lbl)lbl.textContent='Gerar resumos';
+  alert(`Concluído: ${ok} gerado(s), ${fail} falha(s). Total: ${total}.`);
 }
 function _crtTxtClose(){
   document.getElementById('crt-txt-ov').classList.remove('on');
