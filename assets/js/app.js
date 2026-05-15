@@ -1291,12 +1291,14 @@ function _crtAtualizaCards(rows){
   const tirAvg=tirs.length?(tirs.reduce((s,v)=>s+v,0)/tirs.length):null;
   set('crt-card-tir', tirAvg==null?'—':(tirAvg*100).toFixed(2).replace('.',',')+'%');
 
-  // A receber estimado = soma de Valor projetado das linhas sem Já recebido
+  // A receber estimado:
+  //   soma Valor projetado apenas onde jaRecebido == 0
+  //   + soma Valor est. complementar de todas as linhas
   const totalAReceber=rows.reduce((sum,r)=>{
     const jr=_parseNumCrt(r.jaRecebido);
-    if(jr>0)return sum;
-    const vp=_calcValorProjetado(r);
-    return sum+(vp||0);
+    const vp=jr>0?0:(_calcValorProjetado(r)||0);
+    const vc=_parseNumCrt(r.valorEstComplementar)||0;
+    return sum+vp+vc;
   },0);
   set('crt-card-areceber', totalAReceber>0 ? fmtBRL(totalAReceber) : '—');
 
