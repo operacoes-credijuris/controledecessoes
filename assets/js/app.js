@@ -1714,7 +1714,7 @@ function updateDash(){
         :'';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}${prioBadge}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${procLink(r.tribunal,r.numeroProcesso)}${navBtn('cessoes',r.id)}${prioBadge}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
@@ -1751,7 +1751,7 @@ function updateDash(){
         :meses>=1?`há +${meses} ${meses===1?'mês':'meses'}`:'há menos de 1 mês';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.numeroProcesso)}${navBtn('cessoes',r.id)}</div>
+          <div class="al-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${procLink(r.tribunal,r.numeroProcesso)}${navBtn('cessoes',r.id)}</div>
           ${(r.cedente||r.cessionario)?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cedente||'')}${r.cedente&&r.cessionario?' v. ':''}${esc(r.cessionario||'')}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
@@ -1782,7 +1782,7 @@ function updateDash(){
       const noteHtml=noteRaw?`<div style="display:flex;align-items:baseline;flex-wrap:wrap"><span class="al-note" data-full="${esc(noteRaw)}" data-short="${esc(noteShort)}">${esc(noteShort)}</span>${noteIsLong?`<button type="button" class="al-note-btn" onclick="_toggleAlNote(this)">ler mais...</button>`:''}</div>`:'';
       return`<div class="alert-item">
         <div style="flex:1;min-width:0">
-          <div class="al-text">${esc(r.numeroProcesso)}${taskTypeHtml}${navBtn(r._mod,r._id)}</div>
+          <div class="al-text">${procLink(r.tribunal,r.numeroProcesso)}${taskTypeHtml}${navBtn(r._mod,r._id)}</div>
           ${partes?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${partes}</div>`:''}
           ${noteHtml}
         </div>
@@ -1811,7 +1811,7 @@ function updateDash(){
         const noteHtml=noteRaw?`<div style="display:flex;align-items:baseline;flex-wrap:wrap"><span class="al-note" data-full="${esc(noteRaw)}" data-short="${esc(noteShort)}">${esc(noteShort)}</span>${noteIsLong?`<button type="button" class="al-note-btn" onclick="_toggleAlNote(this)">ler mais...</button>`:''}</div>`:'';
         return`<div class="alert-item">
           <div style="flex:1;min-width:0">
-            <div class="al-text">${esc(r.numeroProcesso)}${taskTypeHtml}${navBtn(r._mod,r._id)}</div>
+            <div class="al-text">${procLink(r.tribunal,r.numeroProcesso)}${taskTypeHtml}${navBtn(r._mod,r._id)}</div>
             ${partes?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${partes}</div>`:''}
             ${noteHtml}
           </div>
@@ -3538,6 +3538,38 @@ const _CPY_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" styl
 function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" onclick="cpyNum(event)">${_CPY_SVG}</button>`;}
 const _NAV_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M2.5 8.5L8.5 2.5M5 2.5H8.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('${mod}','${id}')" title="Ir para o processo">${_NAV_SVG}</button>`;}
+
+// Resolve URL do processo no sistema eletronico do tribunal a partir do
+// campo `r.tribunal` (texto livre, ex: "TJGO", "TRF3") + numero CNJ.
+// Pressuposto: o usuario ja esta logado no sistema correspondente.
+// Tribunais sem template caem no PDPJ (portal unificado do CNJ).
+function tribunalProcUrl(tribunal,numeroProcesso){
+  const num=(numeroProcesso||'').trim();
+  if(!num)return null;
+  const numLimpo=num.replace(/\D/g,'');
+  const trib=(tribunal||'').toUpperCase().replace(/[\s\-\.]/g,'');
+  // eproc estaduais
+  if(trib==='TJSC')return`https://eproc1g.tjsc.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
+  if(trib==='TJRS')return`https://eproc1g.tjrs.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
+  // eproc Tribunais Regionais Federais
+  if(trib==='TRF1')return`https://eproc.trf1.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
+  if(trib==='TRF2')return`https://eproc.trf2.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
+  if(trib==='TRF3')return`https://eproc.trf3.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
+  if(trib==='TRF4')return`https://eproc.trf4.jus.br/eproc2trf4/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
+  if(trib==='TRF5')return`https://eproc.trf5.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
+  if(trib==='TRF6')return`https://eproc.trf6.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
+  // Projudi TJGO
+  if(trib==='TJGO')return`https://projudi.tjgo.jus.br/BuscaProcesso?PaginaAtual=2&Op=2&Tipo=1&NumeroProcesso=${encodeURIComponent(num)}`;
+  // Fallback: Portal de Servicos do PJ (CNJ unificado) — cobre PJe federado e demais
+  return`https://portaldeservicos.pdpj.jus.br/consulta?numeroProcesso=${encodeURIComponent(num)}`;
+}
+function procLink(tribunal,numeroProcesso){
+  const num=(numeroProcesso||'').trim();
+  if(!num)return'';
+  const url=tribunalProcUrl(tribunal,num);
+  if(!url)return esc(num);
+  return`<a class="al-proc-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="Abrir no sistema do tribunal" onclick="event.stopPropagation()">${esc(num)}</a>`;
+}
 // Lapis usado pelos botoes de edicao inline em Carteiras (crtCell/crtCellBRL/crtTextCell).
 // Originalmente vivia como _PF_SVG; ficou orfao quando prazoFatal saiu de edicao manual.
 const _EDIT_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M7.5 1.5L9.5 3.5L3.5 9.5H1.5V7.5L7.5 1.5Z" stroke="#4b5563" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2.5L8.5 4.5" stroke="#4b5563" stroke-width="1.3" stroke-linecap="round"/></svg>`;
