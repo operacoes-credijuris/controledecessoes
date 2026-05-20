@@ -3558,9 +3558,11 @@ function tribunalProcUrl(tribunal,numeroProcesso){
   if(trib==='TRF4')return`https://eproc.trf4.jus.br/eproc2trf4/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
   if(trib==='TRF5')return`https://eproc.trf5.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
   if(trib==='TRF6')return`https://eproc.trf6.jus.br/eproc/externo_controlador.php?acao=processo_seleciona_publica&num_processo=${numLimpo}`;
-  // Projudi TJGO
-  if(trib==='TJGO')return`https://projudi.tjgo.jus.br/BuscaProcesso?PaginaAtual=2&Op=2&Tipo=1&NumeroProcesso=${encodeURIComponent(num)}`;
-  // Fallback: Portal de Servicos do PJ (CNJ unificado) — cobre PJe federado e demais
+  // Projudi TJGO — usa ID interno (`a1=`), nao aceita CNJ na URL.
+  // Abrimos a tela de busca; o handler do clique copia o CNJ pro clipboard.
+  if(trib==='TJGO')return`https://projudi.tjgo.jus.br/BuscaProcesso?PaginaAtual=2&Op=2`;
+  // Fallback: Portal de Servicos do PJ (CNJ unificado) — cobre PJe federado e demais.
+  // PDPJ e SPA e geralmente ignora query param; o clipboard cobre esse caso.
   return`https://portaldeservicos.pdpj.jus.br/consulta?numeroProcesso=${encodeURIComponent(num)}`;
 }
 function procLink(tribunal,numeroProcesso){
@@ -3568,7 +3570,13 @@ function procLink(tribunal,numeroProcesso){
   if(!num)return'';
   const url=tribunalProcUrl(tribunal,num);
   if(!url)return esc(num);
-  return`<a class="al-proc-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="Abrir no sistema do tribunal" onclick="event.stopPropagation()">${esc(num)}</a>`;
+  return`<a class="al-proc-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-cnj="${esc(num)}" title="Abrir no sistema do tribunal (n. copiado para colar no campo de busca)" onclick="_procLinkClick(event)">${esc(num)}</a>`;
+}
+function _procLinkClick(e){
+  e.stopPropagation();
+  const num=e.currentTarget.getAttribute('data-cnj')||'';
+  if(num){try{navigator.clipboard.writeText(num);}catch(_){}}
+  if(typeof showToast==='function')showToast(`Processo ${num} copiado — cole no campo de busca`);
 }
 // Lapis usado pelos botoes de edicao inline em Carteiras (crtCell/crtCellBRL/crtTextCell).
 // Originalmente vivia como _PF_SVG; ficou orfao quando prazoFatal saiu de edicao manual.
