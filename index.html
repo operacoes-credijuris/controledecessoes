@@ -1161,5 +1161,41 @@
 </div>
 <div id="toast" class="toast"></div>
 
+<!-- MODAL: Gerar Petição -->
+<div id="pet-modal" class="pet-modal" style="display:none" onclick="_closePeticaoModal(event)">
+  <div class="pet-modal-card" onclick="event.stopPropagation()">
+    <div class="pet-modal-hdr">
+      <div class="pet-modal-title">Gerar Petição</div>
+      <button type="button" class="pet-modal-close" onclick="_closePeticaoModal()" title="Fechar">×</button>
+    </div>
+    <div class="pet-modal-body">
+      <div id="pet-modal-info" class="pet-modal-info"></div>
+
+      <div class="pet-field">
+        <label class="pet-lbl" for="pet-evento">Nº do evento da penhora</label>
+        <input id="pet-evento" type="text" class="pet-input" placeholder="ex: 42" autocomplete="off">
+      </div>
+
+      <div class="pet-field">
+        <label class="pet-lbl" for="pet-data-homol">Data da homologação da cessão</label>
+        <input id="pet-data-homol" type="date" class="pet-input">
+      </div>
+
+      <div class="pet-field">
+        <div class="pet-lbl">Créditos cedidos (marque o que se aplica)</div>
+        <label class="pet-chk"><input type="checkbox" id="pet-cred-principal"> crédito principal</label>
+        <label class="pet-chk"><input type="checkbox" id="pet-cred-contratuais"> honorários contratuais</label>
+        <label class="pet-chk"><input type="checkbox" id="pet-cred-sucumbenciais"> honorários sucumbenciais</label>
+      </div>
+
+      <div id="pet-modal-err" class="pet-err" style="display:none"></div>
+    </div>
+    <div class="pet-modal-ft">
+      <button type="button" class="btn btn-blue btn-sm" onclick="_closePeticaoModal()">Cancelar</button>
+      <button type="button" id="pet-modal-submit" class="btn btn-gold btn-sm" onclick="_submitPeticao()">Gerar e baixar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

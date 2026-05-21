@@ -1786,6 +1786,7 @@ function updateDash(){
           ${partes?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${partes}</div>`:''}
           ${noteHtml}
         </div>
+        ${peticaoBtn(r)}
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
           <span style="font-size:10px;color:#6b7280">${msg}</span>
           <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r._deadline)}</span>
@@ -3538,6 +3539,186 @@ const _CPY_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" styl
 function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" onclick="cpyNum(event)">${_CPY_SVG}</button>`;}
 const _NAV_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M2.5 8.5L8.5 2.5M5 2.5H8.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('${mod}','${id}')" title="Ir para o processo">${_NAV_SVG}</button>`;}
+
+/* Botao "Gerar peticao" — aparece no card de Pendencias Fatais quando _task
+   contem "levantamento". Outros tipos de peticao podem ser adicionados no
+   _PETICAO_TIPO_MAP abaixo. */
+const _DOC_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline;vertical-align:middle"><path d="M3 1.5h4l2 2V10a.5.5 0 0 1-.5.5h-5A.5.5 0 0 1 3 10V2a.5.5 0 0 1 .5-.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 1.5V4h2" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+const _PETICAO_TIPO_MAP=[
+  {match:/levantamento/i, tipo:'levantamento', label:'Petição de Levantamento'},
+];
+function _peticaoTipo(task){
+  const t=String(task||'');
+  for(const m of _PETICAO_TIPO_MAP){if(m.match.test(t))return m;}
+  return null;
+}
+function peticaoBtn(r){
+  const m=_peticaoTipo(r._task);
+  if(!m)return'';
+  return`<button type="button" class="al-peticao-btn" onclick="_openPeticaoModal('${m.tipo}','${r._mod}','${esc(r._id)}')" title="${esc(m.label)}">${_DOC_SVG}</button>`;
+}
+
+/* ============================================================
+   Fluxo do modal "Gerar Petição"
+   ============================================================ */
+let _PET_CTX=null; // {tipo, mod, id, rec}
+
+function _openPeticaoModal(tipo,mod,id){
+  const rec=(CACHE[mod]||[]).find(x=>String(x.id)===String(id));
+  if(!rec){showToast('Processo não encontrado.');return;}
+  _PET_CTX={tipo,mod,id,rec};
+  const cnj=rec.numeroProcesso||'(sem CNJ)';
+  const partes=(rec.cedente||'')+(rec.cedente&&rec.cessionario?' v. ':'')+(rec.cessionario||'');
+  document.getElementById('pet-modal-info').innerHTML=
+    `<div class="pet-info-cnj">${esc(cnj)}</div>`+
+    (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
+  // Reset inputs
+  document.getElementById('pet-evento').value='';
+  document.getElementById('pet-data-homol').value='';
+  document.getElementById('pet-cred-principal').checked=false;
+  document.getElementById('pet-cred-contratuais').checked=false;
+  document.getElementById('pet-cred-sucumbenciais').checked=false;
+  document.getElementById('pet-modal-err').style.display='none';
+  const btn=document.getElementById('pet-modal-submit');
+  btn.disabled=false;btn.textContent='Gerar e baixar';
+  document.getElementById('pet-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('pet-evento').focus(),50);
+}
+
+function _closePeticaoModal(e){
+  if(e&&e.target&&e.target.id!=='pet-modal')return; // so fecha se clicou no overlay
+  document.getElementById('pet-modal').style.display='none';
+  _PET_CTX=null;
+}
+
+function _petShowErr(msg){
+  const el=document.getElementById('pet-modal-err');
+  el.textContent=msg;el.style.display='block';
+}
+
+// "01/05/2025" para "1° de maio de 2025"
+function _dataExtensoBR(isoOrBr){
+  if(!isoOrBr)return'';
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  let d,m,y;
+  if(/^\d{4}-\d{2}-\d{2}/.test(isoOrBr)){
+    [y,m,d]=isoOrBr.slice(0,10).split('-').map(Number);
+  } else if(/^\d{2}\/\d{2}\/\d{4}/.test(isoOrBr)){
+    [d,m,y]=isoOrBr.slice(0,10).split('/').map(Number);
+  } else return isoOrBr;
+  if(!d||!m||!y||m<1||m>12)return isoOrBr;
+  return`${d} de ${meses[m-1]} de ${y}`;
+}
+
+// Concatena os checks em portugues correto: "A", "A e B", "A, B e C"
+function _listaPortugues(itens){
+  const a=itens.filter(Boolean);
+  if(a.length===0)return'';
+  if(a.length===1)return a[0];
+  if(a.length===2)return a[0]+' e '+a[1];
+  return a.slice(0,-1).join(', ')+' e '+a[a.length-1];
+}
+
+// Monta "Banco X, agência Y, conta Z, PIX W" a partir do registro de investidor.
+function _formataDadosBancarios(inv){
+  if(!inv)return'';
+  const partes=[];
+  if(inv.banco)   partes.push(`Banco: ${inv.banco}`);
+  if(inv.agencia) partes.push(`Agência: ${inv.agencia}`);
+  if(inv.conta)   partes.push(`Conta: ${inv.conta}`);
+  if(inv.pix)     partes.push(`PIX: ${inv.pix}`);
+  return partes.join(' — ');
+}
+
+// Busca o investidor por nome (case-insensitive, sem acentos)
+async function _buscarInvestidorPorNome(nome){
+  if(!sb||!nome)return null;
+  const{data,error}=await sb.from('investidores')
+    .select('nome,banco,agencia,conta,pix').limit(50);
+  if(error||!data)return null;
+  const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const alvo=norm(nome);
+  return data.find(i=>norm(i.nome)===alvo)
+      || data.find(i=>norm(i.nome).includes(alvo))
+      || null;
+}
+
+// Dispara o download do .docx a partir do base64 retornado pela edge function.
+function _downloadDocx(b64,filename){
+  const bin=atob(b64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},200);
+}
+
+async function _submitPeticao(){
+  if(!_PET_CTX){showToast('Estado inválido — reabra o modal.');return;}
+  const {tipo,rec}=_PET_CTX;
+
+  // Coleta inputs
+  const evento=document.getElementById('pet-evento').value.trim();
+  const dataHomol=document.getElementById('pet-data-homol').value;
+  const cP=document.getElementById('pet-cred-principal').checked;
+  const cC=document.getElementById('pet-cred-contratuais').checked;
+  const cS=document.getElementById('pet-cred-sucumbenciais').checked;
+
+  // Validacao
+  if(!evento){_petShowErr('Informe o nº do evento da penhora.');return;}
+  if(!dataHomol){_petShowErr('Informe a data da homologação.');return;}
+  if(!cP&&!cC&&!cS){_petShowErr('Marque ao menos um tipo de crédito cedido.');return;}
+
+  // Busca dados bancarios do investidor (cessionario)
+  let inv=null;
+  try{inv=await _buscarInvestidorPorNome(rec.cessionario);}catch(e){/* nao bloqueia */}
+  const dadosBancarios=_formataDadosBancarios(inv);
+
+  // Monta lista de creditos cedidos em portugues
+  const creditosLst=[];
+  if(cP)creditosLst.push('crédito principal');
+  if(cC)creditosLst.push('honorários contratuais');
+  if(cS)creditosLst.push('honorários sucumbenciais');
+  const creditosCedidos=_listaPortugues(creditosLst);
+
+  // Enderecamento — tribunal + orgao julgador se houver
+  const enderecamento=[rec.orgaoJulgador||rec.orgao_julgador||'',rec.tribunal||'']
+    .filter(Boolean).join(' — ')||'(juízo a indicar)';
+
+  const dados={
+    ENDERECAMENTO_JUIZO:enderecamento,
+    NUMERO_PROCESSO:rec.numeroProcesso||'',
+    NOME_CESSIONARIO:rec.cessionario||'',
+    NUMERO_EVENTO:evento,
+    DATA_HOMOLOGACAO:_dataExtensoBR(dataHomol),
+    CREDITOS_CEDIDOS:creditosCedidos,
+    DADOS_BANCARIOS:dadosBancarios||'(dados bancários não cadastrados no investidor)',
+  };
+
+  // Chama a edge function
+  const btn=document.getElementById('pet-modal-submit');
+  btn.disabled=true;btn.textContent='Gerando…';
+  document.getElementById('pet-modal-err').style.display='none';
+  try{
+    const{data,error}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados}});
+    if(error)throw new Error(error.message||'Falha ao gerar petição');
+    if(!data||!data.docx_base64)throw new Error('Resposta inesperada da função.');
+    _downloadDocx(data.docx_base64,data.filename||'peticao.docx');
+    const pend=(data.pendentes||[]).filter(p=>!['ENDERECAMENTO_JUIZO','NUMERO_PROCESSO','NOME_CESSIONARIO','NUMERO_EVENTO','DATA_HOMOLOGACAO','CREDITOS_CEDIDOS','DADOS_BANCARIOS'].includes(p));
+    if(pend.length){
+      showToast(`Petição gerada. ${pend.length} campo(s) sem dado: ${pend.join(', ')}`,5000);
+    } else {
+      showToast('Petição gerada e baixada.');
+    }
+    _closePeticaoModal();
+  }catch(e){
+    _petShowErr('Erro: '+(e.message||e));
+    btn.disabled=false;btn.textContent='Gerar e baixar';
+  }
+}
 
 // Abre o processo no portal unificado do CNJ (PDPJ) com o numero na URL.
 function procLink(tribunal,numeroProcesso){
