@@ -49,38 +49,64 @@ REPLACEMENTS = [
 
 def replace_in_paragraph_xml(p_xml: str) -> str:
     """
-    Reconstroi o texto do paragrafo (juntando todos os <w:t>), aplica os
-    replaces, e escreve o texto novo no <w:t> ALVO — escolhido como aquele
-    que tinha MAIS texto original (heuristica: o "normal" do paragrafo, em
-    oposicao ao run pequeno do placeholder com formatacao especial tipo
-    bold/italic).
+    Substitui [BRACKETS] por {{PLACEHOLDERS}} preservando a formatacao
+    individual de cada run (bold, italic, fonte, tamanho).
 
-    Por que nao no primeiro <w:t>: o modelo original usa Word DOCPROPERTY
-    fields com [BRACKET] como rotulo visual em bold. Esse <w:t> e o
-    PRIMEIRO do paragrafo, e tem rPr com <w:b/>. Se a gente escrever todo
-    o texto la, o paragrafo inteiro fica em negrito.
+    Estrategia em 2 passos:
+
+    1) PER-<w:t>: pra cada <w:t> do paragrafo, se o texto dele contem
+       algum [BRACKET], substitui dentro dele (preservando o rPr do run
+       que o contem). Esse caminho preserva exatamente a formatacao
+       desenhada no Word original — em particular, brackets que estavam
+       em runs bold viram {{}} bold, e o run "normal" do continuacao
+       fica intocado em normal.
+
+    2) FALLBACK (raro): se algum [BRACKET] sobrar (porque foi fragmentado
+       entre <w:t>s — pode acontecer com run-fragmentation do Word por
+       spellcheck/rsid), cai no algoritmo antigo de mesclar tudo no
+       <w:t> com texto mais longo.
     """
-    # Coleta todos os pedacos de texto na ordem em que aparecem
     t_pattern = re.compile(r"<w:t(?P<attrs>[^>]*)>(?P<text>[^<]*)</w:t>", re.DOTALL)
     matches = list(t_pattern.finditer(p_xml))
     if not matches:
         return p_xml
 
     full_text = "".join(m.group("text") for m in matches)
+    if not any(needle in full_text for needle, _ in REPLACEMENTS):
+        return p_xml  # paragrafo sem placeholders — nao toca
 
-    new_text = full_text
-    changed = False
+    # Passo 1: substituicao per-<w:t>
+    new_texts = []
+    for m in matches:
+        text = m.group("text")
+        for needle, replacement in REPLACEMENTS:
+            if needle in text:
+                text = text.replace(needle, replacement)
+        new_texts.append(text)
+
+    # Verifica se sobrou algum [BRACKET] fragmentado
+    new_full = "".join(new_texts)
+    fragmentado = any(needle in new_full for needle, _ in REPLACEMENTS)
+
+    if not fragmentado:
+        # Caminho feliz: substitui in-place preservando rPr de cada run
+        out = []
+        cursor = 0
+        for i, m in enumerate(matches):
+            out.append(p_xml[cursor:m.start()])
+            attrs = m.group("attrs")
+            if "xml:space" not in attrs:
+                attrs = ' xml:space="preserve"' + attrs
+            out.append(f"<w:t{attrs}>{new_texts[i]}</w:t>")
+            cursor = m.end()
+        out.append(p_xml[cursor:])
+        return "".join(out)
+
+    # Passo 2 (fallback): merge no <w:t> mais longo
+    merged = full_text
     for needle, replacement in REPLACEMENTS:
-        if needle in new_text:
-            new_text = new_text.replace(needle, replacement)
-            changed = True
+        merged = merged.replace(needle, replacement)
 
-    if not changed:
-        return p_xml
-
-    # Determina o indice do <w:t> alvo: o que tinha mais texto original.
-    # Em caso de empate, o ULTIMO (geralmente e o "continuation" com
-    # formatacao normal, vindo depois do field).
     target_idx = 0
     target_len = -1
     for i, m in enumerate(matches):
@@ -97,7 +123,7 @@ def replace_in_paragraph_xml(p_xml: str) -> str:
         if "xml:space" not in attrs:
             attrs = ' xml:space="preserve"' + attrs
         if i == target_idx:
-            out.append(f"<w:t{attrs}>{new_text}</w:t>")
+            out.append(f"<w:t{attrs}>{merged}</w:t>")
         else:
             out.append(f"<w:t{attrs}></w:t>")
         cursor = m.end()

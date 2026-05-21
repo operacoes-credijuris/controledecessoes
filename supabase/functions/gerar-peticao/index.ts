@@ -80,60 +80,79 @@ function fillParagraph(para: Element, variables: Vars): number {
   const runs = Array.from(para.getElementsByTagName('w:r'));
   if (runs.length === 0) return 0;
 
-  const runTexts: Array<{ run: Element; text: string; tElems: Element[] }> = runs.map(r => {
-    const ts = Array.from(r.getElementsByTagName('w:t'));
-    return {
-      run: r,
-      text: ts.map(t => t.textContent || '').join(''),
-      tElems: ts,
-    };
-  });
-  const fullText = runTexts.map(rt => rt.text).join('');
-  if (!fullText.includes('{{')) return 0;
+  // Lista plana de TODOS os <w:t> do paragrafo, em ordem
+  const tList: Element[] = [];
+  for (const r of runs) {
+    for (const t of Array.from(r.getElementsByTagName('w:t'))) tList.push(t as Element);
+  }
+  if (tList.length === 0) return 0;
 
-  let newText = fullText;
+  // Tenta substituicao PER-<w:t> primeiro — preserva a formatacao
+  // individual de cada run (NOME em run bold continua bold apos substituir).
   let count = 0;
-  for (const [key, value] of Object.entries(variables)) {
-    const placeholder = '{{' + key + '}}';
-    if (newText.includes(placeholder)) {
-      const replacement = value === null || value === undefined ? '' : String(value);
-      newText = newText.split(placeholder).join(replacement);
+  let anyPlaceholderRemainingInFull = false;
+
+  const placeholderKeys = Object.keys(variables);
+  for (const t of tList) {
+    let text = t.textContent || '';
+    if (!text.includes('{{')) continue;
+    let touched = false;
+    for (const key of placeholderKeys) {
+      const ph = '{{' + key + '}}';
+      if (text.includes(ph)) {
+        const value = variables[key];
+        const replacement = value === null || value === undefined ? '' : String(value);
+        text = text.split(ph).join(replacement);
+        touched = true;
+      }
+    }
+    if (touched) {
+      t.textContent = text;
+      t.setAttribute('xml:space', 'preserve');
       count++;
     }
   }
-  if (count === 0) return 0;
 
-  // Escolhe o run de destino: aquele que ja tem o texto mais longo
-  // (heuristica do template build). Em caso de empate, o ULTIMO. Isso
-  // garante que herdamos a formatacao do run "normal" do paragrafo —
-  // se o paragrafo tem um run vazio inicial sem rPr e um run com texto
-  // formatado em Poppins, escolhemos o de Poppins, nao o vazio (que
-  // cairia no default Arial do documento).
-  let targetIdx = 0;
-  let targetLen = -1;
-  for (let i = 0; i < runTexts.length; i++) {
-    if (runTexts[i].text.length >= targetLen) {
-      targetIdx = i;
-      targetLen = runTexts[i].text.length;
+  // Apos o per-<w:t>, ve se sobrou algum {{}} (significa fragmentacao
+  // entre runs — placeholder partido por spellcheck/rsid do Word).
+  const fullAfter = tList.map(t => t.textContent || '').join('');
+  for (const key of placeholderKeys) {
+    if (fullAfter.includes('{{' + key + '}}')) {
+      anyPlaceholderRemainingInFull = true;
+      break;
+    }
+  }
+  if (!anyPlaceholderRemainingInFull) return count;
+
+  // FALLBACK: existe pelo menos um placeholder fragmentado. Mescla o
+  // texto completo, substitui, e escreve no <w:t> com mais texto ja
+  // preenchido (geralmente o run "normal" da continuacao).
+  let merged = fullAfter;
+  for (const key of placeholderKeys) {
+    const ph = '{{' + key + '}}';
+    if (merged.includes(ph)) {
+      const value = variables[key];
+      const replacement = value === null || value === undefined ? '' : String(value);
+      merged = merged.split(ph).join(replacement);
+      count++;
     }
   }
 
-  const target = runTexts[targetIdx];
-  if (target.tElems.length > 0) {
-    target.tElems[0].textContent = newText;
-    target.tElems[0].setAttribute('xml:space', 'preserve');
-    for (let i = 1; i < target.tElems.length; i++) target.tElems[i].textContent = '';
-  } else {
-    const doc = para.ownerDocument!;
-    const t = doc.createElementNS(W_NS, 'w:t');
-    t.setAttribute('xml:space', 'preserve');
-    t.textContent = newText;
-    target.run.appendChild(t);
+  // Escolhe o <w:t> alvo: o com mais texto atual
+  let targetIdx = 0;
+  let targetLen = -1;
+  for (let i = 0; i < tList.length; i++) {
+    const L = (tList[i].textContent || '').length;
+    if (L >= targetLen) {
+      targetIdx = i;
+      targetLen = L;
+    }
   }
-  // Zera os <w:t>s dos outros runs (mantem os <w:r> pra preservar layout)
-  for (let i = 0; i < runTexts.length; i++) {
+  tList[targetIdx].textContent = merged;
+  tList[targetIdx].setAttribute('xml:space', 'preserve');
+  for (let i = 0; i < tList.length; i++) {
     if (i === targetIdx) continue;
-    for (const t of runTexts[i].tElems) t.textContent = '';
+    tList[i].textContent = '';
   }
   return count;
 }

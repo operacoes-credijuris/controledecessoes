@@ -3648,10 +3648,10 @@ function _petShowErr(msg){
   el.textContent=msg;el.style.display='block';
 }
 
-// "01/05/2025" para "1° de maio de 2025"
-function _dataExtensoBR(isoOrBr){
+// Converte data ISO (YYYY-MM-DD) ou ja em BR (DD/MM/AAAA) para o formato
+// brasileiro padrao "DD/MM/AAAA" (sempre 2 digitos no dia/mes).
+function _dataBR(isoOrBr){
   if(!isoOrBr)return'';
-  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   let d,m,y;
   if(/^\d{4}-\d{2}-\d{2}/.test(isoOrBr)){
     [y,m,d]=isoOrBr.slice(0,10).split('-').map(Number);
@@ -3659,7 +3659,7 @@ function _dataExtensoBR(isoOrBr){
     [d,m,y]=isoOrBr.slice(0,10).split('/').map(Number);
   } else return isoOrBr;
   if(!d||!m||!y||m<1||m>12)return isoOrBr;
-  return`${d} de ${meses[m-1]} de ${y}`;
+  return`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
 }
 
 // Concatena os checks em portugues correto: "A", "A e B", "A, B e C"
@@ -3731,8 +3731,8 @@ async function _submitPeticao(){
       const el=document.querySelector(`#pet-modal-fields [data-petf="${f.key}"]`);
       const raw=el?el.value.trim():'';
       if(!raw){_petShowErr('Preencha: '+f.label);return;}
-      // Datas viram extenso ("01/05/2025" -> "1 de maio de 2025")
-      userVars[f.key]=(f.type==='date')?_dataExtensoBR(raw):raw;
+      // Datas em formato brasileiro DD/MM/AAAA
+      userVars[f.key]=(f.type==='date')?_dataBR(raw):raw;
     }
   }
 
