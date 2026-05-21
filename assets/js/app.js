@@ -3547,9 +3547,9 @@ function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('
    de data; "text" gera input de texto. */
 const _DOC_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline;vertical-align:middle"><path d="M3 1.5h4l2 2V10a.5.5 0 0 1-.5.5h-5A.5.5 0 0 1 3 10V2a.5.5 0 0 1 .5-.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 1.5V4h2" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 const _PETICAO_TIPO_MAP=[
-  // Levantamento: tarefa do Advbox = "levantamento"
+  // Levantamento: tarefa "peticao simples" + notes contendo "levantamento"
   {
-    matchTask:/levantamento/i, matchNotes:null,
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/levantamento/i,
     tipo:'levantamento', label:'Petição de Levantamento',
     fields:[
       {key:'NUMERO_EVENTO',    label:'Nº do evento da penhora',         type:'text', placeholder:'ex: 42'},
@@ -3791,7 +3791,7 @@ function _testCriarTarefa(tipoTeste){
   if(tipoTeste==='sequestro'){
     dil={task:'peticao simples',deadline:amanha,notes:'Elaborar sequestro — tarefa de teste'};
   } else {
-    dil={task:'levantamento',deadline:amanha,notes:'Tarefa de teste'};
+    dil={task:'peticao simples',deadline:amanha,notes:'Levantamento — tarefa de teste'};
   }
   t._advboxDiligencias=[dil];
   try{updateDash();}catch(e){console.error('updateDash falhou:',e);}
