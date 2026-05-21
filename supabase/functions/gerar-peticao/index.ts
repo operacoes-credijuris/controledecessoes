@@ -25,6 +25,7 @@ const BUCKET_TEMPLATES = 'peticoes-templates';
 
 const TEMPLATES: Record<string, string> = {
   levantamento: 'levantamento.docx',
+  sequestro:    'sequestro.docx',
 };
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -55,7 +56,11 @@ function sanitizeFilenamePart(s: string | null | undefined): string {
 function nomeArquivo(tipo: string, dados: Vars): string {
   const cessionario = sanitizeFilenamePart(dados.NOME_CESSIONARIO) || 'Cessionario';
   const processo    = sanitizeFilenamePart(dados.NUMERO_PROCESSO) || 'sem-processo';
-  const labelTipo = tipo === 'levantamento' ? 'Petição de Levantamento' : `Petição - ${tipo}`;
+  const labels: Record<string, string> = {
+    levantamento: 'Petição de Levantamento',
+    sequestro:    'Petição de Sequestro',
+  };
+  const labelTipo = labels[tipo] || `Petição - ${tipo}`;
   return `${labelTipo} - ${cessionario} - ${processo}.docx`;
 }
 
@@ -98,19 +103,36 @@ function fillParagraph(para: Element, variables: Vars): number {
   }
   if (count === 0) return 0;
 
-  const first = runTexts[0];
-  if (first.tElems.length > 0) {
-    first.tElems[0].textContent = newText;
-    first.tElems[0].setAttribute('xml:space', 'preserve');
-    for (let i = 1; i < first.tElems.length; i++) first.tElems[i].textContent = '';
+  // Escolhe o run de destino: aquele que ja tem o texto mais longo
+  // (heuristica do template build). Em caso de empate, o ULTIMO. Isso
+  // garante que herdamos a formatacao do run "normal" do paragrafo —
+  // se o paragrafo tem um run vazio inicial sem rPr e um run com texto
+  // formatado em Poppins, escolhemos o de Poppins, nao o vazio (que
+  // cairia no default Arial do documento).
+  let targetIdx = 0;
+  let targetLen = -1;
+  for (let i = 0; i < runTexts.length; i++) {
+    if (runTexts[i].text.length >= targetLen) {
+      targetIdx = i;
+      targetLen = runTexts[i].text.length;
+    }
+  }
+
+  const target = runTexts[targetIdx];
+  if (target.tElems.length > 0) {
+    target.tElems[0].textContent = newText;
+    target.tElems[0].setAttribute('xml:space', 'preserve');
+    for (let i = 1; i < target.tElems.length; i++) target.tElems[i].textContent = '';
   } else {
     const doc = para.ownerDocument!;
     const t = doc.createElementNS(W_NS, 'w:t');
     t.setAttribute('xml:space', 'preserve');
     t.textContent = newText;
-    first.run.appendChild(t);
+    target.run.appendChild(t);
   }
-  for (let i = 1; i < runTexts.length; i++) {
+  // Zera os <w:t>s dos outros runs (mantem os <w:r> pra preservar layout)
+  for (let i = 0; i < runTexts.length; i++) {
+    if (i === targetIdx) continue;
     for (const t of runTexts[i].tElems) t.textContent = '';
   }
   return count;

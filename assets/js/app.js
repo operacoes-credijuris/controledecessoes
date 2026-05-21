@@ -3540,49 +3540,101 @@ function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" oncli
 const _NAV_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M2.5 8.5L8.5 2.5M5 2.5H8.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('${mod}','${id}')" title="Ir para o processo">${_NAV_SVG}</button>`;}
 
-/* Botao "Gerar peticao" — aparece no card de Pendencias Fatais quando _task
-   contem "levantamento". Outros tipos de peticao podem ser adicionados no
-   _PETICAO_TIPO_MAP abaixo. */
+/* Botao "Gerar peticao" — aparece no card de Pendencias Fatais quando o
+   _task (nome da tarefa do Advbox) ou _notes (observacoes da tarefa) bate
+   com alguma regra abaixo. Cada tipo declara seus campos de input (modal
+   dinamico): "creditos" gera os 3 checkboxes padrao; "date" gera input
+   de data; "text" gera input de texto. */
 const _DOC_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline;vertical-align:middle"><path d="M3 1.5h4l2 2V10a.5.5 0 0 1-.5.5h-5A.5.5 0 0 1 3 10V2a.5.5 0 0 1 .5-.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 1.5V4h2" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 const _PETICAO_TIPO_MAP=[
-  {match:/levantamento/i, tipo:'levantamento', label:'Petição de Levantamento'},
+  // Levantamento: tarefa do Advbox = "levantamento"
+  {
+    matchTask:/levantamento/i, matchNotes:null,
+    tipo:'levantamento', label:'Petição de Levantamento',
+    fields:[
+      {key:'NUMERO_EVENTO',    label:'Nº do evento da penhora',         type:'text', placeholder:'ex: 42'},
+      {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
+      {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
+    ],
+  },
+  // Sequestro: tarefa "peticao simples" + notes contendo "elaborar sequestro"
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/elaborar\s+sequestro/i,
+    tipo:'sequestro', label:'Petição de Sequestro',
+    fields:[
+      {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
+      {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
+      {key:'DATA_EXPEDICAO',   label:'Data da expedição da RPV',         type:'date'},
+    ],
+  },
 ];
-function _peticaoTipo(task){
-  const t=String(task||'');
-  for(const m of _PETICAO_TIPO_MAP){if(m.match.test(t))return m;}
+function _peticaoTipo(task,notes){
+  const t=String(task||''),n=String(notes||'');
+  for(const m of _PETICAO_TIPO_MAP){
+    const taskOk = m.matchTask ? m.matchTask.test(t) : true;
+    const notesOk= m.matchNotes? m.matchNotes.test(n): true;
+    if(taskOk && notesOk)return m;
+  }
   return null;
 }
 function peticaoBtn(r){
-  const m=_peticaoTipo(r._task);
+  const m=_peticaoTipo(r._task,r._notes);
   if(!m)return'';
   return`<button type="button" class="al-peticao-btn" onclick="_openPeticaoModal('${m.tipo}','${r._mod}','${esc(r._id)}')" title="${esc(m.label)}">${_DOC_SVG}</button>`;
 }
 
 /* ============================================================
-   Fluxo do modal "Gerar Petição"
+   Fluxo do modal "Gerar Petição" — dinamico por tipo
    ============================================================ */
-let _PET_CTX=null; // {tipo, mod, id, rec}
+let _PET_CTX=null; // {tipo, mod, id, rec, def}
+
+// Gera o HTML de um campo do modal a partir da definicao em _PETICAO_TIPO_MAP
+function _petRenderField(f){
+  const id='pet-f-'+f.key.toLowerCase().replace(/_/g,'-');
+  if(f.type==='text'){
+    return`<div class="pet-field">
+      <label class="pet-lbl" for="${id}">${esc(f.label)}</label>
+      <input id="${id}" data-petf="${esc(f.key)}" type="text" class="pet-input" placeholder="${esc(f.placeholder||'')}" autocomplete="off">
+    </div>`;
+  }
+  if(f.type==='date'){
+    return`<div class="pet-field">
+      <label class="pet-lbl" for="${id}">${esc(f.label)}</label>
+      <input id="${id}" data-petf="${esc(f.key)}" type="date" class="pet-input">
+    </div>`;
+  }
+  if(f.type==='creditos'){
+    return`<div class="pet-field" data-petf="${esc(f.key)}" data-pettype="creditos">
+      <div class="pet-lbl">${esc(f.label)}</div>
+      <label class="pet-chk"><input type="checkbox" data-cred="principal"> crédito principal</label>
+      <label class="pet-chk"><input type="checkbox" data-cred="contratuais"> honorários contratuais</label>
+      <label class="pet-chk"><input type="checkbox" data-cred="sucumbenciais"> honorários sucumbenciais</label>
+    </div>`;
+  }
+  return'';
+}
 
 function _openPeticaoModal(tipo,mod,id){
   const rec=(CACHE[mod]||[]).find(x=>String(x.id)===String(id));
   if(!rec){showToast('Processo não encontrado.');return;}
-  _PET_CTX={tipo,mod,id,rec};
+  const def=_PETICAO_TIPO_MAP.find(m=>m.tipo===tipo);
+  if(!def){showToast('Tipo de petição desconhecido: '+tipo);return;}
+  _PET_CTX={tipo,mod,id,rec,def};
+  // Header + info
+  document.getElementById('pet-modal-title').textContent=def.label;
   const cnj=rec.numeroProcesso||'(sem CNJ)';
   const partes=(rec.cedente||'')+(rec.cedente&&rec.cessionario?' v. ':'')+(rec.cessionario||'');
   document.getElementById('pet-modal-info').innerHTML=
     `<div class="pet-info-cnj">${esc(cnj)}</div>`+
     (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
-  // Reset inputs
-  document.getElementById('pet-evento').value='';
-  document.getElementById('pet-data-homol').value='';
-  document.getElementById('pet-cred-principal').checked=false;
-  document.getElementById('pet-cred-contratuais').checked=false;
-  document.getElementById('pet-cred-sucumbenciais').checked=false;
+  // Campos dinamicos
+  document.getElementById('pet-modal-fields').innerHTML=def.fields.map(_petRenderField).join('');
   document.getElementById('pet-modal-err').style.display='none';
   const btn=document.getElementById('pet-modal-submit');
   btn.disabled=false;btn.textContent='Gerar e baixar';
   document.getElementById('pet-modal').style.display='flex';
-  setTimeout(()=>document.getElementById('pet-evento').focus(),50);
+  // Foco no primeiro input
+  setTimeout(()=>{const first=document.querySelector('#pet-modal-fields [data-petf]');if(first&&first.tagName==='INPUT')first.focus();},50);
 }
 
 function _closePeticaoModal(e){
@@ -3658,45 +3710,50 @@ function _downloadDocx(b64,filename){
 
 async function _submitPeticao(){
   if(!_PET_CTX){showToast('Estado inválido — reabra o modal.');return;}
-  const {tipo,rec}=_PET_CTX;
+  const {tipo,rec,def}=_PET_CTX;
 
-  // Coleta inputs
-  const evento=document.getElementById('pet-evento').value.trim();
-  const dataHomol=document.getElementById('pet-data-homol').value;
-  const cP=document.getElementById('pet-cred-principal').checked;
-  const cC=document.getElementById('pet-cred-contratuais').checked;
-  const cS=document.getElementById('pet-cred-sucumbenciais').checked;
+  // Coleta inputs dinamicamente
+  const userVars={};
+  for(const f of def.fields){
+    if(f.type==='creditos'){
+      const cont=document.querySelector(`#pet-modal-fields [data-petf="${f.key}"]`);
+      const checks=cont?Array.from(cont.querySelectorAll('input[data-cred]')):[];
+      const lst=[];
+      for(const c of checks){
+        if(!c.checked)continue;
+        if(c.dataset.cred==='principal')     lst.push('crédito principal');
+        if(c.dataset.cred==='contratuais')   lst.push('honorários contratuais');
+        if(c.dataset.cred==='sucumbenciais') lst.push('honorários sucumbenciais');
+      }
+      if(lst.length===0){_petShowErr('Marque ao menos um tipo de crédito cedido.');return;}
+      userVars[f.key]=_listaPortugues(lst);
+    } else {
+      const el=document.querySelector(`#pet-modal-fields [data-petf="${f.key}"]`);
+      const raw=el?el.value.trim():'';
+      if(!raw){_petShowErr('Preencha: '+f.label);return;}
+      // Datas viram extenso ("01/05/2025" -> "1 de maio de 2025")
+      userVars[f.key]=(f.type==='date')?_dataExtensoBR(raw):raw;
+    }
+  }
 
-  // Validacao
-  if(!evento){_petShowErr('Informe o nº do evento da penhora.');return;}
-  if(!dataHomol){_petShowErr('Informe a data da homologação.');return;}
-  if(!cP&&!cC&&!cS){_petShowErr('Marque ao menos um tipo de crédito cedido.');return;}
-
-  // Busca dados bancarios do investidor (cessionario)
+  // Dados bancarios (lookup automatico no investidor)
   let inv=null;
   try{inv=await _buscarInvestidorPorNome(rec.cessionario);}catch(e){/* nao bloqueia */}
   const dadosBancarios=_formataDadosBancarios(inv);
 
-  // Monta lista de creditos cedidos em portugues
-  const creditosLst=[];
-  if(cP)creditosLst.push('crédito principal');
-  if(cC)creditosLst.push('honorários contratuais');
-  if(cS)creditosLst.push('honorários sucumbenciais');
-  const creditosCedidos=_listaPortugues(creditosLst);
+  // Enderecamento em MAIUSCULAS
+  const enderecamento=([rec.orgaoJulgador||rec.orgao_julgador||'',rec.tribunal||'']
+    .filter(Boolean).join(' — ')||'(juízo a indicar)').toUpperCase();
 
-  // Enderecamento — tribunal + orgao julgador se houver
-  const enderecamento=[rec.orgaoJulgador||rec.orgao_julgador||'',rec.tribunal||'']
-    .filter(Boolean).join(' — ')||'(juízo a indicar)';
-
-  const dados={
+  // Variaveis automaticas (vindas do processo / investidor)
+  const autoVars={
     ENDERECAMENTO_JUIZO:enderecamento,
     NUMERO_PROCESSO:rec.numeroProcesso||'',
-    NOME_CESSIONARIO:rec.cessionario||'',
-    NUMERO_EVENTO:evento,
-    DATA_HOMOLOGACAO:_dataExtensoBR(dataHomol),
-    CREDITOS_CEDIDOS:creditosCedidos,
+    NOME_CESSIONARIO:(rec.cessionario||'').toUpperCase(),
     DADOS_BANCARIOS:dadosBancarios||'(dados bancários não cadastrados no investidor)',
   };
+  // userVars sobrescreve auto se houver colisao
+  const dados={...autoVars,...userVars};
 
   // Chama a edge function
   const btn=document.getElementById('pet-modal-submit');
@@ -3707,7 +3764,8 @@ async function _submitPeticao(){
     if(error)throw new Error(error.message||'Falha ao gerar petição');
     if(!data||!data.docx_base64)throw new Error('Resposta inesperada da função.');
     _downloadDocx(data.docx_base64,data.filename||'peticao.docx');
-    const pend=(data.pendentes||[]).filter(p=>!['ENDERECAMENTO_JUIZO','NUMERO_PROCESSO','NOME_CESSIONARIO','NUMERO_EVENTO','DATA_HOMOLOGACAO','CREDITOS_CEDIDOS','DADOS_BANCARIOS'].includes(p));
+    const conhecidos=new Set(Object.keys(dados));
+    const pend=(data.pendentes||[]).filter(p=>!conhecidos.has(p));
     if(pend.length){
       showToast(`Petição gerada. ${pend.length} campo(s) sem dado: ${pend.join(', ')}`,5000);
     } else {
@@ -3719,6 +3777,51 @@ async function _submitPeticao(){
     btn.disabled=false;btn.textContent='Gerar e baixar';
   }
 }
+
+/* ============================================================
+   MODO TESTE LOCAL — botoes para criar tarefas fake e testar
+   os tipos de peticao. So aparece quando o site eh aberto via
+   file:// (teste local), nunca em producao.
+   ============================================================ */
+function _testCriarTarefa(tipoTeste){
+  const t=(CACHE.cessoes||[])[0]||(CACHE.rpv||[])[0]||(CACHE.requerimentos||[])[0];
+  if(!t){alert('Nenhum processo carregado. Faça login e espere a lista aparecer antes de clicar.');return;}
+  const amanha=new Date(Date.now()+86400000).toISOString().slice(0,10);
+  let dil;
+  if(tipoTeste==='sequestro'){
+    dil={task:'peticao simples',deadline:amanha,notes:'Elaborar sequestro — tarefa de teste'};
+  } else {
+    dil={task:'levantamento',deadline:amanha,notes:'Tarefa de teste'};
+  }
+  t._advboxDiligencias=[dil];
+  try{updateDash();}catch(e){console.error('updateDash falhou:',e);}
+  try{selectUrgency('tarefas');_selectPrazosTab('peremptorios');}catch(e){}
+  alert(`Tarefa "${dil.task}"${dil.notes?` (notes: ${dil.notes})`:''} criada no processo: ${t.numeroProcesso||t.id}.\n\nVai em Urgências → Pendências → Fatais. Clica no ícone 📄.`);
+}
+// Mantem nome antigo pra compatibilidade
+function _testCriarTarefaLevantamento(){_testCriarTarefa('levantamento');}
+(function _instalaBotoesTeste(){
+  if(typeof window==='undefined'||!window.location)return;
+  if(window.location.protocol!=='file:')return; // so em teste local
+  const mount=()=>{
+    if(document.getElementById('_test-pet-wrap'))return;
+    const wrap=document.createElement('div');
+    wrap.id='_test-pet-wrap';
+    wrap.style.cssText='position:fixed;bottom:14px;right:14px;z-index:99999;display:flex;flex-direction:column;gap:6px;align-items:flex-end';
+    const mkBtn=(label,tipo,title)=>{
+      const b=document.createElement('button');
+      b.textContent=label;
+      b.title=title;
+      b.style.cssText='padding:8px 12px;background:#f59e0b;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.4)';
+      b.onclick=()=>_testCriarTarefa(tipo);
+      return b;
+    };
+    wrap.appendChild(mkBtn('🧪 Teste: Levantamento','levantamento','Cria tarefa fake "levantamento" no primeiro processo do CACHE.'));
+    wrap.appendChild(mkBtn('🧪 Teste: Sequestro','sequestro','Cria tarefa fake "peticao simples" com notes "Elaborar sequestro".'));
+    document.body.appendChild(wrap);
+  };
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}
+})();
 
 // Abre o processo no portal unificado do CNJ (PDPJ) com o numero na URL.
 function procLink(tribunal,numeroProcesso){
