@@ -102,7 +102,15 @@ serve(async (req) => {
 
     // Rejeita respostas HTML mesmo com status 200 (ex: Advbox redireciona para login)
     if (body.trimStart().startsWith('<')) {
-      return new Response(JSON.stringify({ error: 'Endpoint não encontrado ou token inválido (resposta HTML)', status: res.status }), {
+      const preview = body.replace(/\s+/g, ' ').trim().slice(0, 200);
+      return new Response(JSON.stringify({
+        error: `Advbox respondeu HTML (status ${res.status}) em ${method} ${advboxUrl.replace(ADVBOX_BASE, '')} — preview: ${preview}`,
+        status: res.status,
+        advbox_status: res.status,
+        advbox_method: method,
+        advbox_path: advboxUrl.replace(ADVBOX_BASE, ''),
+        body_preview: preview,
+      }), {
         status: 404,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
