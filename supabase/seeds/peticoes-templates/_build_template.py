@@ -30,6 +30,7 @@ MODELS = [
     "levantamento",
     "sequestro",
     "ilegitimidade",
+    "rpv_complementar",
 ]
 
 # Mapa: trecho exato no docx -> placeholder. Apenas placeholders que existem
@@ -45,6 +46,20 @@ REPLACEMENTS = [
     ("[data da homologação]",             "{{DATA_HOMOLOGACAO}}"),
     ("[data da expedição]",               "{{DATA_EXPEDICAO}}"),
     ("[DADOS BANCÁRIOS DO CESSIONÁRIO]",  "{{DADOS_BANCARIOS}}"),
+    # --- RPV Complementar ---
+    ("[sentença, decisão]",               "{{TIPO_DECISAO}}"),
+    ("[de procedência, de parcial procedência, homologatória]",
+                                          "{{TIPO_RESULTADO}}"),
+    ("[data do trânsito em julgado]",     "{{DATA_TRANSITO_JULGADO}}"),
+    ("[evento, ID etc. do cálculo homologado]",
+                                          "{{EVENTO_CALCULO}}"),
+    ("[exequente, executado ou Contadoria Judicial]",
+                                          "{{AUTOR_CALCULO}}"),
+    ("[ID, evento da decisão homologatória de cálculos]",
+                                          "{{EVENTO_HOMOLOGACAO_CALCULOS}}"),
+    ("[valor atualizado]",                "{{VALOR_ATUALIZADO}}"),
+    ("[valor pago]",                      "{{VALOR_PAGO}}"),
+    ("[diferença]",                       "{{DIFERENCA}}"),
 ]
 
 

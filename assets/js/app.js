@@ -3576,6 +3576,22 @@ const _PETICAO_TIPO_MAP=[
       {key:'NUMERO_EVENTO',    label:'Nº do evento da petição do ex-patrono', type:'text', placeholder:'ex: 42'},
     ],
   },
+  // RPV complementar: tarefa "peticao simples" + notes contendo "rpv complementar"
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/rpv\s*complementar/i,
+    tipo:'rpv_complementar', label:'Petição de RPV Complementar',
+    fields:[
+      {key:'TIPO_DECISAO',                label:'Tipo de decisão',                  type:'select', options:['sentença','decisão']},
+      {key:'TIPO_RESULTADO',              label:'Resultado da decisão',             type:'select', options:['de procedência','de parcial procedência','homologatória']},
+      {key:'DATA_TRANSITO_JULGADO',       label:'Data do trânsito em julgado',      type:'date'},
+      {key:'EVENTO_CALCULO',              label:'Evento/ID do cálculo homologado',  type:'text', placeholder:'ex: evento 32'},
+      {key:'AUTOR_CALCULO',               label:'Quem apresentou o cálculo',        type:'select', options:['exequente','executado','Contadoria Judicial']},
+      {key:'EVENTO_HOMOLOGACAO_CALCULOS', label:'Evento/ID da decisão homologatória dos cálculos', type:'text', placeholder:'ex: evento 45'},
+      {key:'VALOR_ATUALIZADO',            label:'Valor atualizado (R$)',            type:'money'},
+      {key:'VALOR_PAGO',                  label:'Valor pago (R$)',                  type:'money'},
+      // DIFERENCA calculada automaticamente a partir dos dois acima
+    ],
+  },
 ];
 function _peticaoTipo(task,notes){
   const t=String(task||''),n=String(notes||'');
@@ -3600,16 +3616,27 @@ let _PET_CTX=null; // {tipo, mod, id, rec, def}
 // Gera o HTML de um campo do modal a partir da definicao em _PETICAO_TIPO_MAP
 function _petRenderField(f){
   const id='pet-f-'+f.key.toLowerCase().replace(/_/g,'-');
-  if(f.type==='text'){
+  if(f.type==='text' || f.type==='money'){
+    const ph=f.type==='money'?'ex: 1.234,56':(f.placeholder||'');
     return`<div class="pet-field">
       <label class="pet-lbl" for="${id}">${esc(f.label)}</label>
-      <input id="${id}" data-petf="${esc(f.key)}" type="text" class="pet-input" placeholder="${esc(f.placeholder||'')}" autocomplete="off">
+      <input id="${id}" data-petf="${esc(f.key)}" data-pettype="${esc(f.type)}" type="text" class="pet-input" placeholder="${esc(ph)}" autocomplete="off">
     </div>`;
   }
   if(f.type==='date'){
     return`<div class="pet-field">
       <label class="pet-lbl" for="${id}">${esc(f.label)}</label>
-      <input id="${id}" data-petf="${esc(f.key)}" type="date" class="pet-input">
+      <input id="${id}" data-petf="${esc(f.key)}" data-pettype="date" type="date" class="pet-input">
+    </div>`;
+  }
+  if(f.type==='select'){
+    const opts=(f.options||[]).map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('');
+    return`<div class="pet-field">
+      <label class="pet-lbl" for="${id}">${esc(f.label)}</label>
+      <select id="${id}" data-petf="${esc(f.key)}" data-pettype="select" class="pet-input">
+        <option value="">— selecione —</option>
+        ${opts}
+      </select>
     </div>`;
   }
   if(f.type==='creditos'){
@@ -3621,6 +3648,23 @@ function _petRenderField(f){
     </div>`;
   }
   return'';
+}
+
+// Parse "1.234,56" -> 1234.56  |  "1234.56" -> 1234.56  |  "" -> NaN
+function _parseBRL(s){
+  if(s==null)return NaN;
+  let str=String(s).trim().replace(/^R\$\s*/i,'');
+  if(!str)return NaN;
+  // Se tem virgula, assume formato BR (ponto = milhar, virgula = decimal)
+  if(str.includes(',')){
+    str=str.replace(/\./g,'').replace(',','.');
+  }
+  const n=parseFloat(str);
+  return isNaN(n)?NaN:n;
+}
+function _formatBRL(n){
+  if(isNaN(n))return'';
+  return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
 function _openPeticaoModal(tipo,mod,id){
@@ -3740,8 +3784,26 @@ async function _submitPeticao(){
       const el=document.querySelector(`#pet-modal-fields [data-petf="${f.key}"]`);
       const raw=el?el.value.trim():'';
       if(!raw){_petShowErr('Preencha: '+f.label);return;}
-      // Datas em formato brasileiro DD/MM/AAAA
-      userVars[f.key]=(f.type==='date')?_dataBR(raw):raw;
+      if(f.type==='date'){
+        userVars[f.key]=_dataBR(raw);
+      } else if(f.type==='money'){
+        const n=_parseBRL(raw);
+        if(isNaN(n)){_petShowErr('Valor inválido em "'+f.label+'". Use o formato 1.234,56');return;}
+        userVars[f.key]=_formatBRL(n);
+      } else {
+        userVars[f.key]=raw;
+      }
+    }
+  }
+
+  // Calculo automatico da diferenca em RPV complementar
+  if(tipo==='rpv_complementar' && userVars.VALOR_ATUALIZADO!=null && userVars.VALOR_PAGO!=null){
+    const vAt=_parseBRL(userVars.VALOR_ATUALIZADO);
+    const vPg=_parseBRL(userVars.VALOR_PAGO);
+    if(!isNaN(vAt)&&!isNaN(vPg)){
+      const dif=vAt-vPg;
+      if(dif<=0){_petShowErr('Valor atualizado deve ser maior que o valor pago — diferença ficou '+_formatBRL(dif));return;}
+      userVars.DIFERENCA=_formatBRL(dif);
     }
   }
 
@@ -3797,9 +3859,10 @@ function _testCriarTarefa(tipoTeste){
   if(!t){alert('Nenhum processo carregado. Faça login e espere a lista aparecer antes de clicar.');return;}
   const amanha=new Date(Date.now()+86400000).toISOString().slice(0,10);
   const notesMap={
-    sequestro:     'Elaborar sequestro — tarefa de teste',
-    levantamento:  'Levantamento — tarefa de teste',
-    ilegitimidade: 'Ilegitimidade passiva — tarefa de teste',
+    sequestro:        'Elaborar sequestro — tarefa de teste',
+    levantamento:     'Levantamento — tarefa de teste',
+    ilegitimidade:    'Ilegitimidade passiva — tarefa de teste',
+    rpv_complementar: 'RPV complementar — tarefa de teste',
   };
   const dil={task:'peticao simples',deadline:amanha,notes:notesMap[tipoTeste]||'Tarefa de teste'};
   t._advboxDiligencias=[dil];
@@ -3828,6 +3891,7 @@ function _testCriarTarefaLevantamento(){_testCriarTarefa('levantamento');}
     wrap.appendChild(mkBtn('🧪 Teste: Levantamento','levantamento','Cria tarefa fake "peticao simples" com notes "Levantamento".'));
     wrap.appendChild(mkBtn('🧪 Teste: Sequestro','sequestro','Cria tarefa fake "peticao simples" com notes "Elaborar sequestro".'));
     wrap.appendChild(mkBtn('🧪 Teste: Ilegitimidade','ilegitimidade','Cria tarefa fake "peticao simples" com notes "Ilegitimidade passiva".'));
+    wrap.appendChild(mkBtn('🧪 Teste: RPV Complementar','rpv_complementar','Cria tarefa fake "peticao simples" com notes "RPV complementar".'));
     document.body.appendChild(wrap);
   };
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}
