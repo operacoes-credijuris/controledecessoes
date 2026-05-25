@@ -3557,9 +3557,10 @@ const _PETICAO_TIPO_MAP=[
       {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
     ],
   },
-  // Sequestro: tarefa "peticao simples" + notes contendo "elaborar sequestro"
+  // Sequestro: tarefa "peticao simples" + notes contendo "sequestro" (em qualquer
+  // forma — "elaborar sequestro", "petição de sequestro", "preparar sequestro" etc.)
   {
-    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/elaborar\s+sequestro/i,
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/sequestro/i,
     tipo:'sequestro', label:'Petição de Sequestro',
     fields:[
       {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
