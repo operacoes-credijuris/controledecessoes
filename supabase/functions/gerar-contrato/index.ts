@@ -181,6 +181,18 @@ function dateStamp(): string {
   return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// Converte nome para title case respeitando preposições portuguesas
+function toTitleCasePT(s: string | null | undefined): string | null {
+  if (s == null) return null;
+  if (!s.trim()) return s;
+  const minusculas = new Set(['de', 'da', 'do', 'dos', 'das', 'e', 'em', 'a', 'o', 'os', 'as', 'um', 'uma']);
+  return s.toLowerCase().split(' ').map((word, i) => {
+    if (!word) return word;
+    if (i !== 0 && minusculas.has(word)) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }).join(' ');
+}
+
 // Tira caracteres que o Drive/Windows/Mac rejeitam em nomes de arquivo
 function sanitizeFilenamePart(s: string | null | undefined): string {
   if (!s) return '';
@@ -1095,7 +1107,7 @@ serve(async (req) => {
 
     // 10. Junta variáveis (precedência: apresentação > cedente/escritório > investidor)
     const dados: Vars = {
-      INVESTIDOR_NOME: inv.nome,
+      INVESTIDOR_NOME: toTitleCasePT(inv.nome) ?? inv.nome,
       INVESTIDOR_CPF: inv.cpf,
       INVESTIDOR_RG: inv.rg,
       INVESTIDOR_ENDERECO: inv.endereco,
@@ -1108,6 +1120,9 @@ serve(async (req) => {
       ...escritorio,
       ...apresentacao,
     };
+    for (const k of ['CEDENTE_NOME', 'ESCRITORIO_NOME', 'ESCRITORIO_SOCIO_NOME']) {
+      if (dados[k]) dados[k] = toTitleCasePT(dados[k]);
+    }
 
     // 11. Decide tipos a gerar e valida papéis necessários
     let tipos: string[];
@@ -1163,7 +1178,7 @@ serve(async (req) => {
         },
       });
     }
-    const nomeTitular = (escritorio.ESCRITORIO_NOME || cedente.CEDENTE_NOME || inv.nome) ?? 'sem-titular';
+    const nomeTitular = toTitleCasePT(escritorio.ESCRITORIO_NOME || cedente.CEDENTE_NOME || inv.nome) ?? 'sem-titular';
     const processo = apresentacao.NUMERO_PROCESSO || 'sem-processo';
     const nomePastaCedente = `${nomeTitular} - ${processo}`;
     const { contratosId: contratosFolderId, analiseId: analiseFolderId } =
