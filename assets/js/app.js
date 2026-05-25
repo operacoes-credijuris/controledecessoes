@@ -3545,7 +3545,12 @@ function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('
    com alguma regra abaixo. Cada tipo declara seus campos de input (modal
    dinamico): "creditos" gera os 3 checkboxes padrao; "date" gera input
    de data; "text" gera input de texto. */
-const _DOC_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline;vertical-align:middle"><path d="M3 1.5h4l2 2V10a.5.5 0 0 1-.5.5h-5A.5.5 0 0 1 3 10V2a.5.5 0 0 1 .5-.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 1.5V4h2" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+// SVG: documento com 3 linhas de texto (representa peticao redigida).
+const _DOC_SVG=`<svg width="15" height="15" viewBox="0 0 16 16" fill="none" style="display:block">
+<path d="M3.5 1.5h6l3 3v9.5a.5.5 0 0 1-.5.5h-8.5a.5.5 0 0 1-.5-.5v-12a.5.5 0 0 1 .5-.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/>
+<path d="M9.5 1.5V4.5h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M5.5 8.5h5M5.5 10.5h5M5.5 12.5h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+</svg>`;
 const _PETICAO_TIPO_MAP=[
   // Levantamento: tarefa "peticao simples" + notes contendo "levantamento"
   {
@@ -3612,8 +3617,10 @@ function _peticaoTipo(task,notes){
 }
 function peticaoBtn(r){
   const m=_peticaoTipo(r._task,r._notes);
-  if(!m)return'';
-  return`<button type="button" class="al-peticao-btn" onclick="_openPeticaoModal('${m.tipo}','${r._mod}','${esc(r._id)}')" title="${esc(m.label)}">${_DOC_SVG}</button>`;
+  // Sempre devolve a coluna (vazia ou com botao) pra manter o alinhamento
+  // vertical das datas em todos os cards.
+  if(!m)return`<div class="al-peticao-col"></div>`;
+  return`<div class="al-peticao-col"><button type="button" class="al-peticao-btn" onclick="_openPeticaoModal('${m.tipo}','${r._mod}','${esc(r._id)}')" title="${esc(m.label)}">${_DOC_SVG}</button></div>`;
 }
 
 /* ============================================================
