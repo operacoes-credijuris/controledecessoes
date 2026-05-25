@@ -1216,43 +1216,45 @@
       </div>
       <button class="mdl-x" onclick="_invCloseModal()">✕</button>
     </div>
-    <div class="mdl-body" style="display:flex;flex-direction:column;gap:4px">
+    <div class="mdl-body" style="display:flex;flex-direction:column;gap:16px">
       <input type="hidden" id="inv-f-id">
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side"><div class="cfg-row-lbl">Nome <span style="color:#f87171">*</span></div></div>
-        <div class="cfg-row-ctrl"><input id="inv-f-nome" class="cfg-token-input" type="text" placeholder="Nome completo ou razão social" style="width:280px"></div>
+      <div class="fg">
+        <label class="flbl">Nome <span style="color:#f87171">*</span></label>
+        <input id="inv-f-nome" class="finp" type="text" placeholder="Nome completo ou razão social">
       </div>
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side"><div class="cfg-row-lbl">CPF / CNPJ</div></div>
-        <div class="cfg-row-ctrl"><input id="inv-f-cpf" class="cfg-token-input" type="text" placeholder="000.000.000-00" style="width:200px"></div>
-      </div>
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side"><div class="cfg-row-lbl">RG</div></div>
-        <div class="cfg-row-ctrl"><input id="inv-f-rg" class="cfg-token-input" type="text" placeholder="0000000 SSP-XX" style="width:200px"></div>
-      </div>
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side"><div class="cfg-row-lbl">Endereço</div></div>
-        <div class="cfg-row-ctrl"><input id="inv-f-endereco" class="cfg-token-input" type="text" placeholder="Rua, nº, bairro, cidade - UF, CEP" style="width:300px"></div>
-      </div>
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side"><div class="cfg-row-lbl">Banco</div></div>
-        <div class="cfg-row-ctrl"><input id="inv-f-banco" class="cfg-token-input" type="text" placeholder="000 - Nome do banco" style="width:240px"></div>
-      </div>
-      <div style="display:flex;gap:24px;flex-wrap:wrap">
-        <div class="cfg-row">
-          <div class="cfg-row-lbl-side"><div class="cfg-row-lbl">Agência</div></div>
-          <div class="cfg-row-ctrl"><input id="inv-f-agencia" class="cfg-token-input" type="text" placeholder="0001" style="width:100px"></div>
+      <div style="display:flex;gap:16px">
+        <div class="fg" style="flex:1">
+          <label class="flbl">CPF / CNPJ</label>
+          <input id="inv-f-cpf" class="finp" type="text" placeholder="000.000.000-00">
         </div>
-        <div class="cfg-row">
-          <div class="cfg-row-lbl-side"><div class="cfg-row-lbl">Conta</div></div>
-          <div class="cfg-row-ctrl"><input id="inv-f-conta" class="cfg-token-input" type="text" placeholder="00000-0" style="width:140px"></div>
+        <div class="fg" style="flex:1">
+          <label class="flbl">RG</label>
+          <input id="inv-f-rg" class="finp" type="text" placeholder="0000000 SSP-XX">
         </div>
       </div>
-      <div class="cfg-row">
-        <div class="cfg-row-lbl-side"><div class="cfg-row-lbl">PIX</div></div>
-        <div class="cfg-row-ctrl"><input id="inv-f-pix" class="cfg-token-input" type="text" placeholder="CPF, e-mail, telefone ou chave aleatória" style="width:300px"></div>
+      <div class="fg">
+        <label class="flbl">Endereço</label>
+        <input id="inv-f-endereco" class="finp" type="text" placeholder="Rua, nº, bairro, cidade - UF, CEP">
       </div>
-      <div id="inv-mdl-err" style="display:none;color:#f87171;font-size:12px;margin-top:4px"></div>
+      <div class="fg">
+        <label class="flbl">Banco</label>
+        <input id="inv-f-banco" class="finp" type="text" placeholder="000 - Nome do banco">
+      </div>
+      <div style="display:flex;gap:16px">
+        <div class="fg" style="flex:1">
+          <label class="flbl">Agência</label>
+          <input id="inv-f-agencia" class="finp" type="text" placeholder="0001">
+        </div>
+        <div class="fg" style="flex:2">
+          <label class="flbl">Conta</label>
+          <input id="inv-f-conta" class="finp" type="text" placeholder="00000-0">
+        </div>
+      </div>
+      <div class="fg">
+        <label class="flbl">PIX</label>
+        <input id="inv-f-pix" class="finp" type="text" placeholder="CPF, e-mail, telefone ou chave aleatória">
+      </div>
+      <div id="inv-mdl-err" style="display:none;color:#f87171;font-size:12px"></div>
     </div>
     <div class="mdl-footer">
       <button type="button" class="btn btn-sm" onclick="_invCloseModal()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#9ca3af">Cancelar</button>
