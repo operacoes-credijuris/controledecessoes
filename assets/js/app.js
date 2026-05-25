@@ -1345,7 +1345,8 @@ function _crtToggleView(){
 }
 function _crtAtualizaCadastral(){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
-  const inv=_crtInvestidoresData.find(i=>(i.nome||'').toLowerCase()===(_crtAcSelected||'').toLowerCase());
+  const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+  const inv=_crtInvestidoresData.find(i=>norm(i.nome)===norm(_crtAcSelected));
   if(!inv){set('crt-card-capital','—');set('crt-card-tir','—');set('crt-card-retorno','—');set('crt-card-recebido','—');set('crt-card-areceber','—');set('crt-card-operacoes','—');return;}
   set('crt-card-capital',inv.cpf);
   set('crt-card-tir',inv.banco);

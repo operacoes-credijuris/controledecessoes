@@ -1601,6 +1601,13 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 #crt-pane-investidores .crt-tbl{font-size:8px;min-width:1440px}
 #crt-pane-investidores .crt-th-sub th{font-size:7px;padding:3px 5px;letter-spacing:.35px}
 #crt-pane-investidores .crt-tbl td{font-size:8px;padding:3px 5px}
+/* Tabela Dados dos investidores (modo cadastral) — responsiva */
+#crt-inv-tbl{min-width:680px;font-size:11px}
+#crt-inv-tbl th{font-size:10px!important;padding:6px 10px!important}
+#crt-inv-tbl td{font-size:11px!important;padding:6px 10px!important;white-space:nowrap}
+#crt-inv-tbl td:last-child{white-space:normal!important;min-width:160px;max-width:260px;word-break:break-word}
+#crt-inv-tbl-wrap{flex:1;min-height:0;display:flex;flex-direction:column}
+#crt-inv-tbl-wrap .crt-tbl-scroll{flex:1;min-height:0}
 #crt-pane-consolidado #crt-cons-scroll{overflow-x:hidden}
 #crt-pane-consolidado #crt-cons-total-wrap{overflow:hidden}
 /* scrollbar interna alinhada ao tema (sem cantos brancos) */
