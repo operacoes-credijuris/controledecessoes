@@ -2583,3 +2583,56 @@ tbody tr:hover{background:#1d222a}
 .gc-result-msg{font-size:13px;color:var(--txt2);margin-bottom:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .gc-pendentes{margin-top:12px;padding:10px 12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:6px;color:#fbbf24;font-size:12px;line-height:1.5}
 .gc-pendentes-hint{font-size:11px;color:#6b7280;margin-top:4px}
+
+/* ============================================
+   Colunas alinhadas dos cards de Fatais
+   ============================================ */
+/* 3 colunas de largura fixa na direita dos cards de Fatais, pra que tudo
+   se alinhe verticalmente: dias restantes | data fatal | botao de peticao */
+/* Coluna dedicada ao botao de peticao — largura fixa em TODOS os cards
+   (mesmo nos sem botao), pra manter o alinhamento vertical. */
+.al-peticao-col{
+  flex-shrink:0;width:38px;
+  display:flex;align-items:center;justify-content:center;
+  margin-left:8px;
+}
+
+.al-peticao-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:32px;padding:0;
+  background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(245,158,11,.06));
+  border:1px solid rgba(245,158,11,.4);
+  border-radius:7px;
+  color:#fbbf24;
+  cursor:pointer;
+  transition:transform .12s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease,color .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.al-peticao-btn:hover{
+  background:linear-gradient(135deg,rgba(245,158,11,.35),rgba(245,158,11,.18));
+  border-color:#f59e0b;
+  color:#fcd34d;
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(245,158,11,.28),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.al-peticao-btn:active{transform:translateY(0);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.al-peticao-btn:focus-visible{outline:2px solid #f59e0b;outline-offset:2px}
+
+.pet-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.pet-modal-card{background:var(--bg);border:1px solid var(--brd);border-radius:8px;width:100%;max-width:480px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.pet-modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--brd)}
+.pet-modal-title{font-size:15px;font-weight:600;color:var(--txt)}
+.pet-modal-close{background:transparent;border:none;color:var(--txt2);font-size:22px;line-height:1;cursor:pointer;padding:0 4px}
+.pet-modal-close:hover{color:var(--txt)}
+.pet-modal-body{padding:16px 18px;overflow-y:auto;flex:1}
+.pet-modal-info{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:6px;padding:10px 12px;font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:14px}
+.pet-modal-info .pet-info-cnj{font-weight:600;color:var(--txt);font-family:ui-monospace,monospace;font-size:11px}
+.pet-field{margin-bottom:14px}
+.pet-lbl{display:block;font-size:11px;font-weight:600;color:var(--txt);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px}
+.pet-input{width:100%;box-sizing:border-box;padding:8px 10px;background:var(--bg2);border:1px solid var(--brd);border-radius:5px;color:var(--txt);font-size:13px;font-family:inherit}
+.pet-input:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.15)}
+.pet-chk{display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px;color:var(--txt);cursor:pointer;user-select:none}
+.pet-chk input{margin:0;cursor:pointer}
+.pet-err{padding:10px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:5px;color:#fca5a5;font-size:12px;line-height:1.5;margin-top:8px}
+.pet-modal-ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--brd)}
+.pet-modal-ft .btn[disabled]{opacity:.5;cursor:not-allowed}

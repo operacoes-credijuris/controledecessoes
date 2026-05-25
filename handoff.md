@@ -277,3 +277,40 @@ Confirma na aba **Versions/Deployments** que a versão nova subiu com timestamp 
 ---
 
 _Última atualização: 2026-05-13 — após resolução do RLS de Storage, fix do slug `smart-responder` → `gerar-contrato`, preenchimento dos 4 secrets em `configuracoes`, upsert em `contratos_jobs`, e implementação das 5 mudanças arquiteturais (5 templates, checkboxes, nome novo, upload duplo) ainda pendentes de redeploy._
+
+---
+
+## Adendo 2026-05-21 — Função "Gerar Petição" (branch `feat/gerar-peticao`)
+
+Em **Urgências → Pendências → Fatais**, cada card cuja tarefa do Advbox seja `levantamento` ganha um botão 📄 ao lado do prazo. Clicando, abre um modal pedindo 3 campos (nº do evento, data da homologação, créditos cedidos); o resto (CNJ, juízo, cessionário, dados bancários) é puxado da plataforma. Resultado: `.docx` baixado direto no navegador.
+
+### Componentes criados
+
+- **Edge Function:** `supabase/functions/gerar-peticao/index.ts` — reutiliza o motor `JSZip + xmldom` do `gerar-contrato` (funções `fillTemplate`/`fillParagraph`), mas **sem Claude** (dados já estruturados) e **sem Drive** (retorna base64 pro browser).
+- **Bucket Supabase (precisa criar manualmente):** `peticoes-templates`.
+- **Template versionado no repo:** `supabase/seeds/peticoes-templates/levantamento.docx`, gerado por `_build_template.py` a partir do modelo enviado pelo usuário. 7 placeholders inseridos preservando 100% da formatação.
+- **Frontend:** botão `peticaoBtn(r)` em `assets/js/app.js` (próximo a `navBtn`), inserido no template do card em `_renderPrazosCol`. Modal e fluxo (`_openPeticaoModal`/`_submitPeticao`) logo abaixo. HTML do modal em `index.html` antes de `</body>`; CSS em `assets/css/app.css` (classes `.al-peticao-btn`, `.pet-modal-*`, `.pet-*`).
+
+### Setup no Supabase (uma vez)
+
+1. **Criar bucket** `peticoes-templates` no Dashboard (privado — só a edge function acessa via service-role).
+2. **Upload** de `supabase/seeds/peticoes-templates/levantamento.docx` na raiz do bucket, **com esse nome exato**.
+3. **Deploy:** `supabase functions deploy gerar-peticao`.
+
+### Placeholders no template
+
+| Placeholder | Origem |
+|---|---|
+| `{{ENDERECAMENTO_JUIZO}}` | `rec.orgaoJulgador` + `rec.tribunal` |
+| `{{NUMERO_PROCESSO}}` | `rec.numeroProcesso` |
+| `{{NOME_CESSIONARIO}}` | `rec.cessionario` |
+| `{{NUMERO_EVENTO}}` | input do usuário no modal |
+| `{{DATA_HOMOLOGACAO}}` | input do usuário, convertido para "dia de mês de ano" |
+| `{{CREDITOS_CEDIDOS}}` | checkboxes do modal, concatenados em PT ("A e B", "A, B e C") |
+| `{{DADOS_BANCARIOS}}` | lookup na tabela `investidores` por nome do cessionário |
+
+### Adicionar novos tipos de petição
+
+- Em `assets/js/app.js`, ampliar `_PETICAO_TIPO_MAP` com `{ match: /regex/, tipo: 'slug', label: 'Nome' }`.
+- Em `supabase/functions/gerar-peticao/index.ts`, ampliar o objeto `TEMPLATES`.
+- Subir o novo `.docx` ao bucket com placeholders `{{ASSIM}}`.

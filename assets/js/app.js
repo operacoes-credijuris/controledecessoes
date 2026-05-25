@@ -1790,6 +1790,7 @@ function updateDash(){
           <span style="font-size:10px;color:#6b7280">${msg}</span>
           <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r._deadline)}</span>
         </div>
+        ${peticaoBtn(r)}
       </div>`;
     }).join('');
   }
@@ -3538,6 +3539,343 @@ const _CPY_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" styl
 function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" onclick="cpyNum(event)">${_CPY_SVG}</button>`;}
 const _NAV_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M2.5 8.5L8.5 2.5M5 2.5H8.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('${mod}','${id}')" title="Ir para o processo">${_NAV_SVG}</button>`;}
+
+/* Botao "Gerar peticao" — aparece no card de Pendencias Fatais quando o
+   _task (nome da tarefa do Advbox) ou _notes (observacoes da tarefa) bate
+   com alguma regra abaixo. Cada tipo declara seus campos de input (modal
+   dinamico): "creditos" gera os 3 checkboxes padrao; "date" gera input
+   de data; "text" gera input de texto. */
+// SVG: documento com 3 linhas de texto (representa peticao redigida).
+const _DOC_SVG=`<svg width="15" height="15" viewBox="0 0 16 16" fill="none" style="display:block">
+<path d="M3.5 1.5h6l3 3v9.5a.5.5 0 0 1-.5.5h-8.5a.5.5 0 0 1-.5-.5v-12a.5.5 0 0 1 .5-.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/>
+<path d="M9.5 1.5V4.5h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M5.5 8.5h5M5.5 10.5h5M5.5 12.5h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+</svg>`;
+const _PETICAO_TIPO_MAP=[
+  // Levantamento: tarefa "peticao simples" + notes contendo "levantamento"
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/levantamento/i,
+    tipo:'levantamento', label:'Petição de Levantamento',
+    fields:[
+      {key:'NUMERO_EVENTO',    label:'Nº do evento da penhora',         type:'text', placeholder:'ex: 42'},
+      {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
+      {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
+    ],
+  },
+  // Sequestro: tarefa "peticao simples" + notes contendo "sequestro" (em qualquer
+  // forma — "elaborar sequestro", "petição de sequestro", "preparar sequestro" etc.)
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/sequestro/i,
+    tipo:'sequestro', label:'Petição de Sequestro',
+    fields:[
+      {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
+      {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
+      {key:'DATA_EXPEDICAO',   label:'Data da expedição da RPV',         type:'date'},
+    ],
+  },
+  // Ilegitimidade passiva: tarefa "peticao simples" + notes contendo "ilegitimidade"
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/ilegitimidade/i,
+    tipo:'ilegitimidade', label:'Petição de Ilegitimidade Passiva',
+    fields:[
+      {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
+      {key:'NUMERO_EVENTO',    label:'Nº do evento da petição do ex-patrono', type:'text', placeholder:'ex: 42'},
+    ],
+  },
+  // Juntada de registro publico: tarefa "peticao simples" + notes contendo "juntada de registro publico"
+  // Modelo simples — sem inputs do usuario, so confirma e gera.
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/juntada\s+de\s+registro\s+p[uú]blico/i,
+    tipo:'registro_publico', label:'Petição de Juntada de Registro Público',
+    fields:[],
+  },
+  // RPV complementar: tarefa "peticao simples" + notes contendo "rpv complementar"
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/rpv\s*complementar/i,
+    tipo:'rpv_complementar', label:'Petição de RPV Complementar',
+    fields:[
+      {key:'TIPO_DECISAO',                label:'Tipo de decisão',                  type:'select', options:['sentença','decisão']},
+      {key:'TIPO_RESULTADO',              label:'Resultado da decisão',             type:'select', options:['de procedência','de parcial procedência','homologatória']},
+      {key:'DATA_TRANSITO_JULGADO',       label:'Data do trânsito em julgado',      type:'date'},
+      {key:'EVENTO_CALCULO',              label:'Evento/ID do cálculo homologado',  type:'text', placeholder:'ex: evento 32'},
+      {key:'AUTOR_CALCULO',               label:'Quem apresentou o cálculo',        type:'select', options:['exequente','executado','Contadoria Judicial']},
+      {key:'EVENTO_HOMOLOGACAO_CALCULOS', label:'Evento/ID da decisão homologatória dos cálculos', type:'text', placeholder:'ex: evento 45'},
+      {key:'VALOR_ATUALIZADO',            label:'Valor atualizado (R$)',            type:'money'},
+      {key:'VALOR_PAGO',                  label:'Valor pago (R$)',                  type:'money'},
+      // DIFERENCA calculada automaticamente a partir dos dois acima
+    ],
+  },
+];
+function _peticaoTipo(task,notes){
+  const t=String(task||''),n=String(notes||'');
+  for(const m of _PETICAO_TIPO_MAP){
+    const taskOk = m.matchTask ? m.matchTask.test(t) : true;
+    const notesOk= m.matchNotes? m.matchNotes.test(n): true;
+    if(taskOk && notesOk)return m;
+  }
+  return null;
+}
+function peticaoBtn(r){
+  const m=_peticaoTipo(r._task,r._notes);
+  // Sempre devolve a coluna (vazia ou com botao) pra manter o alinhamento
+  // vertical das datas em todos os cards.
+  if(!m)return`<div class="al-peticao-col"></div>`;
+  return`<div class="al-peticao-col"><button type="button" class="al-peticao-btn" onclick="_openPeticaoModal('${m.tipo}','${r._mod}','${esc(r._id)}')" title="${esc(m.label)}">${_DOC_SVG}</button></div>`;
+}
+
+/* ============================================================
+   Fluxo do modal "Gerar Petição" — dinamico por tipo
+   ============================================================ */
+let _PET_CTX=null; // {tipo, mod, id, rec, def}
+
+// Gera o HTML de um campo do modal a partir da definicao em _PETICAO_TIPO_MAP
+function _petRenderField(f){
+  const id='pet-f-'+f.key.toLowerCase().replace(/_/g,'-');
+  if(f.type==='text' || f.type==='money'){
+    const ph=f.type==='money'?'ex: 1.234,56':(f.placeholder||'');
+    return`<div class="pet-field">
+      <label class="pet-lbl" for="${id}">${esc(f.label)}</label>
+      <input id="${id}" data-petf="${esc(f.key)}" data-pettype="${esc(f.type)}" type="text" class="pet-input" placeholder="${esc(ph)}" autocomplete="off">
+    </div>`;
+  }
+  if(f.type==='date'){
+    return`<div class="pet-field">
+      <label class="pet-lbl" for="${id}">${esc(f.label)}</label>
+      <input id="${id}" data-petf="${esc(f.key)}" data-pettype="date" type="date" class="pet-input">
+    </div>`;
+  }
+  if(f.type==='select'){
+    const opts=(f.options||[]).map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('');
+    return`<div class="pet-field">
+      <label class="pet-lbl" for="${id}">${esc(f.label)}</label>
+      <select id="${id}" data-petf="${esc(f.key)}" data-pettype="select" class="pet-input">
+        <option value="">— selecione —</option>
+        ${opts}
+      </select>
+    </div>`;
+  }
+  if(f.type==='creditos'){
+    return`<div class="pet-field" data-petf="${esc(f.key)}" data-pettype="creditos">
+      <div class="pet-lbl">${esc(f.label)}</div>
+      <label class="pet-chk"><input type="checkbox" data-cred="principal"> crédito principal</label>
+      <label class="pet-chk"><input type="checkbox" data-cred="contratuais"> honorários contratuais</label>
+      <label class="pet-chk"><input type="checkbox" data-cred="sucumbenciais"> honorários sucumbenciais</label>
+    </div>`;
+  }
+  return'';
+}
+
+// Parse "1.234,56" -> 1234.56  |  "1234.56" -> 1234.56  |  "" -> NaN
+function _parseBRL(s){
+  if(s==null)return NaN;
+  let str=String(s).trim().replace(/^R\$\s*/i,'');
+  if(!str)return NaN;
+  // Se tem virgula, assume formato BR (ponto = milhar, virgula = decimal)
+  if(str.includes(',')){
+    str=str.replace(/\./g,'').replace(',','.');
+  }
+  const n=parseFloat(str);
+  return isNaN(n)?NaN:n;
+}
+function _formatBRL(n){
+  if(isNaN(n))return'';
+  return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function _openPeticaoModal(tipo,mod,id){
+  const rec=(CACHE[mod]||[]).find(x=>String(x.id)===String(id));
+  if(!rec){showToast('Processo não encontrado.');return;}
+  const def=_PETICAO_TIPO_MAP.find(m=>m.tipo===tipo);
+  if(!def){showToast('Tipo de petição desconhecido: '+tipo);return;}
+  _PET_CTX={tipo,mod,id,rec,def};
+  // Header + info
+  document.getElementById('pet-modal-title').textContent=def.label;
+  const cnj=rec.numeroProcesso||'(sem CNJ)';
+  const partes=(rec.cedente||'')+(rec.cedente&&rec.cessionario?' v. ':'')+(rec.cessionario||'');
+  document.getElementById('pet-modal-info').innerHTML=
+    `<div class="pet-info-cnj">${esc(cnj)}</div>`+
+    (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
+  // Campos dinamicos. Se nao houver campos (modelo 100% automatico), mostra
+  // uma mensagem amigavel em vez de modal vazio.
+  const fieldsHtml=def.fields.length
+    ?def.fields.map(_petRenderField).join('')
+    :`<div class="pet-modal-info" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25)">Este modelo não precisa de informações adicionais — todos os dados vêm da própria plataforma. É só clicar em <strong>Gerar e baixar</strong>.</div>`;
+  document.getElementById('pet-modal-fields').innerHTML=fieldsHtml;
+  document.getElementById('pet-modal-err').style.display='none';
+  const btn=document.getElementById('pet-modal-submit');
+  btn.disabled=false;btn.textContent='Gerar e baixar';
+  document.getElementById('pet-modal').style.display='flex';
+  // Foco no primeiro input
+  setTimeout(()=>{const first=document.querySelector('#pet-modal-fields [data-petf]');if(first&&first.tagName==='INPUT')first.focus();},50);
+}
+
+function _closePeticaoModal(e){
+  if(e&&e.target&&e.target.id!=='pet-modal')return; // so fecha se clicou no overlay
+  document.getElementById('pet-modal').style.display='none';
+  _PET_CTX=null;
+}
+
+function _petShowErr(msg){
+  const el=document.getElementById('pet-modal-err');
+  el.textContent=msg;el.style.display='block';
+}
+
+// Converte data ISO (YYYY-MM-DD) ou ja em BR (DD/MM/AAAA) para o formato
+// brasileiro padrao "DD/MM/AAAA" (sempre 2 digitos no dia/mes).
+function _dataBR(isoOrBr){
+  if(!isoOrBr)return'';
+  let d,m,y;
+  if(/^\d{4}-\d{2}-\d{2}/.test(isoOrBr)){
+    [y,m,d]=isoOrBr.slice(0,10).split('-').map(Number);
+  } else if(/^\d{2}\/\d{2}\/\d{4}/.test(isoOrBr)){
+    [d,m,y]=isoOrBr.slice(0,10).split('/').map(Number);
+  } else return isoOrBr;
+  if(!d||!m||!y||m<1||m>12)return isoOrBr;
+  return`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+}
+
+// Concatena os checks em portugues correto: "A", "A e B", "A, B e C"
+function _listaPortugues(itens){
+  const a=itens.filter(Boolean);
+  if(a.length===0)return'';
+  if(a.length===1)return a[0];
+  if(a.length===2)return a[0]+' e '+a[1];
+  return a.slice(0,-1).join(', ')+' e '+a[a.length-1];
+}
+
+// Monta a string de dados bancarios na ordem fixa:
+//   TITULAR: nome - BANCO: x - AGÊNCIA: y - CONTA: z - CPF: c - PIX: p
+// Tudo em MAIÚSCULAS. O negrito vem do template (o placeholder
+// {{DADOS_BANCARIOS}} ja vive em um <w:r> com rPr bold).
+function _formataDadosBancarios(inv){
+  if(!inv)return'';
+  const partes=[];
+  if(inv.nome)    partes.push(`TITULAR: ${inv.nome}`);
+  if(inv.banco)   partes.push(`BANCO: ${inv.banco}`);
+  if(inv.agencia) partes.push(`AGÊNCIA: ${inv.agencia}`);
+  if(inv.conta)   partes.push(`CONTA: ${inv.conta}`);
+  if(inv.cpf)     partes.push(`CPF: ${inv.cpf}`);
+  if(inv.pix)     partes.push(`PIX: ${inv.pix}`);
+  return partes.join(' - ').toUpperCase();
+}
+
+// Busca o investidor por nome (case-insensitive, sem acentos)
+async function _buscarInvestidorPorNome(nome){
+  if(!sb||!nome)return null;
+  const{data,error}=await sb.from('investidores')
+    .select('nome,cpf,banco,agencia,conta,pix').limit(50);
+  if(error||!data)return null;
+  const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const alvo=norm(nome);
+  return data.find(i=>norm(i.nome)===alvo)
+      || data.find(i=>norm(i.nome).includes(alvo))
+      || null;
+}
+
+// Dispara o download do .docx a partir do base64 retornado pela edge function.
+function _downloadDocx(b64,filename){
+  const bin=atob(b64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},200);
+}
+
+async function _submitPeticao(){
+  if(!_PET_CTX){showToast('Estado inválido — reabra o modal.');return;}
+  const {tipo,rec,def}=_PET_CTX;
+
+  // Coleta inputs dinamicamente
+  const userVars={};
+  for(const f of def.fields){
+    if(f.type==='creditos'){
+      const cont=document.querySelector(`#pet-modal-fields [data-petf="${f.key}"]`);
+      const checks=cont?Array.from(cont.querySelectorAll('input[data-cred]')):[];
+      const lst=[];
+      for(const c of checks){
+        if(!c.checked)continue;
+        if(c.dataset.cred==='principal')     lst.push('crédito principal');
+        if(c.dataset.cred==='contratuais')   lst.push('honorários contratuais');
+        if(c.dataset.cred==='sucumbenciais') lst.push('honorários sucumbenciais');
+      }
+      if(lst.length===0){_petShowErr('Marque ao menos um tipo de crédito cedido.');return;}
+      userVars[f.key]=_listaPortugues(lst);
+    } else {
+      const el=document.querySelector(`#pet-modal-fields [data-petf="${f.key}"]`);
+      const raw=el?el.value.trim():'';
+      if(!raw){_petShowErr('Preencha: '+f.label);return;}
+      if(f.type==='date'){
+        userVars[f.key]=_dataBR(raw);
+      } else if(f.type==='money'){
+        const n=_parseBRL(raw);
+        if(isNaN(n)){_petShowErr('Valor inválido em "'+f.label+'". Use o formato 1.234,56');return;}
+        userVars[f.key]=_formatBRL(n);
+      } else {
+        userVars[f.key]=raw;
+      }
+    }
+  }
+
+  // Calculo automatico da diferenca em RPV complementar
+  if(tipo==='rpv_complementar' && userVars.VALOR_ATUALIZADO!=null && userVars.VALOR_PAGO!=null){
+    const vAt=_parseBRL(userVars.VALOR_ATUALIZADO);
+    const vPg=_parseBRL(userVars.VALOR_PAGO);
+    if(!isNaN(vAt)&&!isNaN(vPg)){
+      const dif=vAt-vPg;
+      if(dif<=0){_petShowErr('Valor atualizado deve ser maior que o valor pago — diferença ficou '+_formatBRL(dif));return;}
+      userVars.DIFERENCA=_formatBRL(dif);
+    }
+  }
+
+  // Dados bancarios (lookup automatico no investidor)
+  let inv=null;
+  try{inv=await _buscarInvestidorPorNome(rec.cessionario);}catch(e){/* nao bloqueia */}
+  const dadosBancarios=_formataDadosBancarios(inv);
+
+  // Enderecamento em MAIUSCULAS. Tribunal exibido como apenas o UF
+  // (TJGO -> GO, TJSP -> SP). Outros (TRF, STJ, STF) ficam como estao.
+  // Separador "/" entre juizo e UF (ex.: "JUIZADO ... DE CAMPOS BELOS/GO").
+  const trib=String(rec.tribunal||'').trim().toUpperCase();
+  const tribCurto=/^TJ.+$/.test(trib)?trib.replace(/^TJ/,''):trib;
+  const juizo=rec.orgaoJulgador||rec.orgao_julgador||'';
+  const enderecamento=(juizo&&tribCurto?`${juizo}/${tribCurto}`:(juizo||tribCurto||'(juízo a indicar)')).toUpperCase();
+
+  // Variaveis automaticas (vindas do processo / investidor)
+  const autoVars={
+    ENDERECAMENTO_JUIZO:enderecamento,
+    NUMERO_PROCESSO:rec.numeroProcesso||'',
+    NOME_CESSIONARIO:(rec.cessionario||'').toUpperCase(),
+    DADOS_BANCARIOS:dadosBancarios||'(dados bancários não cadastrados no investidor)',
+  };
+  // userVars sobrescreve auto se houver colisao
+  const dados={...autoVars,...userVars};
+
+  // Chama a edge function
+  const btn=document.getElementById('pet-modal-submit');
+  btn.disabled=true;btn.textContent='Gerando…';
+  document.getElementById('pet-modal-err').style.display='none';
+  try{
+    const{data,error}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados}});
+    if(error)throw new Error(error.message||'Falha ao gerar petição');
+    if(!data||!data.docx_base64)throw new Error('Resposta inesperada da função.');
+    _downloadDocx(data.docx_base64,data.filename||'peticao.docx');
+    const conhecidos=new Set(Object.keys(dados));
+    const pend=(data.pendentes||[]).filter(p=>!conhecidos.has(p));
+    if(pend.length){
+      showToast(`Petição gerada. ${pend.length} campo(s) sem dado: ${pend.join(', ')}`,5000);
+    } else {
+      showToast('Petição gerada e baixada.');
+    }
+    _closePeticaoModal();
+  }catch(e){
+    _petShowErr('Erro: '+(e.message||e));
+    btn.disabled=false;btn.textContent='Gerar e baixar';
+  }
+}
 
 // Abre o processo no portal unificado do CNJ (PDPJ) com o numero na URL.
 function procLink(tribunal,numeroProcesso){

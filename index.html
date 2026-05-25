@@ -1161,5 +1161,24 @@
 </div>
 <div id="toast" class="toast"></div>
 
+<!-- MODAL: Gerar Petição (campos sao renderizados dinamicamente pelo JS conforme o tipo) -->
+<div id="pet-modal" class="pet-modal" style="display:none" onclick="_closePeticaoModal(event)">
+  <div class="pet-modal-card" onclick="event.stopPropagation()">
+    <div class="pet-modal-hdr">
+      <div class="pet-modal-title" id="pet-modal-title">Gerar Petição</div>
+      <button type="button" class="pet-modal-close" onclick="_closePeticaoModal()" title="Fechar">×</button>
+    </div>
+    <div class="pet-modal-body">
+      <div id="pet-modal-info" class="pet-modal-info"></div>
+      <div id="pet-modal-fields"></div>
+      <div id="pet-modal-err" class="pet-err" style="display:none"></div>
+    </div>
+    <div class="pet-modal-ft">
+      <button type="button" class="btn btn-blue btn-sm" onclick="_closePeticaoModal()">Cancelar</button>
+      <button type="button" id="pet-modal-submit" class="btn btn-gold btn-sm" onclick="_submitPeticao()">Gerar e baixar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
