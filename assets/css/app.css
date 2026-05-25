@@ -1651,6 +1651,7 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-ac-item{padding:8px 14px;font-size:13px;color:#c8d2df;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.04)}
 .crt-ac-item:last-child{border-bottom:none}
 .crt-ac-item:hover,.crt-ac-item.sel{background:rgba(110,125,187,.12);color:#fff}
+.crt-ac-novo{position:sticky;top:0;z-index:1;background:#111317;border-bottom:1px solid rgba(255,255,255,.09)!important}
 .crt-ac-empty{padding:10px 14px;font-size:12px;color:#4b5563;font-style:italic}
 
 /* CARDS DE RESUMO */
