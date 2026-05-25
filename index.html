@@ -583,32 +583,36 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Parâmetros
       </button>
+      <button type="button" id="crt-btn-view-toggle" onclick="_crtToggleView()" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#9ca3af;font-size:11px;font-weight:600;letter-spacing:.3px;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s,color .15s" title="Alternar entre visão financeira e dados cadastrais">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Dados cadastrais
+      </button>
     </div>
 
     <!-- Cards de resumo -->
     <div class="crt-cards">
       <div class="crt-card">
-        <div class="crt-card-lbl">Capital total</div>
+        <div class="crt-card-lbl" id="crt-lbl-capital">Capital total</div>
         <div class="crt-card-val" id="crt-card-capital">—</div>
       </div>
       <div class="crt-card">
-        <div class="crt-card-lbl">TIR média</div>
+        <div class="crt-card-lbl" id="crt-lbl-tir">TIR média</div>
         <div class="crt-card-val" id="crt-card-tir">—</div>
       </div>
       <div class="crt-card">
-        <div class="crt-card-lbl">Retorno projetado</div>
+        <div class="crt-card-lbl" id="crt-lbl-retorno">Retorno projetado</div>
         <div class="crt-card-val" id="crt-card-retorno">—</div>
       </div>
       <div class="crt-card">
-        <div class="crt-card-lbl">Já recebido</div>
+        <div class="crt-card-lbl" id="crt-lbl-recebido">Já recebido</div>
         <div class="crt-card-val" id="crt-card-recebido">—</div>
       </div>
       <div class="crt-card">
-        <div class="crt-card-lbl">A receber estimado</div>
+        <div class="crt-card-lbl" id="crt-lbl-areceber">A receber estimado</div>
         <div class="crt-card-val" id="crt-card-areceber">—</div>
       </div>
       <div class="crt-card">
-        <div class="crt-card-lbl">N.º operações</div>
+        <div class="crt-card-lbl" id="crt-lbl-operacoes">N.º operações</div>
         <div class="crt-card-val" id="crt-card-operacoes">—</div>
       </div>
     </div>
@@ -616,7 +620,7 @@
     <!-- Tabela Dados por operação -->
     <div class="crt-tbl-wrap">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-shrink:0">
-        <div class="crt-tbl-title" style="margin-bottom:0">Dados por operação</div>
+        <div class="crt-tbl-title" id="crt-tbl-title" style="margin-bottom:0">Dados por operação</div>
         <button id="crt-btn-gerar-resumos" onclick="_crtGerarResumosLote(event)" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(180deg,#7a8acf,#4e5fa3);border:1px solid #3d4e8f;color:#ffffff;font-size:11px;font-weight:600;letter-spacing:.3px;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:inherit;transition:filter .15s,box-shadow .15s;box-shadow:0 2px 6px rgba(78,95,163,.25)" onmouseover="if(!this.disabled){this.style.filter='brightness(1.08)';this.style.boxShadow='0 3px 10px rgba(78,95,163,.45)'}" onmouseout="this.style.filter='';this.style.boxShadow='0 2px 6px rgba(78,95,163,.25)'" title="Gera os resumos de Estágio e Providências para os processos do investidor que ainda não têm. Segure Shift para forçar regeneração de TODOS.">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L9 9l-7 1 5 5-1 7 6-3 6 3-1-7 5-5-7-1z"/></svg>
           <span id="crt-btn-gerar-resumos-lbl">Gerar resumos</span>
@@ -676,6 +680,28 @@
           </thead>
           <tbody id="crt-tbl-body"></tbody>
         </table>
+      </div>
+      <!-- Tabela Dados dos investidores (modo cadastral) -->
+      <div id="crt-inv-tbl-wrap" style="display:none">
+        <div class="crt-tbl-scroll">
+          <table class="crt-tbl" id="crt-inv-tbl">
+            <thead>
+              <tr class="crt-th-sub">
+                <th class="crt-th">Nome</th>
+                <th class="crt-th">CPF / CNPJ</th>
+                <th class="crt-th">RG</th>
+                <th class="crt-th">Banco</th>
+                <th class="crt-th">Agência</th>
+                <th class="crt-th">Conta</th>
+                <th class="crt-th">PIX</th>
+                <th class="crt-th">Endereço</th>
+              </tr>
+            </thead>
+            <tbody id="crt-inv-tbl-body">
+              <tr><td colspan="8" class="crt-tbl-empty">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

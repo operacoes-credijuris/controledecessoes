@@ -452,6 +452,8 @@ let _execWasActive=false; // true quando exec já foi visitado nesta sessão
    crashe ao acessar/atribuir essas variáveis durante a inicialização. */
 var _crtInvestidores=[];
 var _crtAcSelected='';
+var _crtViewMode='financeiro';
+var _crtInvestidoresData=[];
 
 // SIDEBAR
 (function _initSidebar(){
@@ -823,7 +825,8 @@ function _crtAcPick(nome){
   const inp=document.getElementById('crt-ac-input');
   if(inp)inp.value=nome;
   _crtAcClose();
-  _crtRenderOperacoes(nome);
+  if(_crtViewMode==='cadastral')_crtAtualizaCadastral();
+  else _crtRenderOperacoes(nome);
 }
 
 function _crtRenderOperacoes(investidor){
@@ -1275,6 +1278,7 @@ function _crtExportarXLSX(){
 }
 
 function _crtAtualizaCards(rows){
+  if(_crtViewMode==='cadastral'){_crtAtualizaCadastral();return;}
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('crt-card-operacoes', rows.length||'—');
 
@@ -1305,6 +1309,77 @@ function _crtAtualizaCards(rows){
   // Retorno projetado = soma(Ganho projetado) / soma(Capital investido)
   const totalGanho=rows.reduce((s,r)=>s+(_calcGanhoProjetado(r)||0),0);
   set('crt-card-retorno', totalCapital>0 ? ((totalGanho/totalCapital)*100).toFixed(2).replace('.',',')+'%' : '—');
+}
+function _crtToggleView(){
+  _crtViewMode=_crtViewMode==='financeiro'?'cadastral':'financeiro';
+  const btn=document.getElementById('crt-btn-view-toggle');
+  const labels={
+    financeiro:{'crt-lbl-capital':'Capital total','crt-lbl-tir':'TIR média','crt-lbl-retorno':'Retorno projetado','crt-lbl-recebido':'Já recebido','crt-lbl-areceber':'A receber estimado','crt-lbl-operacoes':'N.º operações'},
+    cadastral:{'crt-lbl-capital':'CPF / CNPJ','crt-lbl-tir':'Banco','crt-lbl-retorno':'Agência','crt-lbl-recebido':'Conta','crt-lbl-areceber':'PIX','crt-lbl-operacoes':'RG'},
+  };
+  for(const[id,txt]of Object.entries(labels[_crtViewMode])){const el=document.getElementById(id);if(el)el.textContent=txt;}
+  const title=document.getElementById('crt-tbl-title');
+  const opScroll=document.getElementById('crt-tbl-scroll');
+  const emptyMsg=document.getElementById('crt-tbl-empty-msg');
+  const gerarBtn=document.getElementById('crt-btn-gerar-resumos');
+  const exportBtn=document.getElementById('crt-btn-export');
+  const invWrap=document.getElementById('crt-inv-tbl-wrap');
+  if(_crtViewMode==='cadastral'){
+    if(btn){btn.style.background='rgba(96,165,250,.15)';btn.style.borderColor='rgba(96,165,250,.4)';btn.style.color='#60a5fa';}
+    if(title)title.textContent='Dados dos investidores';
+    if(opScroll)opScroll.style.display='none';
+    if(emptyMsg)emptyMsg.style.display='none';
+    if(gerarBtn)gerarBtn.style.display='none';
+    if(exportBtn)exportBtn.style.display='none';
+    if(invWrap)invWrap.style.display='';
+    _crtRenderInvestidoresTbl();
+  }else{
+    if(btn){btn.style.background='rgba(255,255,255,.06)';btn.style.borderColor='rgba(255,255,255,.12)';btn.style.color='#9ca3af';}
+    if(title)title.textContent='Dados por operação';
+    if(invWrap)invWrap.style.display='none';
+    if(gerarBtn)gerarBtn.style.display='';
+    if(exportBtn)exportBtn.style.display='';
+    if(_crtAcSelected){if(opScroll)opScroll.style.display='';_crtRenderOperacoes(_crtAcSelected);}
+    else{if(emptyMsg)emptyMsg.style.display='';if(opScroll)opScroll.style.display='none';}
+  }
+}
+function _crtAtualizaCadastral(){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
+  const inv=_crtInvestidoresData.find(i=>(i.nome||'').toLowerCase()===(_crtAcSelected||'').toLowerCase());
+  if(!inv){set('crt-card-capital','—');set('crt-card-tir','—');set('crt-card-retorno','—');set('crt-card-recebido','—');set('crt-card-areceber','—');set('crt-card-operacoes','—');return;}
+  set('crt-card-capital',inv.cpf);
+  set('crt-card-tir',inv.banco);
+  set('crt-card-retorno',inv.agencia);
+  set('crt-card-recebido',inv.conta);
+  set('crt-card-areceber',inv.pix);
+  set('crt-card-operacoes',inv.rg);
+}
+async function _crtRenderInvestidoresTbl(){
+  const tbody=document.getElementById('crt-inv-tbl-body');
+  if(!tbody)return;
+  if(_crtInvestidoresData.length===0){
+    tbody.innerHTML='<tr><td colspan="8" class="crt-tbl-empty">Carregando…</td></tr>';
+    try{
+      const{data,error}=await sb.from('investidores').select('*').order('nome');
+      if(error)throw error;
+      _crtInvestidoresData=data||[];
+    }catch(e){
+      tbody.innerHTML=`<tr><td colspan="8" class="crt-tbl-empty">Erro: ${esc(e.message)}</td></tr>`;
+      return;
+    }
+  }
+  if(_crtInvestidoresData.length===0){tbody.innerHTML='<tr><td colspan="8" class="crt-tbl-empty">Nenhum investidor cadastrado</td></tr>';return;}
+  tbody.innerHTML=_crtInvestidoresData.map(inv=>`<tr>
+    <td class="crt-td">${esc(inv.nome||'')}</td>
+    <td class="crt-td">${esc(inv.cpf||'—')}</td>
+    <td class="crt-td">${esc(inv.rg||'—')}</td>
+    <td class="crt-td">${esc(inv.banco||'—')}</td>
+    <td class="crt-td">${esc(inv.agencia||'—')}</td>
+    <td class="crt-td">${esc(inv.conta||'—')}</td>
+    <td class="crt-td">${esc(inv.pix||'—')}</td>
+    <td class="crt-td" style="white-space:normal;max-width:220px">${esc(inv.endereco||'—')}</td>
+  </tr>`).join('');
+  if(_crtAcSelected)_crtAtualizaCadastral();
 }
 function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
 function _crtAcKey(e){
