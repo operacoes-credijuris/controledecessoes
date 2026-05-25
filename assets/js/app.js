@@ -3743,22 +3743,27 @@ function _listaPortugues(itens){
   return a.slice(0,-1).join(', ')+' e '+a[a.length-1];
 }
 
-// Monta "Banco X, agência Y, conta Z, PIX W" a partir do registro de investidor.
+// Monta a string de dados bancarios na ordem fixa:
+//   TITULAR: nome - BANCO: x - AGÊNCIA: y - CONTA: z - CPF: c - PIX: p
+// Tudo em MAIÚSCULAS. O negrito vem do template (o placeholder
+// {{DADOS_BANCARIOS}} ja vive em um <w:r> com rPr bold).
 function _formataDadosBancarios(inv){
   if(!inv)return'';
   const partes=[];
-  if(inv.banco)   partes.push(`Banco: ${inv.banco}`);
-  if(inv.agencia) partes.push(`Agência: ${inv.agencia}`);
-  if(inv.conta)   partes.push(`Conta: ${inv.conta}`);
+  if(inv.nome)    partes.push(`TITULAR: ${inv.nome}`);
+  if(inv.banco)   partes.push(`BANCO: ${inv.banco}`);
+  if(inv.agencia) partes.push(`AGÊNCIA: ${inv.agencia}`);
+  if(inv.conta)   partes.push(`CONTA: ${inv.conta}`);
+  if(inv.cpf)     partes.push(`CPF: ${inv.cpf}`);
   if(inv.pix)     partes.push(`PIX: ${inv.pix}`);
-  return partes.join(' — ');
+  return partes.join(' - ').toUpperCase();
 }
 
 // Busca o investidor por nome (case-insensitive, sem acentos)
 async function _buscarInvestidorPorNome(nome){
   if(!sb||!nome)return null;
   const{data,error}=await sb.from('investidores')
-    .select('nome,banco,agencia,conta,pix').limit(50);
+    .select('nome,cpf,banco,agencia,conta,pix').limit(50);
   if(error||!data)return null;
   const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const alvo=norm(nome);
