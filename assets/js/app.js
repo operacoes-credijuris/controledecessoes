@@ -1787,8 +1787,10 @@ function updateDash(){
           ${noteHtml}
         </div>
         ${peticaoBtn(r)}
-        <div class="al-days-col">${msg}</div>
-        <div class="al-date-col" style="color:${col}">${fmtDate(r._deadline)}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;margin-left:8px">
+          <span style="font-size:10px;color:#6b7280">${msg}</span>
+          <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r._deadline)}</span>
+        </div>
       </div>`;
     }).join('');
   }

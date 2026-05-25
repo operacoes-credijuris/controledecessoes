@@ -2594,19 +2594,6 @@ tbody tr:hover{background:#1d222a}
 .al-peticao-col{
   flex-shrink:0;width:38px;
   display:flex;align-items:center;justify-content:center;
-  margin-left:8px;
-}
-.al-days-col{
-  flex-shrink:0;width:120px;text-align:right;
-  font-size:10px;color:#6b7280;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  margin-left:8px;
-}
-.al-date-col{
-  flex-shrink:0;width:80px;text-align:right;
-  font-size:11px;font-weight:600;
-  white-space:nowrap;
-  margin-left:8px;
 }
 
 .al-peticao-btn{
