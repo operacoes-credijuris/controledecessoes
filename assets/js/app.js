@@ -3812,8 +3812,11 @@ async function _submitPeticao(){
   try{inv=await _buscarInvestidorPorNome(rec.cessionario);}catch(e){/* nao bloqueia */}
   const dadosBancarios=_formataDadosBancarios(inv);
 
-  // Enderecamento em MAIUSCULAS
-  const enderecamento=([rec.orgaoJulgador||rec.orgao_julgador||'',rec.tribunal||'']
+  // Enderecamento em MAIUSCULAS. O tribunal e exibido como apenas o UF
+  // (TJGO -> GO, TJSP -> SP). Outros (TRF, STJ, STF) ficam como estao.
+  const trib=String(rec.tribunal||'').trim().toUpperCase();
+  const tribCurto=/^TJ.+$/.test(trib)?trib.replace(/^TJ/,''):trib;
+  const enderecamento=([rec.orgaoJulgador||rec.orgao_julgador||'',tribCurto]
     .filter(Boolean).join(' — ')||'(juízo a indicar)').toUpperCase();
 
   // Variaveis automaticas (vindas do processo / investidor)
