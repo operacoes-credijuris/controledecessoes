@@ -191,6 +191,10 @@ def build_one(tipo: str) -> bool:
     new_document_xml = p_pattern.sub(lambda m: replace_in_paragraph_xml(m.group(0)), document_xml)
     # 2) Remove marcadores de field do Word (DOCPROPERTY)
     new_document_xml = strip_word_fields(new_document_xml)
+    # 3) Padroniza o cabecalho: "DIREITO DA" -> "DIREITO DO(A)" em todos os
+    # modelos. Como o juizo pode ser "vara" (feminino) ou "juizado" (masculino),
+    # o "DO(A)" cobre os dois generos sem exigir edicao manual dos .docx originais.
+    new_document_xml = new_document_xml.replace("DIREITO DA ", "DIREITO DO(A) ")
 
     tmp = dst + ".tmp"
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
