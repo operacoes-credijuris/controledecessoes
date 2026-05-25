@@ -24,8 +24,9 @@ import { encode as b64encode } from 'https://deno.land/std@0.168.0/encoding/base
 const BUCKET_TEMPLATES = 'peticoes-templates';
 
 const TEMPLATES: Record<string, string> = {
-  levantamento: 'levantamento.docx',
-  sequestro:    'sequestro.docx',
+  levantamento:  'levantamento.docx',
+  sequestro:     'sequestro.docx',
+  ilegitimidade: 'ilegitimidade.docx',
 };
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -57,8 +58,9 @@ function nomeArquivo(tipo: string, dados: Vars): string {
   const cessionario = sanitizeFilenamePart(dados.NOME_CESSIONARIO) || 'Cessionario';
   const processo    = sanitizeFilenamePart(dados.NUMERO_PROCESSO) || 'sem-processo';
   const labels: Record<string, string> = {
-    levantamento: 'Petição de Levantamento',
-    sequestro:    'Petição de Sequestro',
+    levantamento:  'Petição de Levantamento',
+    sequestro:     'Petição de Sequestro',
+    ilegitimidade: 'Petição de Ilegitimidade Passiva',
   };
   const labelTipo = labels[tipo] || `Petição - ${tipo}`;
   return `${labelTipo} - ${cessionario} - ${processo}.docx`;

@@ -29,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MODELS = [
     "levantamento",
     "sequestro",
+    "ilegitimidade",
 ]
 
 # Mapa: trecho exato no docx -> placeholder. Apenas placeholders que existem

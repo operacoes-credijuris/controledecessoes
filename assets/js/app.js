@@ -3567,6 +3567,15 @@ const _PETICAO_TIPO_MAP=[
       {key:'DATA_EXPEDICAO',   label:'Data da expedição da RPV',         type:'date'},
     ],
   },
+  // Ilegitimidade passiva: tarefa "peticao simples" + notes contendo "ilegitimidade"
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/ilegitimidade/i,
+    tipo:'ilegitimidade', label:'Petição de Ilegitimidade Passiva',
+    fields:[
+      {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
+      {key:'NUMERO_EVENTO',    label:'Nº do evento da petição do ex-patrono', type:'text', placeholder:'ex: 42'},
+    ],
+  },
 ];
 function _peticaoTipo(task,notes){
   const t=String(task||''),n=String(notes||'');
@@ -3787,12 +3796,12 @@ function _testCriarTarefa(tipoTeste){
   const t=(CACHE.cessoes||[])[0]||(CACHE.rpv||[])[0]||(CACHE.requerimentos||[])[0];
   if(!t){alert('Nenhum processo carregado. Faça login e espere a lista aparecer antes de clicar.');return;}
   const amanha=new Date(Date.now()+86400000).toISOString().slice(0,10);
-  let dil;
-  if(tipoTeste==='sequestro'){
-    dil={task:'peticao simples',deadline:amanha,notes:'Elaborar sequestro — tarefa de teste'};
-  } else {
-    dil={task:'peticao simples',deadline:amanha,notes:'Levantamento — tarefa de teste'};
-  }
+  const notesMap={
+    sequestro:     'Elaborar sequestro — tarefa de teste',
+    levantamento:  'Levantamento — tarefa de teste',
+    ilegitimidade: 'Ilegitimidade passiva — tarefa de teste',
+  };
+  const dil={task:'peticao simples',deadline:amanha,notes:notesMap[tipoTeste]||'Tarefa de teste'};
   t._advboxDiligencias=[dil];
   try{updateDash();}catch(e){console.error('updateDash falhou:',e);}
   try{selectUrgency('tarefas');_selectPrazosTab('peremptorios');}catch(e){}
@@ -3816,8 +3825,9 @@ function _testCriarTarefaLevantamento(){_testCriarTarefa('levantamento');}
       b.onclick=()=>_testCriarTarefa(tipo);
       return b;
     };
-    wrap.appendChild(mkBtn('🧪 Teste: Levantamento','levantamento','Cria tarefa fake "levantamento" no primeiro processo do CACHE.'));
+    wrap.appendChild(mkBtn('🧪 Teste: Levantamento','levantamento','Cria tarefa fake "peticao simples" com notes "Levantamento".'));
     wrap.appendChild(mkBtn('🧪 Teste: Sequestro','sequestro','Cria tarefa fake "peticao simples" com notes "Elaborar sequestro".'));
+    wrap.appendChild(mkBtn('🧪 Teste: Ilegitimidade','ilegitimidade','Cria tarefa fake "peticao simples" com notes "Ilegitimidade passiva".'));
     document.body.appendChild(wrap);
   };
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}
