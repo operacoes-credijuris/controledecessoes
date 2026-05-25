@@ -808,8 +808,9 @@ function _crtPopulateInvestidores(){
 function _crtAcRender(lista){
   const dd=document.getElementById('crt-ac-dd');
   if(!dd)return;
-  if(!lista.length){dd.innerHTML='<div class="crt-ac-empty">Nenhum resultado</div>';dd.classList.add('on');return;}
-  dd.innerHTML=lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${esc(n)}</div>`).join('');
+  const novoBtn='<div class="crt-ac-item crt-ac-novo" onmousedown="_invOpenModal(null)" style="border-top:1px solid rgba(255,255,255,.07);color:#60a5fa;display:flex;align-items:center;gap:7px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo investidor</div>';
+  if(!lista.length){dd.innerHTML='<div class="crt-ac-empty">Nenhum resultado</div>'+novoBtn;dd.classList.add('on');return;}
+  dd.innerHTML=lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${esc(n)}</div>`).join('')+novoBtn;
   dd.classList.add('on');
 }
 
@@ -1371,7 +1372,7 @@ async function _crtRenderInvestidoresTbl(){
   }
   if(_crtInvestidoresData.length===0){tbody.innerHTML='<tr><td colspan="8" class="crt-tbl-empty">Nenhum investidor cadastrado</td></tr>';return;}
   tbody.innerHTML=_crtInvestidoresData.map(inv=>`<tr>
-    <td class="crt-td">${esc(inv.nome||'')}</td>
+    <td class="crt-td"><button onmousedown="_invOpenModal('${escJs(inv.id)}')" style="background:none;border:none;cursor:pointer;color:#6e7dbb;padding:0 6px 0 0;font-size:11px;vertical-align:middle" title="Editar investidor">✎</button>${esc(inv.nome||'')}</td>
     <td class="crt-td">${esc(inv.cpf||'—')}</td>
     <td class="crt-td">${esc(inv.rg||'—')}</td>
     <td class="crt-td">${esc(inv.banco||'—')}</td>
@@ -1381,6 +1382,51 @@ async function _crtRenderInvestidoresTbl(){
     <td class="crt-td" style="white-space:normal;max-width:220px">${esc(inv.endereco||'—')}</td>
   </tr>`).join('');
   if(_crtAcSelected)_crtAtualizaCadastral();
+}
+function _invOpenModal(idOrNull){
+  _crtAcClose();
+  const f=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  const inv=idOrNull?_crtInvestidoresData.find(i=>i.id===idOrNull):null;
+  document.getElementById('inv-mdl-title').textContent=inv?'Editar Investidor':'Novo Investidor';
+  f('inv-f-id',inv?.id||'');
+  f('inv-f-nome',inv?.nome||'');
+  f('inv-f-cpf',inv?.cpf||'');
+  f('inv-f-rg',inv?.rg||'');
+  f('inv-f-endereco',inv?.endereco||'');
+  f('inv-f-banco',inv?.banco||'');
+  f('inv-f-agencia',inv?.agencia||'');
+  f('inv-f-conta',inv?.conta||'');
+  f('inv-f-pix',inv?.pix||'');
+  const err=document.getElementById('inv-mdl-err');if(err){err.style.display='none';err.textContent='';}
+  const btn=document.getElementById('inv-mdl-save');if(btn){btn.disabled=false;btn.textContent='Salvar';}
+  openModal('inv-ov');
+  setTimeout(()=>document.getElementById('inv-f-nome')?.focus(),80);
+}
+function _invCloseModal(){closeModal('inv-ov');}
+async function _invSave(){
+  const val=id=>document.getElementById(id)?.value.trim()||null;
+  const nome=val('inv-f-nome');
+  if(!nome){
+    const err=document.getElementById('inv-mdl-err');
+    if(err){err.textContent='Nome é obrigatório.';err.style.display='';}
+    return;
+  }
+  const btn=document.getElementById('inv-mdl-save');
+  if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+  const id=val('inv-f-id');
+  const payload={nome,cpf:val('inv-f-cpf'),rg:val('inv-f-rg'),endereco:val('inv-f-endereco'),banco:val('inv-f-banco'),agencia:val('inv-f-agencia'),conta:val('inv-f-conta'),pix:val('inv-f-pix')};
+  const{error}=id
+    ?await sb.from('investidores').update(payload).eq('id',id)
+    :await sb.from('investidores').insert(payload);
+  if(error){
+    const err=document.getElementById('inv-mdl-err');
+    if(err){err.textContent='Erro: '+error.message;err.style.display='';}
+    if(btn){btn.disabled=false;btn.textContent='Salvar';}
+    return;
+  }
+  _invCloseModal();
+  _crtInvestidoresData=[];
+  await _crtRenderInvestidoresTbl();
 }
 function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
 function _crtAcKey(e){
@@ -3348,7 +3394,7 @@ function togglePubText(btn){
 }
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov','parametros-ov'].forEach(closeModal);_crtTxtClose();}
+  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov','parametros-ov','inv-ov'].forEach(closeModal);_crtTxtClose();}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
     const target=topTab==='acompanhamento'?subTab:topTab;
