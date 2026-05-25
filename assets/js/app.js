@@ -3877,56 +3877,6 @@ async function _submitPeticao(){
   }
 }
 
-/* ============================================================
-   MODO TESTE LOCAL — botoes para criar tarefas fake e testar
-   os tipos de peticao. So aparece quando o site eh aberto via
-   file:// (teste local), nunca em producao.
-   ============================================================ */
-function _testCriarTarefa(tipoTeste){
-  const t=(CACHE.cessoes||[])[0]||(CACHE.rpv||[])[0]||(CACHE.requerimentos||[])[0];
-  if(!t){alert('Nenhum processo carregado. Faça login e espere a lista aparecer antes de clicar.');return;}
-  const amanha=new Date(Date.now()+86400000).toISOString().slice(0,10);
-  const notesMap={
-    sequestro:        'Elaborar sequestro — tarefa de teste',
-    levantamento:     'Levantamento — tarefa de teste',
-    ilegitimidade:    'Ilegitimidade passiva — tarefa de teste',
-    rpv_complementar: 'RPV complementar — tarefa de teste',
-    registro_publico: 'Juntada de registro público — tarefa de teste',
-  };
-  const dil={task:'peticao simples',deadline:amanha,notes:notesMap[tipoTeste]||'Tarefa de teste'};
-  t._advboxDiligencias=[dil];
-  try{updateDash();}catch(e){console.error('updateDash falhou:',e);}
-  try{selectUrgency('tarefas');_selectPrazosTab('peremptorios');}catch(e){}
-  alert(`Tarefa "${dil.task}"${dil.notes?` (notes: ${dil.notes})`:''} criada no processo: ${t.numeroProcesso||t.id}.\n\nVai em Urgências → Pendências → Fatais. Clica no ícone 📄.`);
-}
-// Mantem nome antigo pra compatibilidade
-function _testCriarTarefaLevantamento(){_testCriarTarefa('levantamento');}
-(function _instalaBotoesTeste(){
-  if(typeof window==='undefined'||!window.location)return;
-  if(window.location.protocol!=='file:')return; // so em teste local
-  const mount=()=>{
-    if(document.getElementById('_test-pet-wrap'))return;
-    const wrap=document.createElement('div');
-    wrap.id='_test-pet-wrap';
-    wrap.style.cssText='position:fixed;bottom:14px;right:14px;z-index:99999;display:flex;flex-direction:column;gap:6px;align-items:flex-end';
-    const mkBtn=(label,tipo,title)=>{
-      const b=document.createElement('button');
-      b.textContent=label;
-      b.title=title;
-      b.style.cssText='padding:8px 12px;background:#f59e0b;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.4)';
-      b.onclick=()=>_testCriarTarefa(tipo);
-      return b;
-    };
-    wrap.appendChild(mkBtn('🧪 Teste: Levantamento','levantamento','Cria tarefa fake "peticao simples" com notes "Levantamento".'));
-    wrap.appendChild(mkBtn('🧪 Teste: Sequestro','sequestro','Cria tarefa fake "peticao simples" com notes "Elaborar sequestro".'));
-    wrap.appendChild(mkBtn('🧪 Teste: Ilegitimidade','ilegitimidade','Cria tarefa fake "peticao simples" com notes "Ilegitimidade passiva".'));
-    wrap.appendChild(mkBtn('🧪 Teste: RPV Complementar','rpv_complementar','Cria tarefa fake "peticao simples" com notes "RPV complementar".'));
-    wrap.appendChild(mkBtn('🧪 Teste: Registro Público','registro_publico','Cria tarefa fake "peticao simples" com notes "Juntada de registro público".'));
-    document.body.appendChild(wrap);
-  };
-  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}
-})();
-
 // Abre o processo no portal unificado do CNJ (PDPJ) com o numero na URL.
 function procLink(tribunal,numeroProcesso){
   const num=(numeroProcesso||'').trim();
