@@ -31,6 +31,7 @@ MODELS = [
     "sequestro",
     "ilegitimidade",
     "rpv_complementar",
+    "registro_publico",
 ]
 
 # Mapa: trecho exato no docx -> placeholder. Apenas placeholders que existem

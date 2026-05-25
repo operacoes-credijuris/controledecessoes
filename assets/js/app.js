@@ -3576,6 +3576,13 @@ const _PETICAO_TIPO_MAP=[
       {key:'NUMERO_EVENTO',    label:'Nº do evento da petição do ex-patrono', type:'text', placeholder:'ex: 42'},
     ],
   },
+  // Juntada de registro publico: tarefa "peticao simples" + notes contendo "juntada de registro publico"
+  // Modelo simples — sem inputs do usuario, so confirma e gera.
+  {
+    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/juntada\s+de\s+registro\s+p[uú]blico/i,
+    tipo:'registro_publico', label:'Petição de Juntada de Registro Público',
+    fields:[],
+  },
   // RPV complementar: tarefa "peticao simples" + notes contendo "rpv complementar"
   {
     matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/rpv\s*complementar/i,
@@ -3680,8 +3687,12 @@ function _openPeticaoModal(tipo,mod,id){
   document.getElementById('pet-modal-info').innerHTML=
     `<div class="pet-info-cnj">${esc(cnj)}</div>`+
     (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
-  // Campos dinamicos
-  document.getElementById('pet-modal-fields').innerHTML=def.fields.map(_petRenderField).join('');
+  // Campos dinamicos. Se nao houver campos (modelo 100% automatico), mostra
+  // uma mensagem amigavel em vez de modal vazio.
+  const fieldsHtml=def.fields.length
+    ?def.fields.map(_petRenderField).join('')
+    :`<div class="pet-modal-info" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25)">Este modelo não precisa de informações adicionais — todos os dados vêm da própria plataforma. É só clicar em <strong>Gerar e baixar</strong>.</div>`;
+  document.getElementById('pet-modal-fields').innerHTML=fieldsHtml;
   document.getElementById('pet-modal-err').style.display='none';
   const btn=document.getElementById('pet-modal-submit');
   btn.disabled=false;btn.textContent='Gerar e baixar';
@@ -3866,6 +3877,7 @@ function _testCriarTarefa(tipoTeste){
     levantamento:     'Levantamento — tarefa de teste',
     ilegitimidade:    'Ilegitimidade passiva — tarefa de teste',
     rpv_complementar: 'RPV complementar — tarefa de teste',
+    registro_publico: 'Juntada de registro público — tarefa de teste',
   };
   const dil={task:'peticao simples',deadline:amanha,notes:notesMap[tipoTeste]||'Tarefa de teste'};
   t._advboxDiligencias=[dil];
@@ -3895,6 +3907,7 @@ function _testCriarTarefaLevantamento(){_testCriarTarefa('levantamento');}
     wrap.appendChild(mkBtn('🧪 Teste: Sequestro','sequestro','Cria tarefa fake "peticao simples" com notes "Elaborar sequestro".'));
     wrap.appendChild(mkBtn('🧪 Teste: Ilegitimidade','ilegitimidade','Cria tarefa fake "peticao simples" com notes "Ilegitimidade passiva".'));
     wrap.appendChild(mkBtn('🧪 Teste: RPV Complementar','rpv_complementar','Cria tarefa fake "peticao simples" com notes "RPV complementar".'));
+    wrap.appendChild(mkBtn('🧪 Teste: Registro Público','registro_publico','Cria tarefa fake "peticao simples" com notes "Juntada de registro público".'));
     document.body.appendChild(wrap);
   };
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}

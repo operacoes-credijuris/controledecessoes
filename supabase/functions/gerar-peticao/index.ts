@@ -28,6 +28,7 @@ const TEMPLATES: Record<string, string> = {
   sequestro:        'sequestro.docx',
   ilegitimidade:    'ilegitimidade.docx',
   rpv_complementar: 'rpv_complementar.docx',
+  registro_publico: 'registro_publico.docx',
 };
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -63,6 +64,7 @@ function nomeArquivo(tipo: string, dados: Vars): string {
     sequestro:        'Petição de Sequestro',
     ilegitimidade:    'Petição de Ilegitimidade Passiva',
     rpv_complementar: 'Petição de RPV Complementar',
+    registro_publico: 'Petição de Juntada de Registro Público',
   };
   const labelTipo = labels[tipo] || `Petição - ${tipo}`;
   return `${labelTipo} - ${cessionario} - ${processo}.docx`;
