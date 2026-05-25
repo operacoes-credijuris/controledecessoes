@@ -808,9 +808,11 @@ function _crtPopulateInvestidores(){
 function _crtAcRender(lista){
   const dd=document.getElementById('crt-ac-dd');
   if(!dd)return;
-  const novoBtn='<div class="crt-ac-item crt-ac-novo" onmousedown="_invOpenModal(null)" style="border-top:1px solid rgba(255,255,255,.07);color:#60a5fa;display:flex;align-items:center;gap:7px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo investidor</div>';
-  if(!lista.length){dd.innerHTML=novoBtn+'<div class="crt-ac-empty">Nenhum resultado</div>';dd.classList.add('on');return;}
-  dd.innerHTML=novoBtn+lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${esc(n)}</div>`).join('');
+  const novoBtn='<div class="crt-ac-item crt-ac-novo" onmousedown="_invOpenModal(null)" style="color:#60a5fa;display:flex;align-items:center;gap:7px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo investidor</div>';
+  const itens=lista.length
+    ? lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${esc(n)}</div>`).join('')
+    : '<div class="crt-ac-empty">Nenhum resultado</div>';
+  dd.innerHTML=novoBtn+'<div class="crt-ac-list">'+itens+'</div>';
   dd.classList.add('on');
 }
 

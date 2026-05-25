@@ -1646,12 +1646,13 @@ tr.row-ylw{background:rgba(251,191,36,.08)!important;border-left-color:#fbbf24}
 .crt-ac-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;
   background:linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.008)),#111317;
   border:1px solid rgba(255,255,255,.075);border-radius:10px;
-  box-shadow:0 22px 52px rgba(0,0,0,.42);z-index:999;max-height:220px;overflow-y:auto;display:none}
-.crt-ac-dd.on{display:block}
+  box-shadow:0 22px 52px rgba(0,0,0,.42);z-index:999;display:none;flex-direction:column;overflow:hidden}
+.crt-ac-dd.on{display:flex}
+.crt-ac-list{overflow-y:auto;max-height:200px}
 .crt-ac-item{padding:8px 14px;font-size:13px;color:#c8d2df;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.04)}
 .crt-ac-item:last-child{border-bottom:none}
 .crt-ac-item:hover,.crt-ac-item.sel{background:rgba(110,125,187,.12);color:#fff}
-.crt-ac-novo{position:sticky;top:0;z-index:10;background:#111317;border-bottom:1px solid rgba(255,255,255,.09)!important;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.crt-ac-novo{flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.09)!important;background:#111317}
 .crt-ac-empty{padding:10px 14px;font-size:12px;color:#4b5563;font-style:italic}
 
 /* CARDS DE RESUMO */
