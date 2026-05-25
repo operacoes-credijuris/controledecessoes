@@ -3895,80 +3895,6 @@ function _testCriarTarefa(tipoTeste){
 }
 // Mantem nome antigo pra compatibilidade
 function _testCriarTarefaLevantamento(){_testCriarTarefa('levantamento');}
-
-// Diagnostica todas as tarefas pendentes do Advbox em Fatais.
-// Mostra qual modelo casa com cada uma (ou por que nenhum casa).
-function _diagnosticarFatais(){
-  const _hojeStr=todayStr();
-  const linhas=[];
-  const mods=[['cessoes',CACHE.cessoes||[]],['rpv',CACHE.rpv||[]],['requerimentos',CACHE.requerimentos||[]]];
-  for(const[mod,recs]of mods){
-    for(const r of recs){
-      const dils=Array.isArray(r._advboxDiligencias)?r._advboxDiligencias:[];
-      for(const d of dils){
-        if(!d||!d.deadline)continue;
-        const nd=normDate(d.deadline);
-        if(!nd||nd<_hojeStr)continue; // so as fatais (com deadline futuro)
-        const task=String(d.task||'');
-        const notes=String(d.notes||'');
-        const m=_peticaoTipo(task,notes);
-        linhas.push({
-          cnj:r.numeroProcesso||'(sem cnj)',
-          task:task,
-          notes:notes,
-          casou:m?m.tipo:'(nenhum)',
-          motivo:m?'✓ casou':_porqueNaoCasa(task,notes),
-        });
-      }
-    }
-  }
-  // Renderiza painel
-  const html=linhas.length?linhas.map((l,i)=>`
-    <tr style="border-bottom:1px solid #374151">
-      <td style="padding:6px 8px;font-family:monospace;font-size:11px;color:#9ca3af">${esc(l.cnj)}</td>
-      <td style="padding:6px 8px;font-size:11px;color:${l.casou!=='(nenhum)'?'#4ade80':'#fbbf24'}">${esc(l.task||'(vazio)')}</td>
-      <td style="padding:6px 8px;font-size:11px;color:#d1d5db;max-width:280px;word-wrap:break-word">${esc(l.notes||'(sem observações)')}</td>
-      <td style="padding:6px 8px;font-size:11px;color:${l.casou!=='(nenhum)'?'#4ade80':'#f87171'};font-weight:600">${esc(l.casou)}</td>
-      <td style="padding:6px 8px;font-size:11px;color:#9ca3af">${esc(l.motivo)}</td>
-    </tr>`).join(''):
-    '<tr><td colspan="5" style="padding:14px;text-align:center;color:#9ca3af">Nenhuma tarefa fatal pendente.</td></tr>';
-  const old=document.getElementById('_diag-modal');if(old)old.remove();
-  const m=document.createElement('div');
-  m.id='_diag-modal';
-  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
-  m.onclick=(e)=>{if(e.target.id==='_diag-modal')m.remove();};
-  m.innerHTML=`<div style="background:#1f2937;color:#e5e7eb;border-radius:8px;max-width:1100px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-    <div style="padding:14px 18px;border-bottom:1px solid #374151;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:15px;font-weight:600">Diagnóstico — Tarefas Fatais (${linhas.length})</div>
-      <button onclick="document.getElementById('_diag-modal').remove()" style="background:transparent;border:none;color:#9ca3af;font-size:22px;cursor:pointer">×</button>
-    </div>
-    <div style="padding:14px;overflow:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="background:#374151">
-          <th style="padding:8px;text-align:left;color:#d1d5db;font-weight:600">Processo</th>
-          <th style="padding:8px;text-align:left;color:#d1d5db;font-weight:600">Tarefa (task)</th>
-          <th style="padding:8px;text-align:left;color:#d1d5db;font-weight:600">Observações (notes)</th>
-          <th style="padding:8px;text-align:left;color:#d1d5db;font-weight:600">Modelo</th>
-          <th style="padding:8px;text-align:left;color:#d1d5db;font-weight:600">Motivo</th>
-        </tr></thead>
-        <tbody>${html}</tbody>
-      </table>
-    </div>
-    <div style="padding:10px 18px;border-top:1px solid #374151;font-size:11px;color:#9ca3af">Cole os dados das linhas em amarelo/vermelho no chat pra eu ajustar as regras de matching.</div>
-  </div>`;
-  document.body.appendChild(m);
-}
-function _porqueNaoCasa(task,notes){
-  // Diagnostico amigavel — por que nenhuma regra casou
-  const t=String(task||''),n=String(notes||'');
-  if(!t)return 'task vazia';
-  // Verifica se a task casa com a regra padrao
-  if(!/peti[cç][aã]o\s*simples/i.test(t))return `task "${t}" não é "petição simples"`;
-  // Se a task casou mas o notes nao, lista o que faltou
-  if(!n)return 'notes vazio (palavra-chave esperada)';
-  const palavrasEsperadas=['levantamento','elaborar sequestro','ilegitimidade','rpv complementar','juntada de registro público'];
-  return `notes não contém nenhuma palavra-chave: ${palavrasEsperadas.join(' / ')}`;
-}
 (function _instalaBotoesTeste(){
   if(typeof window==='undefined'||!window.location)return;
   if(window.location.protocol!=='file:')return; // so em teste local
@@ -3990,13 +3916,6 @@ function _porqueNaoCasa(task,notes){
     wrap.appendChild(mkBtn('🧪 Teste: Ilegitimidade','ilegitimidade','Cria tarefa fake "peticao simples" com notes "Ilegitimidade passiva".'));
     wrap.appendChild(mkBtn('🧪 Teste: RPV Complementar','rpv_complementar','Cria tarefa fake "peticao simples" com notes "RPV complementar".'));
     wrap.appendChild(mkBtn('🧪 Teste: Registro Público','registro_publico','Cria tarefa fake "peticao simples" com notes "Juntada de registro público".'));
-    // Botao especial — diagnostica por que algumas tarefas nao mostram o botao de peticao
-    const diag=document.createElement('button');
-    diag.textContent='🔎 Diagnosticar Fatais';
-    diag.title='Lista todas as tarefas pendentes do Advbox em Fatais e mostra qual modelo casa (ou por que nao).';
-    diag.style.cssText='padding:8px 12px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.4);margin-top:8px';
-    diag.onclick=_diagnosticarFatais;
-    wrap.appendChild(diag);
     document.body.appendChild(wrap);
   };
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}
