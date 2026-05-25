@@ -1788,8 +1788,8 @@ function updateDash(){
         </div>
         ${peticaoBtn(r)}
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;margin-left:8px">
-          <span style="font-size:10px;color:#6b7280">${msg}</span>
           <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r._deadline)}</span>
+          <span style="font-size:10px;color:#6b7280">${msg}</span>
         </div>
       </div>`;
     }).join('');
