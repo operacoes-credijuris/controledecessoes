@@ -2585,11 +2585,29 @@ tbody tr:hover{background:#1d222a}
 .gc-pendentes-hint{font-size:11px;color:#6b7280;margin-top:4px}
 
 /* ============================================
-   Petição — botão no card e modal de inputs
+   Colunas alinhadas dos cards de Fatais
    ============================================ */
+/* 3 colunas de largura fixa na direita dos cards de Fatais, pra que tudo
+   se alinhe verticalmente: dias restantes | data fatal | botao de peticao */
 /* Coluna dedicada ao botao de peticao — largura fixa em TODOS os cards
-   (mesmo nos sem botao), pra manter as datas alinhadas verticalmente. */
-.al-peticao-col{flex-shrink:0;width:38px;display:flex;align-items:center;justify-content:center}
+   (mesmo nos sem botao), pra manter o alinhamento vertical. */
+.al-peticao-col{
+  flex-shrink:0;width:38px;
+  display:flex;align-items:center;justify-content:center;
+  margin-left:8px;
+}
+.al-days-col{
+  flex-shrink:0;width:120px;text-align:right;
+  font-size:10px;color:#6b7280;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-left:8px;
+}
+.al-date-col{
+  flex-shrink:0;width:80px;text-align:right;
+  font-size:11px;font-weight:600;
+  white-space:nowrap;
+  margin-left:8px;
+}
 
 .al-peticao-btn{
   display:inline-flex;align-items:center;justify-content:center;
