@@ -1786,11 +1786,11 @@ function updateDash(){
           ${partes?`<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${partes}</div>`:''}
           ${noteHtml}
         </div>
-        ${peticaoBtn(r)}
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;margin-left:8px">
-          <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r._deadline)}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap">
           <span style="font-size:10px;color:#6b7280">${msg}</span>
+          <span style="font-size:11px;font-weight:600;color:${col}">${fmtDate(r._deadline)}</span>
         </div>
+        ${peticaoBtn(r)}
       </div>`;
     }).join('');
   }

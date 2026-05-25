@@ -2594,6 +2594,7 @@ tbody tr:hover{background:#1d222a}
 .al-peticao-col{
   flex-shrink:0;width:38px;
   display:flex;align-items:center;justify-content:center;
+  margin-left:8px;
 }
 
 .al-peticao-btn{
