@@ -5732,13 +5732,21 @@ async function _advboxResolveCredijurisId(){
 
 async function _advboxAutoCreateLawsuit(mod,rec){
   if(!rec.numeroProcesso||rec._advboxLawsuitId)return;
-  if(!_secrets.advbox())return;
+  if(!_secrets.advbox()){console.warn('[Advbox auto-create] token nao configurado em _secrets — processo nao cadastrado');return;}
   const defs=_advboxLoadAutoDefaults();
-  if(!defs||!defs.userId||!defs.stageId||!defs.typeId)return;
+  if(!defs||!defs.userId||!defs.stageId||!defs.typeId){
+    console.warn('[Advbox auto-create] defaults ausentes (Responsavel/Fase/Tipo) — abra Configuracoes > Advbox e salve');
+    showToast('Advbox: defaults nao configurados. Abra Configuracoes > Advbox.');
+    return;
+  }
   try{
     const{proxy}=await _advboxProxyAuth();
     const custId=await _advboxResolveCredijurisId();
-    if(!custId)return;
+    if(!custId){
+      console.warn('[Advbox auto-create] cliente "credijuris" nao encontrado em /customers');
+      showToast('Advbox: cliente "credijuris" nao encontrado no escritorio. Cadastre manualmente.');
+      return;
+    }
     const payload={
       users_id:String(defs.userId),
       customers_id:[Number(custId)],
@@ -5755,8 +5763,14 @@ async function _advboxAutoCreateLawsuit(mod,rec){
       const arr=load(mod);const idx=arr.findIndex(r=>r.id===rec.id);
       if(idx!==-1){arr[idx]={...arr[idx],_advboxLawsuitId:lawsuitId};save(mod,arr);}
       showToast('Processo criado no Advbox.');
+    }else{
+      console.warn('[Advbox auto-create] resposta do POST /lawsuits sem id:',result);
+      showToast('Advbox: cadastro retornou sem ID. Verifique no painel Advbox.');
     }
-  }catch(e){}
+  }catch(e){
+    console.error('[Advbox auto-create] falha no POST /lawsuits:',e,'payload:',{users_id:defs.userId,stages_id:defs.stageId,type_lawsuits_id:defs.typeId,process_number:rec.numeroProcesso});
+    showToast('Advbox: falha ao cadastrar processo — '+(e?.message||String(e)));
+  }
 }
 
 async function _cfgAdvboxLoadAutoUI(){
