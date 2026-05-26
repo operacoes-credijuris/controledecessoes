@@ -454,6 +454,9 @@ var _crtInvestidores=[];
 var _crtAcSelected='';
 var _crtViewMode='financeiro';
 var _crtInvestidoresData=[];
+function _normNome(s){return(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();}
+function _invFindByNome(nome){const q=_normNome(nome);return _crtInvestidoresData.find(i=>_normNome(i.nome)===q)||_crtInvestidoresData.find(i=>{const n=_normNome(i.nome);return n.startsWith(q)||q.startsWith(n);});}
+function _invCadastroIncompleto(nome){const inv=_invFindByNome(nome);if(!inv)return true;return['cpf','rg','endereco','banco','agencia','conta','pix'].filter(c=>inv[c]&&String(inv[c]).trim()).length<5;}
 
 // SIDEBAR
 (function _initSidebar(){
@@ -541,6 +544,7 @@ function _sbShowCarteiras(){
      Se chamado durante _initSidebar() (sem auth), _onAuthenticated() re-chama depois. */
   _crtPopulateInvestidores();
   _crtRenderOperacoes(_crtAcSelected||null);
+  if(_crtInvestidoresData.length===0)sb.from('investidores').select('*').order('nome').then(({data})=>{if(data&&data.length)_crtInvestidoresData=data;});
 }
 
 function _sbShowCredito(){
@@ -810,7 +814,7 @@ function _crtAcRender(lista){
   if(!dd)return;
   const novoBtn='<div class="crt-ac-item crt-ac-novo" onmousedown="_invOpenModal(null)" style="color:#60a5fa;display:flex;align-items:center;gap:7px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo investidor</div>';
   const itens=lista.length
-    ? lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${esc(n)}</div>`).join('')
+    ? lista.map(n=>{const w=_crtInvestidoresData.length&&_invCadastroIncompleto(n)?'<span style="color:#fbbf24;margin-right:5px;font-size:11px" title="Dados cadastrais incompletos">⚠</span>':'';return`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${w}${esc(n)}</div>`;}).join('')
     : '<div class="crt-ac-empty">Nenhum resultado</div>';
   dd.innerHTML=novoBtn+'<div class="crt-ac-list">'+itens+'</div>';
   dd.classList.add('on');
@@ -1348,10 +1352,7 @@ function _crtToggleView(){
 }
 function _crtAtualizaCadastral(){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
-  const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
-  const q=norm(_crtAcSelected);
-  const inv=_crtInvestidoresData.find(i=>norm(i.nome)===q)
-    ||_crtInvestidoresData.find(i=>{const n=norm(i.nome);return n.startsWith(q)||q.startsWith(n);});
+  const inv=_invFindByNome(_crtAcSelected);
   if(!inv){set('crt-card-capital','—');set('crt-card-tir','—');set('crt-card-retorno','—');set('crt-card-recebido','—');set('crt-card-areceber','—');set('crt-card-operacoes','—');return;}
   set('crt-card-capital',inv.cpf);
   set('crt-card-tir',inv.banco);
