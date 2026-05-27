@@ -3920,17 +3920,21 @@ async function _submitPeticao(){
   btn.disabled=true;btn.textContent='Gerando…';
   document.getElementById('pet-modal-err').style.display='none';
   try{
-    const{data,error}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados}});
+    // Passa cedente + processo pro backend tentar subir no Drive
+    const driveParams={cedente:rec.cedente||'',processo:rec.numeroProcesso||''};
+    const{data,error}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados,drive:driveParams}});
     if(error)throw new Error(error.message||'Falha ao gerar petição');
     if(!data||!data.docx_base64)throw new Error('Resposta inesperada da função.');
     _downloadDocx(data.docx_base64,data.filename||'peticao.docx');
     const conhecidos=new Set(Object.keys(dados));
     const pend=(data.pendentes||[]).filter(p=>!conhecidos.has(p));
-    if(pend.length){
-      showToast(`Petição gerada. ${pend.length} campo(s) sem dado: ${pend.join(', ')}`,5000);
-    } else {
-      showToast('Petição gerada e baixada.');
+    // Monta a mensagem combinando: campos pendentes + status do Drive
+    let msg='Petição gerada e baixada.';
+    if(pend.length)msg=`Petição gerada. ${pend.length} campo(s) sem dado: ${pend.join(', ')}`;
+    if(data.drive){
+      msg += data.drive.ok ? ' ✓ Enviada ao Drive.' : ` ⚠ Drive: ${data.drive.mensagem}`;
     }
+    showToast(msg, (pend.length||(data.drive&&!data.drive.ok))?7000:3500);
     _closePeticaoModal();
   }catch(e){
     _petShowErr('Erro: '+(e.message||e));

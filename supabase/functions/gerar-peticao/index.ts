@@ -206,6 +206,187 @@ async function storageGetBytes(
 }
 
 // ============================================================================
+// Google Drive — portado do gerar-contrato/index.ts
+// ============================================================================
+
+const DRIVE_ROOT_NAME = 'Credijuris - Atualizado';
+const DRIVE_PROCESSOS_NAME = 'B. Processos';
+const DRIVE_CATEGORIA_PADRAO = 'Requisições de Pequeno Valor';
+const DRIVE_PASTA_PETICOES = '5. Petições';
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+function normalizar(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.\-/() ]/g, '');
+}
+function soDigitos(s: string): string {
+  return String(s || '').replace(/\D/g, '');
+}
+function escapeDriveQuery(s: string): string {
+  return s.replace(/'/g, "\\'");
+}
+
+async function refreshGoogleAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId, client_secret: clientSecret,
+      refresh_token: refreshToken, grant_type: 'refresh_token',
+    }),
+  });
+  if (!res.ok) throw new Error(`Google OAuth refresh falhou (${res.status}): ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  if (!data.access_token) throw new Error('Google OAuth: sem access_token na resposta');
+  return data.access_token as string;
+}
+
+interface DriveFile { id: string; name: string; mimeType?: string; parents?: string[] }
+
+async function driveListFiles(token: string, query: string, driveId?: string): Promise<DriveFile[]> {
+  const params = new URLSearchParams({
+    q: query, fields: 'files(id,name,mimeType,parents)',
+    includeItemsFromAllDrives: 'true', supportsAllDrives: 'true', pageSize: '1000',
+  });
+  if (driveId) { params.set('corpora', 'drive'); params.set('driveId', driveId); }
+  else { params.set('corpora', 'allDrives'); }
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  if (!res.ok) throw new Error(`Drive list (${res.status}): ${(await res.text()).slice(0, 300)} | query=${query}`);
+  return (await res.json()).files || [];
+}
+
+async function driveFindSharedDrive(token: string, name: string): Promise<{ id: string; name: string } | null> {
+  let pageToken: string | undefined;
+  while (true) {
+    const params = new URLSearchParams({ fields: 'nextPageToken,drives(id,name)' });
+    if (pageToken) params.set('pageToken', pageToken);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/drives?${params}`, {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    for (const d of (data.drives || [])) if (d.name === name) return d;
+    pageToken = data.nextPageToken;
+    if (!pageToken) return null;
+  }
+}
+
+async function driveFindChild(token: string, name: string, parentId: string, mime?: string): Promise<DriveFile | null> {
+  let q = `name = '${escapeDriveQuery(name)}' and '${parentId}' in parents and trashed = false`;
+  if (mime) q += ` and mimeType = '${mime}'`;
+  return (await driveListFiles(token, q))[0] || null;
+}
+
+async function driveCreateFolder(token: string, name: string, parentId: string): Promise<string> {
+  const res = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: FOLDER_MIME, parents: [parentId] }),
+  });
+  if (!res.ok) throw new Error(`Drive criar pasta '${name}' (${res.status}): ${(await res.text()).slice(0, 300)}`);
+  return (await res.json()).id;
+}
+
+async function driveFindOrCreateFolder(token: string, name: string, parentId: string): Promise<string> {
+  const existing = await driveFindChild(token, name, parentId, FOLDER_MIME);
+  return existing ? existing.id : driveCreateFolder(token, name, parentId);
+}
+
+async function driveUploadDocx(token: string, name: string, parentId: string, bytes: Uint8Array): Promise<{ id: string; webViewLink?: string }> {
+  // Sobrescreve se ja existir um com o mesmo nome
+  const existing = await driveFindChild(token, name, parentId);
+  if (existing) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${existing.id}?supportsAllDrives=true`, {
+      method: 'DELETE', headers: { Authorization: 'Bearer ' + token },
+    });
+  }
+  const boundary = '-------pet' + Math.random().toString(36).slice(2);
+  const metadata = JSON.stringify({ name, parents: [parentId] });
+  const enc = new TextEncoder();
+  const head = enc.encode(
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +
+    `--${boundary}\r\nContent-Type: ${DOCX_MIME}\r\n\r\n`,
+  );
+  const tail = enc.encode(`\r\n--${boundary}--\r\n`);
+  const bodyBytes = new Uint8Array(head.length + bytes.length + tail.length);
+  bodyBytes.set(head, 0); bodyBytes.set(bytes, head.length); bodyBytes.set(tail, head.length + bytes.length);
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body: bodyBytes,
+  });
+  if (!res.ok) throw new Error(`Drive upload '${name}' (${res.status}): ${(await res.text()).slice(0, 300)}`);
+  return await res.json();
+}
+
+// Acha a pasta do processo no Drive. Estrategia (conforme pedido):
+//  1. Procura pastas cujo nome contenha o nome do CEDENTE.
+//  2. Se houver mais de uma, desempata pelo numero do processo (CNJ).
+//  3. Retorna { folderId, candidatas } — folderId null se nao achar/ambiguo.
+async function driveAcharPastaProcesso(
+  token: string, driveId: string | undefined, cedente: string, processo: string,
+): Promise<{ folderId: string | null; motivo: string; candidatas: string[] }> {
+  const cedenteLimpo = (cedente || '').trim();
+  if (!cedenteLimpo) return { folderId: null, motivo: 'cedente vazio', candidatas: [] };
+
+  const q = `name contains '${escapeDriveQuery(cedenteLimpo)}' and mimeType = '${FOLDER_MIME}' and trashed = false`;
+  let folders: DriveFile[];
+  try { folders = await driveListFiles(token, q, driveId); }
+  catch (e) { return { folderId: null, motivo: 'erro na busca: ' + (e instanceof Error ? e.message : String(e)), candidatas: [] }; }
+
+  // Match mais robusto de cedente: normaliza e exige que o nome da pasta contenha o cedente
+  const cedNorm = normalizar(cedenteLimpo);
+  const candidatas = folders.filter(f => normalizar(f.name).includes(cedNorm));
+  const nomes = candidatas.map(f => f.name);
+
+  if (candidatas.length === 0) return { folderId: null, motivo: 'nenhuma pasta com o nome do cedente', candidatas: [] };
+  if (candidatas.length === 1) return { folderId: candidatas[0].id, motivo: 'match unico por cedente', candidatas: nomes };
+
+  // Mais de uma: desempata pelo CNJ (compara so digitos)
+  const procDig = soDigitos(processo);
+  const porCnj = candidatas.filter(f => procDig && soDigitos(f.name).includes(procDig));
+  if (porCnj.length === 1) return { folderId: porCnj[0].id, motivo: 'desempate por CNJ', candidatas: nomes };
+  return { folderId: null, motivo: `ambiguo: ${candidatas.length} pastas do cedente e CNJ nao desempatou`, candidatas: nomes };
+}
+
+// Orquestra o upload da peticao no Drive. Retorna status pro frontend.
+// NUNCA lanca — qualquer falha vira { ok:false, ... } pra nao quebrar o download.
+async function subirPeticaoNoDrive(
+  sbAdmin: ReturnType<typeof createClient>,
+  cedente: string, processo: string, nomeArq: string, bytes: Uint8Array,
+): Promise<{ ok: boolean; mensagem: string; folder_url?: string }> {
+  try {
+    const { data: cfgRows } = await sbAdmin.from('configuracoes')
+      .select('chave,valor')
+      .in('chave', ['google_oauth_client_id', 'google_oauth_client_secret', 'google_oauth_refresh_token']);
+    const cfg: Record<string, string> = {};
+    for (const r of (cfgRows || [])) cfg[r.chave] = r.valor;
+    for (const k of ['google_oauth_client_id', 'google_oauth_client_secret', 'google_oauth_refresh_token']) {
+      if (!cfg[k]) return { ok: false, mensagem: `Secret '${k}' não configurado` };
+    }
+
+    const token = await refreshGoogleAccessToken(cfg.google_oauth_client_id, cfg.google_oauth_client_secret, cfg.google_oauth_refresh_token);
+    const drive = await driveFindSharedDrive(token, DRIVE_ROOT_NAME);
+    const driveId = drive?.id;
+
+    const { folderId, motivo, candidatas } = await driveAcharPastaProcesso(token, driveId, cedente, processo);
+    if (!folderId) {
+      return { ok: false, mensagem: `Pasta do processo não localizada no Drive (${motivo}).${candidatas.length ? ' Candidatas: ' + candidatas.join(', ') : ''}` };
+    }
+
+    // Acha/cria a subpasta "5. Petições" dentro da pasta do processo
+    const peticoesId = await driveFindOrCreateFolder(token, DRIVE_PASTA_PETICOES, folderId);
+    const up = await driveUploadDocx(token, nomeArq, peticoesId, bytes);
+    const folderUrl = `https://drive.google.com/drive/folders/${peticoesId}`;
+    return { ok: true, mensagem: 'Enviado ao Drive', folder_url: up.webViewLink ? folderUrl : folderUrl };
+  } catch (e) {
+    return { ok: false, mensagem: 'Falha no Drive: ' + (e instanceof Error ? e.message : String(e)) };
+  }
+}
+
+// ============================================================================
 // HTTP Handler
 // ============================================================================
 
@@ -232,6 +413,7 @@ serve(async (req) => {
     const body = await req.json();
     const tipo: string = body.tipo;
     const dados: Vars = body.dados || {};
+    const driveParams = body.drive || null; // { cedente, processo } — opcional
     if (!tipo || !TEMPLATES[tipo]) {
       return errorResponse(
         `Tipo inválido. Disponíveis: ${Object.keys(TEMPLATES).join(', ')}`,
@@ -261,13 +443,28 @@ serve(async (req) => {
 
     // 5. Preenche
     const { bytes, pendentes } = await fillTemplate(templateBytes, dados);
+    const filename = nomeArquivo(tipo, dados);
 
-    // 6. Retorna base64 pro browser
+    // 6. (Opcional) sobe a peticao pro Google Drive. Best-effort: se falhar,
+    // o download local continua normalmente — apenas reporta o status.
+    let drive: { ok: boolean; mensagem: string; folder_url?: string } | null = null;
+    if (driveParams && (driveParams.cedente || driveParams.processo)) {
+      drive = await subirPeticaoNoDrive(
+        sbAdmin,
+        String(driveParams.cedente || ''),
+        String(driveParams.processo || dados.NUMERO_PROCESSO || ''),
+        filename,
+        bytes,
+      );
+    }
+
+    // 7. Retorna base64 pro browser + status do Drive
     return jsonResponse({
       success: true,
-      filename: nomeArquivo(tipo, dados),
+      filename,
       docx_base64: b64encode(bytes),
       pendentes,
+      drive,
     });
 
   } catch (e) {
