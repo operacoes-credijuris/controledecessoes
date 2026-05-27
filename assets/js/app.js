@@ -3701,6 +3701,19 @@ function _openPeticaoModal(tipo,mod,id){
     ?def.fields.map(_petRenderField).join('')
     :`<div class="pet-modal-info" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25)">Este modelo não precisa de informações adicionais — todos os dados vêm da própria plataforma. É só clicar em <strong>Gerar e baixar</strong>.</div>`;
   document.getElementById('pet-modal-fields').innerHTML=fieldsHtml;
+
+  // Pre-preenche o NUMERO_EVENTO a partir das observacoes da tarefa, se
+  // houver um campo desse tipo e o padrao for reconhecido nas notes.
+  // Pre-preenchido != obrigatorio: o usuario sempre pode corrigir.
+  if(def.fields.some(f=>f.key==='NUMERO_EVENTO')){
+    const notes=_notesDaTarefaPorTipo(rec,tipo);
+    const evt=_extrairEventoDasNotes(notes);
+    if(evt){
+      const el=document.querySelector('#pet-modal-fields [data-petf="NUMERO_EVENTO"]');
+      if(el)el.value=evt;
+    }
+  }
+
   document.getElementById('pet-modal-err').style.display='none';
   const btn=document.getElementById('pet-modal-submit');
   btn.disabled=false;btn.textContent='Gerar e baixar';
@@ -3732,6 +3745,27 @@ function _dataBR(isoOrBr){
   } else return isoOrBr;
   if(!d||!m||!y||m<1||m>12)return isoOrBr;
   return`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+}
+
+// Extrai o numero do evento das observacoes (notes) da tarefa do Advbox.
+// Reconhece os padroes: "ev. 42", "ev 42", "evento 42", "evento n° 42",
+// "ev n° 42" (e variacoes de n°/nº/no/n.). Retorna so o numero, ou ''.
+function _extrairEventoDasNotes(notes){
+  if(!notes)return'';
+  const m=String(notes).match(/\bev(?:ento)?\b\.?\s*(?:n[º°o.]?\s*)?(\d+)/i);
+  return m?m[1]:'';
+}
+
+// Acha, dentre as diligencias do processo, a que disparou determinado tipo
+// de peticao (pra ler as notes dela). Retorna a string de notes ou ''.
+function _notesDaTarefaPorTipo(rec,tipo){
+  const dils=Array.isArray(rec._advboxDiligencias)?rec._advboxDiligencias:[];
+  for(const d of dils){
+    if(!d)continue;
+    const mm=_peticaoTipo(d.task,d.notes);
+    if(mm&&mm.tipo===tipo)return d.notes||'';
+  }
+  return '';
 }
 
 // Extrai os tipos de credito cedido do campo r.objeto (texto livre tipo
