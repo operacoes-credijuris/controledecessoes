@@ -3716,7 +3716,9 @@ function _openPeticaoModal(tipo,mod,id){
 
   document.getElementById('pet-modal-err').style.display='none';
   const btn=document.getElementById('pet-modal-submit');
-  btn.disabled=false;btn.textContent='Gerar e baixar';
+  btn.disabled=false;btn.textContent='Gerar e baixar';btn.style.display='';
+  const cancelBtn=document.getElementById('pet-modal-cancel');
+  if(cancelBtn)cancelBtn.textContent='Cancelar';
   document.getElementById('pet-modal').style.display='flex';
   // Foco no primeiro input
   setTimeout(()=>{const first=document.querySelector('#pet-modal-fields [data-petf]');if(first&&first.tagName==='INPUT')first.focus();},50);
@@ -3928,18 +3930,43 @@ async function _submitPeticao(){
     _downloadDocx(data.docx_base64,data.filename||'peticao.docx');
     const conhecidos=new Set(Object.keys(dados));
     const pend=(data.pendentes||[]).filter(p=>!conhecidos.has(p));
-    // Monta a mensagem combinando: campos pendentes + status do Drive
-    let msg='Petição gerada e baixada.';
-    if(pend.length)msg=`Petição gerada. ${pend.length} campo(s) sem dado: ${pend.join(', ')}`;
-    if(data.drive){
-      msg += data.drive.ok ? ' ✓ Enviada ao Drive.' : ` ⚠ Drive: ${data.drive.mensagem}`;
-    }
-    showToast(msg, (pend.length||(data.drive&&!data.drive.ok))?7000:3500);
-    _closePeticaoModal();
+    _petShowSuccess(data,pend);
   }catch(e){
     _petShowErr('Erro: '+(e.message||e));
     btn.disabled=false;btn.textContent='Gerar e baixar';
   }
+}
+
+// Mostra a tela de sucesso dentro do modal, com link "Abrir pasta no Drive".
+function _petShowSuccess(data,pend){
+  const drive=data.drive;
+  let html='<div class="pet-success">';
+  html+='<div class="pet-success-title">✓ Petição gerada e baixada</div>';
+  // Status do Drive
+  if(drive){
+    if(drive.ok){
+      html+='<div class="pet-success-msg ok">✓ Enviada ao Drive na pasta do processo (5. Petições).</div>';
+    } else {
+      html+=`<div class="pet-success-msg warn">⚠ Não foi enviada ao Drive: ${esc(drive.mensagem||'')}<br><span style="opacity:.8">O arquivo foi baixado normalmente no seu computador.</span></div>`;
+    }
+  }
+  // Campos pendentes (sem dado)
+  if(pend&&pend.length){
+    html+=`<div class="pet-success-msg warn">${pend.length} campo(s) ficaram sem dado: ${esc(pend.join(', '))}. Confira o documento.</div>`;
+  }
+  // Botao "Abrir pasta no Drive"
+  if(drive&&drive.ok&&drive.folder_url){
+    html+=`<a href="${esc(drive.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
+  }
+  html+='</div>';
+  document.getElementById('pet-modal-info').innerHTML='';
+  document.getElementById('pet-modal-fields').innerHTML=html;
+  document.getElementById('pet-modal-err').style.display='none';
+  // Footer: esconde "Gerar", troca "Cancelar" por "Fechar"
+  const submit=document.getElementById('pet-modal-submit');
+  if(submit)submit.style.display='none';
+  const cancelBtn=document.getElementById('pet-modal-cancel');
+  if(cancelBtn)cancelBtn.textContent='Fechar';
 }
 
 // Abre o processo no portal unificado do CNJ (PDPJ) com o numero na URL.
