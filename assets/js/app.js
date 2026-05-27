@@ -3947,37 +3947,37 @@ function _petBaixarFallback(){
   if(_PET_LAST)_downloadDocx(_PET_LAST.docx_base64,_PET_LAST.filename);
 }
 
-// Mostra o resultado dentro do modal. Sucesso (Drive ok) = só link do Drive,
-// SEM baixar. Falha no Drive = mensagem de erro + opcao de baixar mesmo assim.
-// Layout: "<Tipo da Petição> - ✓ Petição gerada" + botão "Abrir pasta no Drive".
+// Mostra o resultado de forma minimalista: o status vai colado no TITULO
+// do modal (ao lado do tipo), e o corpo fica so com o botao de acao.
 function _petShowResultado(data,pend){
   const drive=data.drive;
   const driveOk=drive&&drive.ok;
   const label=(_PET_CTX&&_PET_CTX.def&&_PET_CTX.def.label)||'Petição';
-  let html='<div class="pet-success">';
 
+  // Status colado no titulo do modal
+  const titleEl=document.getElementById('pet-modal-title');
   if(driveOk){
-    html+=`<div class="pet-success-title">${esc(label)} - ✓ Petição gerada</div>`;
+    titleEl.innerHTML=`${esc(label)} <span style="color:#4ade80;font-weight:600"> ✓ Petição gerada</span>`;
   } else {
-    html+=`<div class="pet-success-title" style="color:#fbbf24">${esc(label)} - ⚠ não foi ao Drive</div>`;
-    const motivo=drive?esc(drive.mensagem||''):'o envio ao Drive não foi solicitado (sem cedente).';
-    html+=`<div class="pet-success-msg warn">${motivo}</div>`;
+    titleEl.innerHTML=`${esc(label)} <span style="color:#fbbf24;font-weight:600"> ⚠ não foi ao Drive</span>`;
   }
 
-  // Campos pendentes (sem dado) — aviso adicional
+  // Corpo: so o botao (+ aviso minimo se Drive falhou ou faltou campo)
+  let html='<div class="pet-success" style="padding:4px">';
+  if(!driveOk){
+    const motivo=drive?esc(drive.mensagem||''):'envio ao Drive não solicitado (sem cedente).';
+    html+=`<div class="pet-success-msg warn" style="margin-top:0">${motivo}</div>`;
+  }
   if(pend&&pend.length){
-    html+=`<div class="pet-success-msg warn">${pend.length} campo(s) ficaram sem dado: ${esc(pend.join(', '))}. Confira o documento.</div>`;
+    html+=`<div class="pet-success-msg warn">${pend.length} campo(s) sem dado: ${esc(pend.join(', '))}.</div>`;
   }
-
-  // Botao de acao
-  html+='<div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
+  html+='<div style="display:flex;justify-content:center;margin-top:4px">';
   if(driveOk&&drive.folder_url){
     html+=`<a href="${esc(drive.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
   } else {
     html+=`<button type="button" class="btn btn-gold btn-sm" onclick="_petBaixarFallback()">Baixar no computador</button>`;
   }
-  html+='</div>';
-  html+='</div>';
+  html+='</div></div>';
 
   document.getElementById('pet-modal-info').innerHTML='';
   document.getElementById('pet-modal-fields').innerHTML=html;
