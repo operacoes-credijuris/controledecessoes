@@ -3949,18 +3949,19 @@ function _petBaixarFallback(){
 
 // Mostra o resultado dentro do modal. Sucesso (Drive ok) = só link do Drive,
 // SEM baixar. Falha no Drive = mensagem de erro + opcao de baixar mesmo assim.
+// Layout: "<Tipo da Petição> - ✓ Petição gerada" + botão "Abrir pasta no Drive".
 function _petShowResultado(data,pend){
   const drive=data.drive;
   const driveOk=drive&&drive.ok;
+  const label=(_PET_CTX&&_PET_CTX.def&&_PET_CTX.def.label)||'Petição';
   let html='<div class="pet-success">';
 
   if(driveOk){
-    html+='<div class="pet-success-title">✓ Petição gerada</div>';
-    html+='<div class="pet-success-msg ok">✓ Enviada ao Drive na pasta do processo (5. Petições).</div>';
+    html+=`<div class="pet-success-title">${esc(label)} - ✓ Petição gerada</div>`;
   } else {
-    html+='<div class="pet-success-title" style="color:#fbbf24">Petição gerada, mas não foi ao Drive</div>';
+    html+=`<div class="pet-success-title" style="color:#fbbf24">${esc(label)} - ⚠ não foi ao Drive</div>`;
     const motivo=drive?esc(drive.mensagem||''):'o envio ao Drive não foi solicitado (sem cedente).';
-    html+=`<div class="pet-success-msg warn">⚠ ${motivo}</div>`;
+    html+=`<div class="pet-success-msg warn">${motivo}</div>`;
   }
 
   // Campos pendentes (sem dado) — aviso adicional
@@ -3968,12 +3969,11 @@ function _petShowResultado(data,pend){
     html+=`<div class="pet-success-msg warn">${pend.length} campo(s) ficaram sem dado: ${esc(pend.join(', '))}. Confira o documento.</div>`;
   }
 
-  // Botoes de acao
-  html+='<div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
+  // Botao de acao
+  html+='<div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
   if(driveOk&&drive.folder_url){
     html+=`<a href="${esc(drive.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
   } else {
-    // Drive falhou: oferece baixar localmente pra nao perder a peticao
     html+=`<button type="button" class="btn btn-gold btn-sm" onclick="_petBaixarFallback()">Baixar no computador</button>`;
   }
   html+='</div>';
