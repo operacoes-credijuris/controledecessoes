@@ -3682,7 +3682,7 @@ function _formatBRL(n){
   return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
-async function _openPeticaoModal(tipo,mod,id){
+function _openPeticaoModal(tipo,mod,id){
   const rec=(CACHE[mod]||[]).find(x=>String(x.id)===String(id));
   if(!rec){showToast('Processo não encontrado.');return;}
   const def=_PETICAO_TIPO_MAP.find(m=>m.tipo===tipo);
@@ -3696,34 +3696,11 @@ async function _openPeticaoModal(tipo,mod,id){
     `<div class="pet-info-cnj">${esc(cnj)}</div>`+
     (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
   document.getElementById('pet-modal-err').style.display='none';
-  const btn=document.getElementById('pet-modal-submit');
   const cancelBtn=document.getElementById('pet-modal-cancel');
-  // Reset botoes
-  btn.disabled=false;btn.textContent='Gerar';btn.style.display='';
   if(cancelBtn)cancelBtn.textContent='Cancelar';
-  // Estado inicial: verificando no Drive (esconde o submit ate decidir)
-  btn.style.display='none';
-  document.getElementById('pet-modal-fields').innerHTML=
-    '<div class="pet-modal-info">Verificando se a petição já foi gerada…</div>';
-  document.getElementById('pet-modal').style.display='flex';
-
-  // Verifica no Drive se a peticao ja existe (so se houver cedente p/ buscar)
-  let check=null;
-  if(rec.cedente){
-    try{
-      const dadosCheck={NOME_CESSIONARIO:(rec.cessionario||'').toUpperCase(),NUMERO_PROCESSO:rec.numeroProcesso||''};
-      const{data}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados:dadosCheck,drive:{cedente:rec.cedente||'',processo:rec.numeroProcesso||''},check_only:true}});
-      if(data&&data.check)check=data;
-    }catch(e){/* se falhar, segue pro formulario normal */}
-  }
-  // Se o modal foi fechado durante a verificacao, aborta
-  if(!_PET_CTX||_PET_CTX.id!==id)return;
-
-  if(check&&check.exists){
-    _petShowJaGerada(check);
-    return;
-  }
+  // Renderiza o formulario direto (sem verificacao previa no Drive)
   _petRenderCampos(def,rec,tipo);
+  document.getElementById('pet-modal').style.display='flex';
 }
 
 // Renderiza os campos de input do modal (e pre-preenche o evento).
@@ -3748,23 +3725,6 @@ function _petRenderCampos(def,rec,tipo){
   setTimeout(()=>{const first=document.querySelector('#pet-modal-fields [data-petf]');if(first&&first.tagName==='INPUT')first.focus();},50);
 }
 
-// Tela "petição já gerada" — mostrada ao abrir o modal se o arquivo ja
-// existe no Drive. So oferece abrir a pasta.
-function _petShowJaGerada(check){
-  let html='<div class="pet-success">';
-  html+='<div class="pet-success-title" style="color:#fbbf24">Petição já gerada</div>';
-  html+='<div class="pet-success-msg warn">Esta petição já existe na pasta do processo no Drive.</div>';
-  if(check.folder_url){
-    html+=`<a href="${esc(check.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
-  }
-  html+='<div style="margin-top:14px;font-size:11px;color:var(--txt3)">Para gerar de novo (sobrescrever), feche e use o console — ou me avise se quiser um botão "gerar mesmo assim".</div>';
-  html+='</div>';
-  document.getElementById('pet-modal-fields').innerHTML=html;
-  const submit=document.getElementById('pet-modal-submit');
-  if(submit)submit.style.display='none';
-  const cancelBtn=document.getElementById('pet-modal-cancel');
-  if(cancelBtn)cancelBtn.textContent='Fechar';
-}
 
 function _closePeticaoModal(e){
   if(e&&e.target&&e.target.id!=='pet-modal')return; // so fecha se clicou no overlay
@@ -3792,11 +3752,12 @@ function _dataBR(isoOrBr){
 }
 
 // Extrai o numero do evento das observacoes (notes) da tarefa do Advbox.
-// Reconhece os padroes: "ev. 42", "ev 42", "evento 42", "evento n° 42",
-// "ev n° 42" (e variacoes de n°/nº/no/n.). Retorna so o numero, ou ''.
+// Reconhece: "ev. 42", "ev 42", "evento 42", "evento n° 42", "ev n° 42",
+// "evento de nº 42", "evento de 42" (e variacoes de n°/nº/no/n. e "de").
+// Retorna so o numero, ou ''.
 function _extrairEventoDasNotes(notes){
   if(!notes)return'';
-  const m=String(notes).match(/\bev(?:ento)?\b\.?\s*(?:n[º°o.]?\s*)?(\d+)/i);
+  const m=String(notes).match(/\bev(?:ento)?\b\.?\s*(?:de\s+)?(?:n[º°o.]?\s*)?(\d+)/i);
   return m?m[1]:'';
 }
 
