@@ -452,6 +452,11 @@ let _execWasActive=false; // true quando exec já foi visitado nesta sessão
    crashe ao acessar/atribuir essas variáveis durante a inicialização. */
 var _crtInvestidores=[];
 var _crtAcSelected='';
+var _crtViewMode='financeiro';
+var _crtInvestidoresData=[];
+function _normNome(s){return(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();}
+function _invFindByNome(nome){const q=_normNome(nome);return _crtInvestidoresData.find(i=>_normNome(i.nome)===q)||_crtInvestidoresData.find(i=>{const n=_normNome(i.nome);return n.startsWith(q)||q.startsWith(n);});}
+function _invCadastroIncompleto(nome){const inv=_invFindByNome(nome);if(!inv)return true;return['cpf','rg','endereco','banco','agencia','conta','pix'].filter(c=>inv[c]&&String(inv[c]).trim()).length<5;}
 
 // SIDEBAR
 (function _initSidebar(){
@@ -539,6 +544,7 @@ function _sbShowCarteiras(){
      Se chamado durante _initSidebar() (sem auth), _onAuthenticated() re-chama depois. */
   _crtPopulateInvestidores();
   _crtRenderOperacoes(_crtAcSelected||null);
+  if(_crtInvestidoresData.length===0)sb.from('investidores').select('*').order('nome').then(({data})=>{if(data&&data.length)_crtInvestidoresData=data;});
 }
 
 function _sbShowCredito(){
@@ -806,8 +812,11 @@ function _crtPopulateInvestidores(){
 function _crtAcRender(lista){
   const dd=document.getElementById('crt-ac-dd');
   if(!dd)return;
-  if(!lista.length){dd.innerHTML='<div class="crt-ac-empty">Nenhum resultado</div>';dd.classList.add('on');return;}
-  dd.innerHTML=lista.map(n=>`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${esc(n)}</div>`).join('');
+  const novoBtn='<div class="crt-ac-item crt-ac-novo" onmousedown="_invOpenModal(null)" style="color:#60a5fa;display:flex;align-items:center;gap:7px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo investidor</div>';
+  const itens=lista.length
+    ? lista.map(n=>{const w=_crtInvestidoresData.length&&_invCadastroIncompleto(n)?'<span style="color:#fbbf24;margin-right:5px;font-size:11px" title="Dados cadastrais incompletos">⚠</span>':'';return`<div class="crt-ac-item${n===_crtAcSelected?' sel':''}" onmousedown="_crtAcPick('${escJs(n)}')">${w}${esc(n)}</div>`;}).join('')
+    : '<div class="crt-ac-empty">Nenhum resultado</div>';
+  dd.innerHTML=novoBtn+'<div class="crt-ac-list">'+itens+'</div>';
   dd.classList.add('on');
 }
 
@@ -823,7 +832,8 @@ function _crtAcPick(nome){
   const inp=document.getElementById('crt-ac-input');
   if(inp)inp.value=nome;
   _crtAcClose();
-  _crtRenderOperacoes(nome);
+  if(_crtViewMode==='cadastral')_crtAtualizaCadastral();
+  else _crtRenderOperacoes(nome);
 }
 
 function _crtRenderOperacoes(investidor){
@@ -1275,6 +1285,7 @@ function _crtExportarXLSX(){
 }
 
 function _crtAtualizaCards(rows){
+  if(_crtViewMode==='cadastral'){_crtAtualizaCadastral();return;}
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('crt-card-operacoes', rows.length||'—');
 
@@ -1305,6 +1316,122 @@ function _crtAtualizaCards(rows){
   // Retorno projetado = soma(Ganho projetado) / soma(Capital investido)
   const totalGanho=rows.reduce((s,r)=>s+(_calcGanhoProjetado(r)||0),0);
   set('crt-card-retorno', totalCapital>0 ? ((totalGanho/totalCapital)*100).toFixed(2).replace('.',',')+'%' : '—');
+}
+function _crtToggleView(){
+  _crtViewMode=_crtViewMode==='financeiro'?'cadastral':'financeiro';
+  const btn=document.getElementById('crt-btn-view-toggle');
+  const labels={
+    financeiro:{'crt-lbl-capital':'Capital total','crt-lbl-tir':'TIR média','crt-lbl-retorno':'Retorno projetado','crt-lbl-recebido':'Já recebido','crt-lbl-areceber':'A receber estimado','crt-lbl-operacoes':'N.º operações'},
+    cadastral:{'crt-lbl-capital':'CPF / CNPJ','crt-lbl-tir':'Banco','crt-lbl-retorno':'Agência','crt-lbl-recebido':'Conta','crt-lbl-areceber':'PIX','crt-lbl-operacoes':'RG'},
+  };
+  for(const[id,txt]of Object.entries(labels[_crtViewMode])){const el=document.getElementById(id);if(el)el.textContent=txt;}
+  const title=document.getElementById('crt-tbl-title');
+  const opScroll=document.getElementById('crt-tbl-scroll');
+  const emptyMsg=document.getElementById('crt-tbl-empty-msg');
+  const gerarBtn=document.getElementById('crt-btn-gerar-resumos');
+  const exportBtn=document.getElementById('crt-btn-export');
+  const invWrap=document.getElementById('crt-inv-tbl-wrap');
+  if(_crtViewMode==='cadastral'){
+    if(btn){btn.style.background='rgba(96,165,250,.15)';btn.style.borderColor='rgba(96,165,250,.4)';btn.style.color='#60a5fa';}
+    if(title)title.textContent='Dados dos investidores';
+    if(opScroll)opScroll.style.display='none';
+    if(emptyMsg)emptyMsg.style.display='none';
+    if(gerarBtn)gerarBtn.style.display='none';
+    if(exportBtn)exportBtn.style.display='none';
+    if(invWrap)invWrap.style.display='';
+    _crtRenderInvestidoresTbl();
+  }else{
+    if(btn){btn.style.background='rgba(255,255,255,.06)';btn.style.borderColor='rgba(255,255,255,.12)';btn.style.color='#9ca3af';}
+    if(title)title.textContent='Dados por operação';
+    if(invWrap)invWrap.style.display='none';
+    if(gerarBtn)gerarBtn.style.display='';
+    if(exportBtn)exportBtn.style.display='';
+    if(_crtAcSelected){if(opScroll)opScroll.style.display='';_crtRenderOperacoes(_crtAcSelected);}
+    else{if(emptyMsg)emptyMsg.style.display='';if(opScroll)opScroll.style.display='none';}
+  }
+}
+function _crtAtualizaCadastral(){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
+  const inv=_invFindByNome(_crtAcSelected);
+  if(!inv){set('crt-card-capital','—');set('crt-card-tir','—');set('crt-card-retorno','—');set('crt-card-recebido','—');set('crt-card-areceber','—');set('crt-card-operacoes','—');return;}
+  set('crt-card-capital',inv.cpf);
+  set('crt-card-tir',inv.banco);
+  set('crt-card-retorno',inv.agencia);
+  set('crt-card-recebido',inv.conta);
+  set('crt-card-areceber',inv.pix);
+  set('crt-card-operacoes',inv.rg);
+}
+async function _crtRenderInvestidoresTbl(){
+  const tbody=document.getElementById('crt-inv-tbl-body');
+  if(!tbody)return;
+  if(_crtInvestidoresData.length===0){
+    tbody.innerHTML='<tr><td colspan="8" class="crt-tbl-empty">Carregando…</td></tr>';
+    try{
+      const{data,error}=await sb.from('investidores').select('*').order('nome');
+      if(error)throw error;
+      _crtInvestidoresData=data||[];
+    }catch(e){
+      tbody.innerHTML=`<tr><td colspan="8" class="crt-tbl-empty">Erro: ${esc(e.message)}</td></tr>`;
+      return;
+    }
+  }
+  if(_crtInvestidoresData.length===0){tbody.innerHTML='<tr><td colspan="8" class="crt-tbl-empty">Nenhum investidor cadastrado</td></tr>';return;}
+  tbody.innerHTML=_crtInvestidoresData.map(inv=>`<tr>
+    <td class="crt-td"><button onmousedown="_invOpenModal('${escJs(inv.id)}')" style="background:none;border:none;cursor:pointer;color:#6e7dbb;padding:0 6px 0 0;font-size:11px;vertical-align:middle" title="Editar investidor">✎</button>${esc(inv.nome||'')}</td>
+    <td class="crt-td">${esc(inv.cpf||'—')}</td>
+    <td class="crt-td">${esc(inv.rg||'—')}</td>
+    <td class="crt-td">${esc(inv.banco||'—')}</td>
+    <td class="crt-td">${esc(inv.agencia||'—')}</td>
+    <td class="crt-td">${esc(inv.conta||'—')}</td>
+    <td class="crt-td">${esc(inv.pix||'—')}</td>
+    <td class="crt-td" style="white-space:normal;max-width:220px">${esc(inv.endereco||'—')}</td>
+  </tr>`).join('');
+  if(_crtAcSelected)_crtAtualizaCadastral();
+}
+function _invOpenModal(idOrNull){
+  _crtAcClose();
+  const f=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  const inv=idOrNull?_crtInvestidoresData.find(i=>i.id===idOrNull):null;
+  document.getElementById('inv-mdl-title').textContent=inv?'Editar Investidor':'Novo Investidor';
+  f('inv-f-id',inv?.id||'');
+  f('inv-f-nome',inv?.nome||'');
+  f('inv-f-cpf',inv?.cpf||'');
+  f('inv-f-rg',inv?.rg||'');
+  f('inv-f-endereco',inv?.endereco||'');
+  f('inv-f-banco',inv?.banco||'');
+  f('inv-f-agencia',inv?.agencia||'');
+  f('inv-f-conta',inv?.conta||'');
+  f('inv-f-pix',inv?.pix||'');
+  const err=document.getElementById('inv-mdl-err');if(err){err.style.display='none';err.textContent='';}
+  const btn=document.getElementById('inv-mdl-save');if(btn){btn.disabled=false;btn.textContent='Salvar';}
+  openModal('inv-ov');
+  setTimeout(()=>document.getElementById('inv-f-nome')?.focus(),80);
+}
+function _invCloseModal(){closeModal('inv-ov');}
+async function _invSave(){
+  const val=id=>document.getElementById(id)?.value.trim()||null;
+  const nome=val('inv-f-nome');
+  if(!nome){
+    const err=document.getElementById('inv-mdl-err');
+    if(err){err.textContent='Nome é obrigatório.';err.style.display='';}
+    return;
+  }
+  const btn=document.getElementById('inv-mdl-save');
+  if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+  const id=val('inv-f-id');
+  const payload={nome,cpf:val('inv-f-cpf'),rg:val('inv-f-rg'),endereco:val('inv-f-endereco'),banco:val('inv-f-banco'),agencia:val('inv-f-agencia'),conta:val('inv-f-conta'),pix:val('inv-f-pix')};
+  const{error}=id
+    ?await sb.from('investidores').update(payload).eq('id',id)
+    :await sb.from('investidores').insert(payload);
+  if(error){
+    const err=document.getElementById('inv-mdl-err');
+    if(err){err.textContent='Erro: '+error.message;err.style.display='';}
+    if(btn){btn.disabled=false;btn.textContent='Salvar';}
+    return;
+  }
+  _invCloseModal();
+  _crtInvestidoresData=[];
+  await _crtRenderInvestidoresTbl();
 }
 function _crtAcClose(){const dd=document.getElementById('crt-ac-dd');if(dd)dd.classList.remove('on');}
 function _crtAcKey(e){
@@ -3272,7 +3399,7 @@ function togglePubText(btn){
 }
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov','parametros-ov'].forEach(closeModal);_crtTxtClose();}
+  if(e.key==='Escape'){['form-ov','hist-ov','senha-ov','vinculo-ov','motivo-ov','cart-ov','del-ov','contato-ov','aux-ov','parametros-ov','inv-ov'].forEach(closeModal);_crtTxtClose();}
   if(e.ctrlKey&&e.key==='f'){
     const mp={cessoes:'fc-proc',rpv:'fr-proc',requerimentos:'fre-proc',encerrados:'fen-proc',contatos:'fct-q'};
     const target=topTab==='acompanhamento'?subTab:topTab;
