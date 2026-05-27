@@ -3553,23 +3553,23 @@ const _DOC_SVG=`<svg width="15" height="15" viewBox="0 0 16 16" fill="none" styl
 </svg>`;
 const _PETICAO_TIPO_MAP=[
   // Levantamento: tarefa "peticao simples" + notes contendo "levantamento"
+  // (CREDITOS_CEDIDOS vem automaticamente do r.objeto)
   {
     matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/levantamento/i,
     tipo:'levantamento', label:'Petição de Levantamento',
     fields:[
       {key:'NUMERO_EVENTO',    label:'Nº do evento da penhora',         type:'text', placeholder:'ex: 42'},
       {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
-      {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
     ],
   },
   // Sequestro: tarefa "peticao simples" + notes contendo "sequestro" (em qualquer
   // forma — "elaborar sequestro", "petição de sequestro", "preparar sequestro" etc.)
+  // (CREDITOS_CEDIDOS vem automaticamente do r.objeto)
   {
     matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/sequestro/i,
     tipo:'sequestro', label:'Petição de Sequestro',
     fields:[
       {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
-      {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
       {key:'DATA_EXPEDICAO',   label:'Data da expedição da RPV',         type:'date'},
     ],
   },
@@ -3734,6 +3734,26 @@ function _dataBR(isoOrBr){
   return`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
 }
 
+// Extrai os tipos de credito cedido do campo r.objeto (texto livre tipo
+// "Crédito principal e honorários contratuais"). Mesma logica de
+// reconhecimento usada em objetoHtml(). Retorna string formatada em PT.
+function _parseCreditosDoObjeto(objeto){
+  if(!objeto)return'';
+  const items=String(objeto).split(/\s+e\s+|[,;\n]+/).map(s=>s.trim()).filter(Boolean);
+  const set=new Set();
+  for(const item of items){
+    const n=item.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+    if(n.includes('credito')&&n.includes('principal'))           set.add('crédito principal');
+    else if(n.includes('honorario')&&n.includes('contratua'))    set.add('honorários contratuais');
+    else if(n.includes('honorario')&&n.includes('sucumb'))       set.add('honorários sucumbenciais');
+    else if(n.includes('contratua')&&!n.includes('honorario'))   set.add('honorários contratuais');
+    else if(n.includes('sucumb'))                                set.add('honorários sucumbenciais');
+  }
+  // Ordem canonica: principal, contratuais, sucumbenciais
+  const ordem=['crédito principal','honorários contratuais','honorários sucumbenciais'];
+  return _listaPortugues(ordem.filter(x=>set.has(x)));
+}
+
 // Concatena os checks em portugues correto: "A", "A e B", "A, B e C"
 function _listaPortugues(itens){
   const a=itens.filter(Boolean);
@@ -3844,12 +3864,19 @@ async function _submitPeticao(){
   const juizo=rec.orgaoJulgador||rec.orgao_julgador||'';
   const enderecamento=(juizo&&tribCurto?`${juizo}/${tribCurto}`:(juizo||tribCurto||'(juízo a indicar)')).toUpperCase();
 
+  // Creditos cedidos extraidos automaticamente do campo r.objeto
+  // (texto livre tipo "Crédito principal e honorários contratuais").
+  // Para levantamento e sequestro, esse campo era um checkbox no modal
+  // — agora vem direto do cadastro do processo na aba Acompanhamento.
+  const creditosCedidos=_parseCreditosDoObjeto(rec.objeto);
+
   // Variaveis automaticas (vindas do processo / investidor)
   const autoVars={
     ENDERECAMENTO_JUIZO:enderecamento,
     NUMERO_PROCESSO:rec.numeroProcesso||'',
     NOME_CESSIONARIO:(rec.cessionario||'').toUpperCase(),
     DADOS_BANCARIOS:dadosBancarios||'(dados bancários não cadastrados no investidor)',
+    CREDITOS_CEDIDOS:creditosCedidos||'(objeto não cadastrado — preencher na aba Acompanhamento)',
   };
   // userVars sobrescreve auto se houver colisao
   const dados={...autoVars,...userVars};
