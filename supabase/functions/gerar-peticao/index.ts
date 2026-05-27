@@ -351,36 +351,59 @@ async function driveAcharPastaProcesso(
   return { folderId: null, motivo: `ambiguo: ${candidatas.length} pastas do cedente e CNJ nao desempatou`, candidatas: nomes };
 }
 
+// Le os secrets do Google, faz refresh do token e acha o shared drive.
+// Lanca em caso de erro (quem chama trata).
+async function getDriveContext(sbAdmin: ReturnType<typeof createClient>): Promise<{ token: string; driveId?: string }> {
+  const { data: cfgRows } = await sbAdmin.from('configuracoes')
+    .select('chave,valor')
+    .in('chave', ['google_oauth_client_id', 'google_oauth_client_secret', 'google_oauth_refresh_token']);
+  const cfg: Record<string, string> = {};
+  for (const r of (cfgRows || [])) cfg[r.chave] = r.valor;
+  for (const k of ['google_oauth_client_id', 'google_oauth_client_secret', 'google_oauth_refresh_token']) {
+    if (!cfg[k]) throw new Error(`Secret '${k}' não configurado`);
+  }
+  const token = await refreshGoogleAccessToken(cfg.google_oauth_client_id, cfg.google_oauth_client_secret, cfg.google_oauth_refresh_token);
+  const drive = await driveFindSharedDrive(token, DRIVE_ROOT_NAME);
+  return { token, driveId: drive?.id };
+}
+
+// Verifica se uma peticao com determinado nome ja existe na pasta do processo.
+// NUNCA lanca. Retorna { exists, folder_url? }.
+async function checkPeticaoExiste(
+  sbAdmin: ReturnType<typeof createClient>,
+  cedente: string, processo: string, nomeArq: string,
+): Promise<{ exists: boolean; folder_url?: string; mensagem?: string }> {
+  try {
+    const { token, driveId } = await getDriveContext(sbAdmin);
+    const { folderId } = await driveAcharPastaProcesso(token, driveId, cedente, processo);
+    if (!folderId) return { exists: false, mensagem: 'pasta do processo não encontrada' };
+    const peticoesFolder = await driveFindChild(token, DRIVE_PASTA_PETICOES, folderId, FOLDER_MIME);
+    if (!peticoesFolder) return { exists: false };
+    const folderUrl = `https://drive.google.com/drive/folders/${peticoesFolder.id}`;
+    const file = await driveFindChild(token, nomeArq, peticoesFolder.id);
+    return { exists: !!file, folder_url: folderUrl };
+  } catch (e) {
+    return { exists: false, mensagem: 'erro: ' + (e instanceof Error ? e.message : String(e)) };
+  }
+}
+
 // Orquestra o upload da peticao no Drive. Retorna status pro frontend.
-// NUNCA lanca — qualquer falha vira { ok:false, ... } pra nao quebrar o download.
+// NUNCA lanca — qualquer falha vira { ok:false, ... } pra nao quebrar o fluxo.
 async function subirPeticaoNoDrive(
   sbAdmin: ReturnType<typeof createClient>,
   cedente: string, processo: string, nomeArq: string, bytes: Uint8Array,
 ): Promise<{ ok: boolean; mensagem: string; folder_url?: string }> {
   try {
-    const { data: cfgRows } = await sbAdmin.from('configuracoes')
-      .select('chave,valor')
-      .in('chave', ['google_oauth_client_id', 'google_oauth_client_secret', 'google_oauth_refresh_token']);
-    const cfg: Record<string, string> = {};
-    for (const r of (cfgRows || [])) cfg[r.chave] = r.valor;
-    for (const k of ['google_oauth_client_id', 'google_oauth_client_secret', 'google_oauth_refresh_token']) {
-      if (!cfg[k]) return { ok: false, mensagem: `Secret '${k}' não configurado` };
-    }
-
-    const token = await refreshGoogleAccessToken(cfg.google_oauth_client_id, cfg.google_oauth_client_secret, cfg.google_oauth_refresh_token);
-    const drive = await driveFindSharedDrive(token, DRIVE_ROOT_NAME);
-    const driveId = drive?.id;
-
+    const { token, driveId } = await getDriveContext(sbAdmin);
     const { folderId, motivo, candidatas } = await driveAcharPastaProcesso(token, driveId, cedente, processo);
     if (!folderId) {
       return { ok: false, mensagem: `Pasta do processo não localizada no Drive (${motivo}).${candidatas.length ? ' Candidatas: ' + candidatas.join(', ') : ''}` };
     }
-
     // Acha/cria a subpasta "5. Petições" dentro da pasta do processo
     const peticoesId = await driveFindOrCreateFolder(token, DRIVE_PASTA_PETICOES, folderId);
-    const up = await driveUploadDocx(token, nomeArq, peticoesId, bytes);
+    await driveUploadDocx(token, nomeArq, peticoesId, bytes);
     const folderUrl = `https://drive.google.com/drive/folders/${peticoesId}`;
-    return { ok: true, mensagem: 'Enviado ao Drive', folder_url: up.webViewLink ? folderUrl : folderUrl };
+    return { ok: true, mensagem: 'Enviado ao Drive', folder_url: folderUrl };
   } catch (e) {
     return { ok: false, mensagem: 'Falha no Drive: ' + (e instanceof Error ? e.message : String(e)) };
   }
@@ -426,6 +449,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    // 3b. MODO VERIFICAR — checa se a peticao ja existe no Drive, sem gerar.
+    // Usado quando o usuario clica no botao, antes de mostrar o formulario.
+    if (body.check_only) {
+      const cedente = String(driveParams?.cedente || '');
+      const processo = String(driveParams?.processo || dados.NUMERO_PROCESSO || '');
+      const filename = nomeArquivo(tipo, dados);
+      const r = await checkPeticaoExiste(sbAdmin, cedente, processo, filename);
+      return jsonResponse({ success: true, check: true, exists: r.exists, folder_url: r.folder_url, filename, mensagem: r.mensagem });
+    }
 
     // 4. Baixa template
     const fname = TEMPLATES[tipo];

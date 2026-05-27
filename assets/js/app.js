@@ -3682,7 +3682,7 @@ function _formatBRL(n){
   return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
-function _openPeticaoModal(tipo,mod,id){
+async function _openPeticaoModal(tipo,mod,id){
   const rec=(CACHE[mod]||[]).find(x=>String(x.id)===String(id));
   if(!rec){showToast('Processo não encontrado.');return;}
   const def=_PETICAO_TIPO_MAP.find(m=>m.tipo===tipo);
@@ -3695,16 +3695,45 @@ function _openPeticaoModal(tipo,mod,id){
   document.getElementById('pet-modal-info').innerHTML=
     `<div class="pet-info-cnj">${esc(cnj)}</div>`+
     (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
-  // Campos dinamicos. Se nao houver campos (modelo 100% automatico), mostra
-  // uma mensagem amigavel em vez de modal vazio.
+  document.getElementById('pet-modal-err').style.display='none';
+  const btn=document.getElementById('pet-modal-submit');
+  const cancelBtn=document.getElementById('pet-modal-cancel');
+  // Reset botoes
+  btn.disabled=false;btn.textContent='Gerar';btn.style.display='';
+  if(cancelBtn)cancelBtn.textContent='Cancelar';
+  // Estado inicial: verificando no Drive (esconde o submit ate decidir)
+  btn.style.display='none';
+  document.getElementById('pet-modal-fields').innerHTML=
+    '<div class="pet-modal-info">Verificando se a petição já foi gerada…</div>';
+  document.getElementById('pet-modal').style.display='flex';
+
+  // Verifica no Drive se a peticao ja existe (so se houver cedente p/ buscar)
+  let check=null;
+  if(rec.cedente){
+    try{
+      const dadosCheck={NOME_CESSIONARIO:(rec.cessionario||'').toUpperCase(),NUMERO_PROCESSO:rec.numeroProcesso||''};
+      const{data}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados:dadosCheck,drive:{cedente:rec.cedente||'',processo:rec.numeroProcesso||''},check_only:true}});
+      if(data&&data.check)check=data;
+    }catch(e){/* se falhar, segue pro formulario normal */}
+  }
+  // Se o modal foi fechado durante a verificacao, aborta
+  if(!_PET_CTX||_PET_CTX.id!==id)return;
+
+  if(check&&check.exists){
+    _petShowJaGerada(check);
+    return;
+  }
+  _petRenderCampos(def,rec,tipo);
+}
+
+// Renderiza os campos de input do modal (e pre-preenche o evento).
+function _petRenderCampos(def,rec,tipo){
   const fieldsHtml=def.fields.length
     ?def.fields.map(_petRenderField).join('')
-    :`<div class="pet-modal-info" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25)">Este modelo não precisa de informações adicionais — todos os dados vêm da própria plataforma. É só clicar em <strong>Gerar e baixar</strong>.</div>`;
+    :`<div class="pet-modal-info" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25)">Este modelo não precisa de informações adicionais — todos os dados vêm da própria plataforma. É só clicar em <strong>Gerar</strong>.</div>`;
   document.getElementById('pet-modal-fields').innerHTML=fieldsHtml;
 
-  // Pre-preenche o NUMERO_EVENTO a partir das observacoes da tarefa, se
-  // houver um campo desse tipo e o padrao for reconhecido nas notes.
-  // Pre-preenchido != obrigatorio: o usuario sempre pode corrigir.
+  // Pre-preenche o NUMERO_EVENTO a partir das observacoes da tarefa.
   if(def.fields.some(f=>f.key==='NUMERO_EVENTO')){
     const notes=_notesDaTarefaPorTipo(rec,tipo);
     const evt=_extrairEventoDasNotes(notes);
@@ -3714,14 +3743,27 @@ function _openPeticaoModal(tipo,mod,id){
     }
   }
 
-  document.getElementById('pet-modal-err').style.display='none';
   const btn=document.getElementById('pet-modal-submit');
-  btn.disabled=false;btn.textContent='Gerar e baixar';btn.style.display='';
-  const cancelBtn=document.getElementById('pet-modal-cancel');
-  if(cancelBtn)cancelBtn.textContent='Cancelar';
-  document.getElementById('pet-modal').style.display='flex';
-  // Foco no primeiro input
+  btn.disabled=false;btn.textContent='Gerar';btn.style.display='';
   setTimeout(()=>{const first=document.querySelector('#pet-modal-fields [data-petf]');if(first&&first.tagName==='INPUT')first.focus();},50);
+}
+
+// Tela "petição já gerada" — mostrada ao abrir o modal se o arquivo ja
+// existe no Drive. So oferece abrir a pasta.
+function _petShowJaGerada(check){
+  let html='<div class="pet-success">';
+  html+='<div class="pet-success-title" style="color:#fbbf24">Petição já gerada</div>';
+  html+='<div class="pet-success-msg warn">Esta petição já existe na pasta do processo no Drive.</div>';
+  if(check.folder_url){
+    html+=`<a href="${esc(check.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
+  }
+  html+='<div style="margin-top:14px;font-size:11px;color:var(--txt3)">Para gerar de novo (sobrescrever), feche e use o console — ou me avise se quiser um botão "gerar mesmo assim".</div>';
+  html+='</div>';
+  document.getElementById('pet-modal-fields').innerHTML=html;
+  const submit=document.getElementById('pet-modal-submit');
+  if(submit)submit.style.display='none';
+  const cancelBtn=document.getElementById('pet-modal-cancel');
+  if(cancelBtn)cancelBtn.textContent='Fechar';
 }
 
 function _closePeticaoModal(e){
@@ -3922,47 +3964,63 @@ async function _submitPeticao(){
   btn.disabled=true;btn.textContent='Gerando…';
   document.getElementById('pet-modal-err').style.display='none';
   try{
-    // Passa cedente + processo pro backend tentar subir no Drive
+    // Passa cedente + processo pro backend subir no Drive
     const driveParams={cedente:rec.cedente||'',processo:rec.numeroProcesso||''};
     const{data,error}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados,drive:driveParams}});
     if(error)throw new Error(error.message||'Falha ao gerar petição');
     if(!data||!data.docx_base64)throw new Error('Resposta inesperada da função.');
-    _downloadDocx(data.docx_base64,data.filename||'peticao.docx');
+    // Guarda pro caso de precisar baixar como fallback (Drive falhou)
+    _PET_LAST={docx_base64:data.docx_base64,filename:data.filename||'peticao.docx'};
     const conhecidos=new Set(Object.keys(dados));
     const pend=(data.pendentes||[]).filter(p=>!conhecidos.has(p));
-    _petShowSuccess(data,pend);
+    _petShowResultado(data,pend);
   }catch(e){
     _petShowErr('Erro: '+(e.message||e));
-    btn.disabled=false;btn.textContent='Gerar e baixar';
+    btn.disabled=false;btn.textContent='Gerar';
   }
 }
 
-// Mostra a tela de sucesso dentro do modal, com link "Abrir pasta no Drive".
-function _petShowSuccess(data,pend){
+// Guarda o ultimo docx gerado (base64 + nome) pro botao de download fallback.
+let _PET_LAST=null;
+function _petBaixarFallback(){
+  if(_PET_LAST)_downloadDocx(_PET_LAST.docx_base64,_PET_LAST.filename);
+}
+
+// Mostra o resultado dentro do modal. Sucesso (Drive ok) = só link do Drive,
+// SEM baixar. Falha no Drive = mensagem de erro + opcao de baixar mesmo assim.
+function _petShowResultado(data,pend){
   const drive=data.drive;
+  const driveOk=drive&&drive.ok;
   let html='<div class="pet-success">';
-  html+='<div class="pet-success-title">✓ Petição gerada e baixada</div>';
-  // Status do Drive
-  if(drive){
-    if(drive.ok){
-      html+='<div class="pet-success-msg ok">✓ Enviada ao Drive na pasta do processo (5. Petições).</div>';
-    } else {
-      html+=`<div class="pet-success-msg warn">⚠ Não foi enviada ao Drive: ${esc(drive.mensagem||'')}<br><span style="opacity:.8">O arquivo foi baixado normalmente no seu computador.</span></div>`;
-    }
+
+  if(driveOk){
+    html+='<div class="pet-success-title">✓ Petição gerada</div>';
+    html+='<div class="pet-success-msg ok">✓ Enviada ao Drive na pasta do processo (5. Petições).</div>';
+  } else {
+    html+='<div class="pet-success-title" style="color:#fbbf24">Petição gerada, mas não foi ao Drive</div>';
+    const motivo=drive?esc(drive.mensagem||''):'o envio ao Drive não foi solicitado (sem cedente).';
+    html+=`<div class="pet-success-msg warn">⚠ ${motivo}</div>`;
   }
-  // Campos pendentes (sem dado)
+
+  // Campos pendentes (sem dado) — aviso adicional
   if(pend&&pend.length){
     html+=`<div class="pet-success-msg warn">${pend.length} campo(s) ficaram sem dado: ${esc(pend.join(', '))}. Confira o documento.</div>`;
   }
-  // Botao "Abrir pasta no Drive"
-  if(drive&&drive.ok&&drive.folder_url){
-    html+=`<a href="${esc(drive.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
+
+  // Botoes de acao
+  html+='<div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
+  if(driveOk&&drive.folder_url){
+    html+=`<a href="${esc(drive.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
+  } else {
+    // Drive falhou: oferece baixar localmente pra nao perder a peticao
+    html+=`<button type="button" class="btn btn-gold btn-sm" onclick="_petBaixarFallback()">Baixar no computador</button>`;
   }
   html+='</div>';
+  html+='</div>';
+
   document.getElementById('pet-modal-info').innerHTML='';
   document.getElementById('pet-modal-fields').innerHTML=html;
   document.getElementById('pet-modal-err').style.display='none';
-  // Footer: esconde "Gerar", troca "Cancelar" por "Fechar"
   const submit=document.getElementById('pet-modal-submit');
   if(submit)submit.style.display='none';
   const cancelBtn=document.getElementById('pet-modal-cancel');
