@@ -3680,23 +3680,23 @@ const _DOC_SVG=`<svg width="15" height="15" viewBox="0 0 16 16" fill="none" styl
 </svg>`;
 const _PETICAO_TIPO_MAP=[
   // Levantamento: tarefa "peticao simples" + notes contendo "levantamento"
+  // (CREDITOS_CEDIDOS vem automaticamente do r.objeto)
   {
     matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/levantamento/i,
     tipo:'levantamento', label:'Petição de Levantamento',
     fields:[
       {key:'NUMERO_EVENTO',    label:'Nº do evento da penhora',         type:'text', placeholder:'ex: 42'},
       {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
-      {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
     ],
   },
   // Sequestro: tarefa "peticao simples" + notes contendo "sequestro" (em qualquer
   // forma — "elaborar sequestro", "petição de sequestro", "preparar sequestro" etc.)
+  // (CREDITOS_CEDIDOS vem automaticamente do r.objeto)
   {
     matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/sequestro/i,
     tipo:'sequestro', label:'Petição de Sequestro',
     fields:[
       {key:'DATA_HOMOLOGACAO', label:'Data da homologação da cessão',   type:'date'},
-      {key:'CREDITOS_CEDIDOS', label:'Créditos cedidos (marque o que se aplica)', type:'creditos'},
       {key:'DATA_EXPEDICAO',   label:'Data da expedição da RPV',         type:'date'},
     ],
   },
@@ -3815,26 +3815,48 @@ function _openPeticaoModal(tipo,mod,id){
   const def=_PETICAO_TIPO_MAP.find(m=>m.tipo===tipo);
   if(!def){showToast('Tipo de petição desconhecido: '+tipo);return;}
   _PET_CTX={tipo,mod,id,rec,def};
-  // Header + info
+  // Header + info (restaura visibilidade caso tenha ficado escondido de
+  // uma geracao anterior)
   document.getElementById('pet-modal-title').textContent=def.label;
   const cnj=rec.numeroProcesso||'(sem CNJ)';
   const partes=(rec.cedente||'')+(rec.cedente&&rec.cessionario?' v. ':'')+(rec.cessionario||'');
-  document.getElementById('pet-modal-info').innerHTML=
+  const info=document.getElementById('pet-modal-info');
+  info.style.display='';
+  info.innerHTML=
     `<div class="pet-info-cnj">${esc(cnj)}</div>`+
     (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
-  // Campos dinamicos. Se nao houver campos (modelo 100% automatico), mostra
-  // uma mensagem amigavel em vez de modal vazio.
+  document.getElementById('pet-modal-err').style.display='none';
+  const ft=document.querySelector('.pet-modal-ft');
+  if(ft)ft.style.display='';
+  const cancelBtn=document.getElementById('pet-modal-cancel');
+  if(cancelBtn)cancelBtn.textContent='Cancelar';
+  // Renderiza o formulario direto (sem verificacao previa no Drive)
+  _petRenderCampos(def,rec,tipo);
+  document.getElementById('pet-modal').style.display='flex';
+}
+
+// Renderiza os campos de input do modal (e pre-preenche o evento).
+function _petRenderCampos(def,rec,tipo){
   const fieldsHtml=def.fields.length
     ?def.fields.map(_petRenderField).join('')
-    :`<div class="pet-modal-info" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25)">Este modelo não precisa de informações adicionais — todos os dados vêm da própria plataforma. É só clicar em <strong>Gerar e baixar</strong>.</div>`;
+    :`<div class="pet-modal-info" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25)">Este modelo não precisa de informações adicionais — todos os dados vêm da própria plataforma. É só clicar em <strong>Gerar</strong>.</div>`;
   document.getElementById('pet-modal-fields').innerHTML=fieldsHtml;
-  document.getElementById('pet-modal-err').style.display='none';
+
+  // Pre-preenche o NUMERO_EVENTO a partir das observacoes da tarefa.
+  if(def.fields.some(f=>f.key==='NUMERO_EVENTO')){
+    const notes=_notesDaTarefaPorTipo(rec,tipo);
+    const evt=_extrairEventoDasNotes(notes);
+    if(evt){
+      const el=document.querySelector('#pet-modal-fields [data-petf="NUMERO_EVENTO"]');
+      if(el)el.value=evt;
+    }
+  }
+
   const btn=document.getElementById('pet-modal-submit');
-  btn.disabled=false;btn.textContent='Gerar e baixar';
-  document.getElementById('pet-modal').style.display='flex';
-  // Foco no primeiro input
+  btn.disabled=false;btn.textContent='Gerar';btn.style.display='';
   setTimeout(()=>{const first=document.querySelector('#pet-modal-fields [data-petf]');if(first&&first.tagName==='INPUT')first.focus();},50);
 }
+
 
 function _closePeticaoModal(e){
   if(e&&e.target&&e.target.id!=='pet-modal')return; // so fecha se clicou no overlay
@@ -3859,6 +3881,48 @@ function _dataBR(isoOrBr){
   } else return isoOrBr;
   if(!d||!m||!y||m<1||m>12)return isoOrBr;
   return`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+}
+
+// Extrai o numero do evento das observacoes (notes) da tarefa do Advbox.
+// Reconhece: "ev. 42", "ev 42", "evento 42", "evento n° 42", "ev n° 42",
+// "evento de nº 42", "evento de 42" (e variacoes de n°/nº/no/n. e "de").
+// Retorna so o numero, ou ''.
+function _extrairEventoDasNotes(notes){
+  if(!notes)return'';
+  const m=String(notes).match(/\bev(?:ento)?\b\.?\s*(?:de\s+)?(?:n[º°o.]?\s*)?(\d+)/i);
+  return m?m[1]:'';
+}
+
+// Acha, dentre as diligencias do processo, a que disparou determinado tipo
+// de peticao (pra ler as notes dela). Retorna a string de notes ou ''.
+function _notesDaTarefaPorTipo(rec,tipo){
+  const dils=Array.isArray(rec._advboxDiligencias)?rec._advboxDiligencias:[];
+  for(const d of dils){
+    if(!d)continue;
+    const mm=_peticaoTipo(d.task,d.notes);
+    if(mm&&mm.tipo===tipo)return d.notes||'';
+  }
+  return '';
+}
+
+// Extrai os tipos de credito cedido do campo r.objeto (texto livre tipo
+// "Crédito principal e honorários contratuais"). Mesma logica de
+// reconhecimento usada em objetoHtml(). Retorna string formatada em PT.
+function _parseCreditosDoObjeto(objeto){
+  if(!objeto)return'';
+  const items=String(objeto).split(/\s+e\s+|[,;\n]+/).map(s=>s.trim()).filter(Boolean);
+  const set=new Set();
+  for(const item of items){
+    const n=item.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+    if(n.includes('credito')&&n.includes('principal'))           set.add('crédito principal');
+    else if(n.includes('honorario')&&n.includes('contratua'))    set.add('honorários contratuais');
+    else if(n.includes('honorario')&&n.includes('sucumb'))       set.add('honorários sucumbenciais');
+    else if(n.includes('contratua')&&!n.includes('honorario'))   set.add('honorários contratuais');
+    else if(n.includes('sucumb'))                                set.add('honorários sucumbenciais');
+  }
+  // Ordem canonica: principal, contratuais, sucumbenciais
+  const ordem=['crédito principal','honorários contratuais','honorários sucumbenciais'];
+  return _listaPortugues(ordem.filter(x=>set.has(x)));
 }
 
 // Concatena os checks em portugues correto: "A", "A e B", "A, B e C"
@@ -3971,12 +4035,19 @@ async function _submitPeticao(){
   const juizo=rec.orgaoJulgador||rec.orgao_julgador||'';
   const enderecamento=(juizo&&tribCurto?`${juizo}/${tribCurto}`:(juizo||tribCurto||'(juízo a indicar)')).toUpperCase();
 
+  // Creditos cedidos extraidos automaticamente do campo r.objeto
+  // (texto livre tipo "Crédito principal e honorários contratuais").
+  // Para levantamento e sequestro, esse campo era um checkbox no modal
+  // — agora vem direto do cadastro do processo na aba Acompanhamento.
+  const creditosCedidos=_parseCreditosDoObjeto(rec.objeto);
+
   // Variaveis automaticas (vindas do processo / investidor)
   const autoVars={
     ENDERECAMENTO_JUIZO:enderecamento,
     NUMERO_PROCESSO:rec.numeroProcesso||'',
     NOME_CESSIONARIO:(rec.cessionario||'').toUpperCase(),
     DADOS_BANCARIOS:dadosBancarios||'(dados bancários não cadastrados no investidor)',
+    CREDITOS_CEDIDOS:creditosCedidos||'(objeto não cadastrado — preencher na aba Acompanhamento)',
   };
   // userVars sobrescreve auto se houver colisao
   const dados={...autoVars,...userVars};
@@ -3986,22 +4057,68 @@ async function _submitPeticao(){
   btn.disabled=true;btn.textContent='Gerando…';
   document.getElementById('pet-modal-err').style.display='none';
   try{
-    const{data,error}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados}});
+    // Passa cedente + processo pro backend subir no Drive
+    const driveParams={cedente:rec.cedente||'',processo:rec.numeroProcesso||''};
+    const{data,error}=await sb.functions.invoke('gerar-peticao',{body:{tipo,dados,drive:driveParams}});
     if(error)throw new Error(error.message||'Falha ao gerar petição');
     if(!data||!data.docx_base64)throw new Error('Resposta inesperada da função.');
-    _downloadDocx(data.docx_base64,data.filename||'peticao.docx');
+    // Guarda pro caso de precisar baixar como fallback (Drive falhou)
+    _PET_LAST={docx_base64:data.docx_base64,filename:data.filename||'peticao.docx'};
     const conhecidos=new Set(Object.keys(dados));
     const pend=(data.pendentes||[]).filter(p=>!conhecidos.has(p));
-    if(pend.length){
-      showToast(`Petição gerada. ${pend.length} campo(s) sem dado: ${pend.join(', ')}`,5000);
-    } else {
-      showToast('Petição gerada e baixada.');
-    }
-    _closePeticaoModal();
+    _petShowResultado(data,pend);
   }catch(e){
     _petShowErr('Erro: '+(e.message||e));
-    btn.disabled=false;btn.textContent='Gerar e baixar';
+    btn.disabled=false;btn.textContent='Gerar';
   }
+}
+
+// Guarda o ultimo docx gerado (base64 + nome) pro botao de download fallback.
+let _PET_LAST=null;
+function _petBaixarFallback(){
+  if(_PET_LAST)_downloadDocx(_PET_LAST.docx_base64,_PET_LAST.filename);
+}
+
+// Mostra o resultado de forma minimalista: o status vai colado no TITULO
+// do modal (ao lado do tipo), e o corpo fica so com o botao de acao.
+function _petShowResultado(data,pend){
+  const drive=data.drive;
+  const driveOk=drive&&drive.ok;
+  const label=(_PET_CTX&&_PET_CTX.def&&_PET_CTX.def.label)||'Petição';
+
+  // Status colado no titulo do modal
+  const titleEl=document.getElementById('pet-modal-title');
+  if(driveOk){
+    titleEl.innerHTML=`${esc(label)} <span style="color:#4ade80;font-weight:600"> ✓ Petição gerada</span>`;
+  } else {
+    titleEl.innerHTML=`${esc(label)} <span style="color:#fbbf24;font-weight:600"> ⚠ não foi ao Drive</span>`;
+  }
+
+  // Corpo: so o botao (+ aviso minimo se Drive falhou ou faltou campo)
+  let html='<div class="pet-success" style="padding:4px">';
+  if(!driveOk){
+    const motivo=drive?esc(drive.mensagem||''):'envio ao Drive não solicitado (sem cedente).';
+    html+=`<div class="pet-success-msg warn" style="margin-top:0">${motivo}</div>`;
+  }
+  if(pend&&pend.length){
+    html+=`<div class="pet-success-msg warn">${pend.length} campo(s) sem dado: ${esc(pend.join(', '))}.</div>`;
+  }
+  html+='<div style="display:flex;justify-content:center;margin-top:4px">';
+  if(driveOk&&drive.folder_url){
+    html+=`<a href="${esc(drive.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
+  } else {
+    html+=`<button type="button" class="btn btn-gold btn-sm" onclick="_petBaixarFallback()">Baixar no computador</button>`;
+  }
+  html+='</div></div>';
+
+  // Esconde a caixa de info (CNJ/partes) e o rodape inteiro — o × do topo
+  // ja fecha o modal.
+  const info=document.getElementById('pet-modal-info');
+  if(info)info.style.display='none';
+  document.getElementById('pet-modal-fields').innerHTML=html;
+  document.getElementById('pet-modal-err').style.display='none';
+  const ft=document.querySelector('.pet-modal-ft');
+  if(ft)ft.style.display='none';
 }
 
 // Abre o processo no portal unificado do CNJ (PDPJ) com o numero na URL.
