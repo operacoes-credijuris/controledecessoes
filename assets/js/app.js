@@ -3688,14 +3688,19 @@ function _openPeticaoModal(tipo,mod,id){
   const def=_PETICAO_TIPO_MAP.find(m=>m.tipo===tipo);
   if(!def){showToast('Tipo de petição desconhecido: '+tipo);return;}
   _PET_CTX={tipo,mod,id,rec,def};
-  // Header + info
+  // Header + info (restaura visibilidade caso tenha ficado escondido de
+  // uma geracao anterior)
   document.getElementById('pet-modal-title').textContent=def.label;
   const cnj=rec.numeroProcesso||'(sem CNJ)';
   const partes=(rec.cedente||'')+(rec.cedente&&rec.cessionario?' v. ':'')+(rec.cessionario||'');
-  document.getElementById('pet-modal-info').innerHTML=
+  const info=document.getElementById('pet-modal-info');
+  info.style.display='';
+  info.innerHTML=
     `<div class="pet-info-cnj">${esc(cnj)}</div>`+
     (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
   document.getElementById('pet-modal-err').style.display='none';
+  const ft=document.querySelector('.pet-modal-ft');
+  if(ft)ft.style.display='';
   const cancelBtn=document.getElementById('pet-modal-cancel');
   if(cancelBtn)cancelBtn.textContent='Cancelar';
   // Renderiza o formulario direto (sem verificacao previa no Drive)
@@ -3979,13 +3984,14 @@ function _petShowResultado(data,pend){
   }
   html+='</div></div>';
 
-  document.getElementById('pet-modal-info').innerHTML='';
+  // Esconde a caixa de info (CNJ/partes) e o rodape inteiro — o × do topo
+  // ja fecha o modal.
+  const info=document.getElementById('pet-modal-info');
+  if(info)info.style.display='none';
   document.getElementById('pet-modal-fields').innerHTML=html;
   document.getElementById('pet-modal-err').style.display='none';
-  const submit=document.getElementById('pet-modal-submit');
-  if(submit)submit.style.display='none';
-  const cancelBtn=document.getElementById('pet-modal-cancel');
-  if(cancelBtn)cancelBtn.textContent='Fechar';
+  const ft=document.querySelector('.pet-modal-ft');
+  if(ft)ft.style.display='none';
 }
 
 // Abre o processo no portal unificado do CNJ (PDPJ) com o numero na URL.
