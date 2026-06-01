@@ -1332,7 +1332,7 @@ function _crtToggleView(){
   const exportBtn=document.getElementById('crt-btn-export');
   const invWrap=document.getElementById('crt-inv-tbl-wrap');
   if(_crtViewMode==='cadastral'){
-    if(btn){btn.style.background='rgba(96,165,250,.15)';btn.style.borderColor='rgba(96,165,250,.4)';btn.style.color='#60a5fa';}
+    if(btn)btn.classList.add('is-active');
     if(title)title.textContent='Dados dos investidores';
     if(opScroll)opScroll.style.display='none';
     if(emptyMsg)emptyMsg.style.display='none';
@@ -1341,7 +1341,7 @@ function _crtToggleView(){
     if(invWrap)invWrap.style.display='';
     _crtRenderInvestidoresTbl();
   }else{
-    if(btn){btn.style.background='rgba(255,255,255,.06)';btn.style.borderColor='rgba(255,255,255,.12)';btn.style.color='#9ca3af';}
+    if(btn)btn.classList.remove('is-active');
     if(title)title.textContent='Dados por operação';
     if(invWrap)invWrap.style.display='none';
     if(gerarBtn)gerarBtn.style.display='';
