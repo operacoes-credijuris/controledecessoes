@@ -32,6 +32,7 @@ MODELS = [
     "ilegitimidade",
     "rpv_complementar",
     "registro_publico",
+    "homologacao",
 ]
 
 # Mapa: trecho exato no docx -> placeholder. Apenas placeholders que existem
@@ -47,6 +48,9 @@ REPLACEMENTS = [
     ("[data da homologação]",             "{{DATA_HOMOLOGACAO}}"),
     ("[data da expedição]",               "{{DATA_EXPEDICAO}}"),
     ("[DADOS BANCÁRIOS DO CESSIONÁRIO]",  "{{DADOS_BANCARIOS}}"),
+    # --- Homologação ---
+    ("[qualificação do cessionário]",     "{{QUALIFICACAO_CESSIONARIO}}"),
+    ("[data do contrato]",                "{{DATA_CONTRATO}}"),
     # --- RPV Complementar ---
     ("[sentença, decisão]",               "{{TIPO_DECISAO}}"),
     ("[de procedência, de parcial procedência, homologatória]",
@@ -195,6 +199,29 @@ def build_one(tipo: str) -> bool:
     # modelos. Como o juizo pode ser "vara" (feminino) ou "juizado" (masculino),
     # o "DO(A)" cobre os dois generos sem exigir edicao manual dos .docx originais.
     new_document_xml = new_document_xml.replace("DIREITO DA ", "DIREITO DO(A) ")
+    # 4) Garante espaco apos qualquer placeholder {{...}} quando ele estiver
+    # colado em uma letra. Conserta casos como "{{CREDITOS_CEDIDOS}}decorrente".
+    # (a) mesmo <w:t>: }} colado a uma letra
+    new_document_xml, n_a = re.subn(r"(\}\})([A-Za-zÀ-ÿ])", r"\1 \2", new_document_xml)
+    # (b) cross-<w:t>: }}</w:t>...<w:t>letra. Lookahead negativo impede
+    # que .*? engula OUTROS placeholders no caminho — assim cada {{X}} é
+    # processado individualmente. Loop até estabilizar (a sub pode revelar
+    # novos matches numa segunda passada).
+    while True:
+        new_document_xml, n = re.subn(
+            r"(\{\{[A-Z_]+\}\})(</w:t>(?:(?!\{\{).)*?<w:t[^>]*>)([A-Za-zÀ-ÿ])",
+            r"\1 \2\3",
+            new_document_xml, flags=re.DOTALL,
+        )
+        if n == 0: break
+
+    # 5) Ajustes específicos da HOMOLOGAÇÃO: remove a frase ", em [data do
+    # contrato]," que ficou desnecessária. Os trechos vivem em <w:t>s
+    # separados, então o replace casa cada um individualmente.
+    if tipo == "homologacao":
+        new_document_xml = new_document_xml.replace("celebrou, em ", "celebrou ")
+        new_document_xml = new_document_xml.replace("{{DATA_CONTRATO}}", "")
+        new_document_xml = new_document_xml.replace(", contrato(s) oneroso(s)", "contrato(s) oneroso(s)")
 
     tmp = dst + ".tmp"
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:

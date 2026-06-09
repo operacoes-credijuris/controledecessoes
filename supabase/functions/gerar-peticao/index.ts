@@ -29,6 +29,7 @@ const TEMPLATES: Record<string, string> = {
   ilegitimidade:    'ilegitimidade.docx',
   rpv_complementar: 'rpv_complementar.docx',
   registro_publico: 'registro_publico.docx',
+  homologacao:      'homologacao.docx',
 };
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -65,6 +66,7 @@ function nomeArquivo(tipo: string, dados: Vars): string {
     ilegitimidade:    'Petição de Ilegitimidade Passiva',
     rpv_complementar: 'Petição de RPV Complementar',
     registro_publico: 'Petição de Juntada de Registro Público',
+    homologacao:      'Petição de Homologação de Cessão',
   };
   const labelTipo = labels[tipo] || `Petição - ${tipo}`;
   return `${labelTipo} - ${cessionario} - ${processo}.docx`;
@@ -321,34 +323,86 @@ async function driveUploadDocx(token: string, name: string, parentId: string, by
   return await res.json();
 }
 
-// Acha a pasta do processo no Drive. Estrategia (conforme pedido):
-//  1. Procura pastas cujo nome contenha o nome do CEDENTE.
-//  2. Se houver mais de uma, desempata pelo numero do processo (CNJ).
-//  3. Retorna { folderId, candidatas } — folderId null se nao achar/ambiguo.
+// Sobe na cadeia de pastas a partir de folderId. Retorna true se em algum
+// momento encontra ancestorId. Limita a profundidade pra evitar loops.
+async function driveEhDescendente(token: string, folderId: string, ancestorId: string): Promise<boolean> {
+  let current = folderId;
+  for (let i = 0; i < 12; i++) {
+    if (current === ancestorId) return true;
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${current}?fields=parents&supportsAllDrives=true`,
+      { headers: { Authorization: 'Bearer ' + token } },
+    );
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data.parents || data.parents.length === 0) return false;
+    current = data.parents[0];
+  }
+  return false;
+}
+
+// Acha a "B. Processos" folder dentro do shared drive ou do raiz "Credijuris".
+async function driveAcharProcessosFolder(token: string, driveId: string | undefined): Promise<string | null> {
+  // Caminho 1: shared drive direto -> achar "B. Processos" como filho do drive
+  if (driveId) {
+    const q = `name = '${escapeDriveQuery(DRIVE_PROCESSOS_NAME)}' and mimeType = '${FOLDER_MIME}' and trashed = false`;
+    const files = await driveListFiles(token, q, driveId);
+    if (files[0]) return files[0].id;
+  }
+  // Caminho 2 (fallback): pasta normal -> Credijuris - Atualizado / B. Processos
+  const roots = await driveListFiles(
+    token,
+    `name = '${escapeDriveQuery(DRIVE_ROOT_NAME)}' and trashed = false and mimeType = '${FOLDER_MIME}'`,
+  );
+  if (!roots[0]) return null;
+  const procFolder = await driveFindChild(token, DRIVE_PROCESSOS_NAME, roots[0].id, FOLDER_MIME);
+  return procFolder ? procFolder.id : null;
+}
+
+// Acha a pasta do processo no Drive — APENAS dentro de "B. Processos".
+// Estrategia:
+//  1. Procura pastas cujo nome contenha o nome do CEDENTE (busca global).
+//  2. Filtra somente as que estao dentro da arvore "B. Processos".
+//  3. Se houver mais de uma, desempata pelo numero do processo (CNJ).
+//  4. Retorna { folderId, candidatas } — folderId null se nao achar/ambiguo.
 async function driveAcharPastaProcesso(
   token: string, driveId: string | undefined, cedente: string, processo: string,
 ): Promise<{ folderId: string | null; motivo: string; candidatas: string[] }> {
   const cedenteLimpo = (cedente || '').trim();
   if (!cedenteLimpo) return { folderId: null, motivo: 'cedente vazio', candidatas: [] };
 
+  // 1. Acha B. Processos (escopo da busca)
+  const processosId = await driveAcharProcessosFolder(token, driveId);
+  if (!processosId) return { folderId: null, motivo: '"B. Processos" não encontrada no Drive', candidatas: [] };
+
+  // 2. Busca global por nome do cedente
   const q = `name contains '${escapeDriveQuery(cedenteLimpo)}' and mimeType = '${FOLDER_MIME}' and trashed = false`;
   let folders: DriveFile[];
   try { folders = await driveListFiles(token, q, driveId); }
   catch (e) { return { folderId: null, motivo: 'erro na busca: ' + (e instanceof Error ? e.message : String(e)), candidatas: [] }; }
 
-  // Match mais robusto de cedente: normaliza e exige que o nome da pasta contenha o cedente
   const cedNorm = normalizar(cedenteLimpo);
-  const candidatas = folders.filter(f => normalizar(f.name).includes(cedNorm));
+  const matchCedente = folders.filter(f => normalizar(f.name).includes(cedNorm));
+
+  // 3. Filtra somente os que estao SOB "B. Processos" (descarta resultados
+  // de "A. Dados dos investidores", "C. ..." etc.)
+  const candidatas: DriveFile[] = [];
+  for (const f of matchCedente) {
+    if (await driveEhDescendente(token, f.id, processosId)) candidatas.push(f);
+  }
   const nomes = candidatas.map(f => f.name);
 
-  if (candidatas.length === 0) return { folderId: null, motivo: 'nenhuma pasta com o nome do cedente', candidatas: [] };
-  if (candidatas.length === 1) return { folderId: candidatas[0].id, motivo: 'match unico por cedente', candidatas: nomes };
+  if (candidatas.length === 0) {
+    const fora = matchCedente.length;
+    return { folderId: null, motivo: fora ? `nenhuma pasta do cedente DENTRO de "B. Processos" (${fora} encontrada(s) em outros lugares)` : 'nenhuma pasta com o nome do cedente', candidatas: [] };
+  }
+  if (candidatas.length === 1) return { folderId: candidatas[0].id, motivo: 'match unico por cedente (em B. Processos)', candidatas: nomes };
 
-  // Mais de uma: desempata pelo CNJ (compara so digitos)
+  // 4. Mais de uma: desempata pelo CNJ
   const procDig = soDigitos(processo);
   const porCnj = candidatas.filter(f => procDig && soDigitos(f.name).includes(procDig));
   if (porCnj.length === 1) return { folderId: porCnj[0].id, motivo: 'desempate por CNJ', candidatas: nomes };
-  return { folderId: null, motivo: `ambiguo: ${candidatas.length} pastas do cedente e CNJ nao desempatou`, candidatas: nomes };
+  return { folderId: null, motivo: `ambiguo: ${candidatas.length} pastas do cedente em B. Processos e CNJ nao desempatou`, candidatas: nomes };
 }
 
 // Le os secrets do Google, faz refresh do token e acha o shared drive.
