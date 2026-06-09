@@ -3732,6 +3732,16 @@ const _PETICAO_TIPO_MAP=[
       // DIFERENCA calculada automaticamente a partir dos dois acima
     ],
   },
+  // Homologação de cessão: TASK DIFERENTE — "Realizar Protocolo de Cessão de Crédito"
+  // (não depende de notes — qualquer tarefa com esse nome dispara o modelo)
+  // QUALIFICACAO_CESSIONARIO é auto-gerada do investidor; o usuário só preenche DATA_CONTRATO.
+  {
+    matchTask:/realizar\s+protocolo\s+de\s+cess[aã]o\s+de\s+cr[eé]dito/i, matchNotes:null,
+    tipo:'homologacao', label:'Petição de Homologação de Cessão',
+    fields:[
+      {key:'DATA_CONTRATO', label:'Data do contrato de cessão', type:'date'},
+    ],
+  },
 ];
 function _peticaoTipo(task,notes){
   const t=String(task||''),n=String(notes||'');
@@ -3954,13 +3964,38 @@ function _formataDadosBancarios(inv){
 async function _buscarInvestidorPorNome(nome){
   if(!sb||!nome)return null;
   const{data,error}=await sb.from('investidores')
-    .select('nome,cpf,banco,agencia,conta,pix').limit(50);
+    .select('nome,cpf,rg,endereco,banco,agencia,conta,pix').limit(50);
   if(error||!data)return null;
   const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const alvo=norm(nome);
   return data.find(i=>norm(i.nome)===alvo)
       || data.find(i=>norm(i.nome).includes(alvo))
       || null;
+}
+
+// Monta a "qualificação" do cessionário para a petição de homologação.
+// Detecta PF (CPF, 11 dígitos) vs PJ (CNPJ, 14 dígitos) pelo campo cpf
+// do investidor (que aceita os dois).
+function _montarQualificacaoCessionario(inv){
+  if(!inv)return'(qualificação não disponível — investidor não encontrado)';
+  const doc=String(inv.cpf||'').trim();
+  const digitos=doc.replace(/\D/g,'');
+  const endereco=String(inv.endereco||'').trim();
+  const partes=[];
+  if(digitos.length===14){
+    partes.push('pessoa jurídica de direito privado');
+    partes.push(`inscrita no CNPJ nº ${doc}`);
+    if(endereco)partes.push(`com sede em ${endereco}`);
+  } else if(digitos.length===11){
+    partes.push(`inscrito(a) no CPF nº ${doc}`);
+    if(inv.rg)partes.push(`RG nº ${inv.rg}`);
+    if(endereco)partes.push(`residente em ${endereco}`);
+  } else {
+    if(doc)partes.push(`documento ${doc}`);
+    if(endereco)partes.push(`com endereço em ${endereco}`);
+    if(partes.length===0)return'(qualificação pendente — completar cadastro do investidor)';
+  }
+  return partes.join(', ');
 }
 
 // Dispara o download do .docx a partir do base64 retornado pela edge function.
@@ -4041,6 +4076,10 @@ async function _submitPeticao(){
   // — agora vem direto do cadastro do processo na aba Acompanhamento.
   const creditosCedidos=_parseCreditosDoObjeto(rec.objeto);
 
+  // Qualificacao do cessionario (auto-gerada, usada pela peticao de homologacao).
+  // Detecta PF/PJ pelo CPF/CNPJ cadastrado e monta a descricao padrao.
+  const qualificacaoCessionario=_montarQualificacaoCessionario(inv);
+
   // Variaveis automaticas (vindas do processo / investidor)
   const autoVars={
     ENDERECAMENTO_JUIZO:enderecamento,
@@ -4048,6 +4087,7 @@ async function _submitPeticao(){
     NOME_CESSIONARIO:(rec.cessionario||'').toUpperCase(),
     DADOS_BANCARIOS:dadosBancarios||'(dados bancários não cadastrados no investidor)',
     CREDITOS_CEDIDOS:creditosCedidos||'(objeto não cadastrado — preencher na aba Acompanhamento)',
+    QUALIFICACAO_CESSIONARIO:qualificacaoCessionario,
   };
   // userVars sobrescreve auto se houver colisao
   const dados={...autoVars,...userVars};

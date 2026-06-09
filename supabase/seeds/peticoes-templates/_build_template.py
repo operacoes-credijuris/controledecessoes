@@ -32,6 +32,7 @@ MODELS = [
     "ilegitimidade",
     "rpv_complementar",
     "registro_publico",
+    "homologacao",
 ]
 
 # Mapa: trecho exato no docx -> placeholder. Apenas placeholders que existem
@@ -47,6 +48,9 @@ REPLACEMENTS = [
     ("[data da homologação]",             "{{DATA_HOMOLOGACAO}}"),
     ("[data da expedição]",               "{{DATA_EXPEDICAO}}"),
     ("[DADOS BANCÁRIOS DO CESSIONÁRIO]",  "{{DADOS_BANCARIOS}}"),
+    # --- Homologação ---
+    ("[qualificação do cessionário]",     "{{QUALIFICACAO_CESSIONARIO}}"),
+    ("[data do contrato]",                "{{DATA_CONTRATO}}"),
     # --- RPV Complementar ---
     ("[sentença, decisão]",               "{{TIPO_DECISAO}}"),
     ("[de procedência, de parcial procedência, homologatória]",
