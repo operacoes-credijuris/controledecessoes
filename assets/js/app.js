@@ -3734,13 +3734,11 @@ const _PETICAO_TIPO_MAP=[
   },
   // Homologação de cessão: TASK DIFERENTE — "Realizar Protocolo de Cessão de Crédito"
   // (não depende de notes — qualquer tarefa com esse nome dispara o modelo)
-  // QUALIFICACAO_CESSIONARIO é auto-gerada do investidor; o usuário só preenche DATA_CONTRATO.
+  // QUALIFICACAO_CESSIONARIO é auto-gerada do investidor; sem inputs do usuário.
   {
     matchTask:/realizar\s+protocolo\s+de\s+cess[aã]o\s+de\s+cr[eé]dito/i, matchNotes:null,
     tipo:'homologacao', label:'Petição de Homologação de Cessão',
-    fields:[
-      {key:'DATA_CONTRATO', label:'Data do contrato de cessão', type:'date'},
-    ],
+    fields:[],
   },
 ];
 function _peticaoTipo(task,notes){

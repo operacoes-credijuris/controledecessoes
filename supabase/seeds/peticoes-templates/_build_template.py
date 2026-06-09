@@ -215,6 +215,14 @@ def build_one(tipo: str) -> bool:
         )
         if n == 0: break
 
+    # 5) Ajustes específicos da HOMOLOGAÇÃO: remove a frase ", em [data do
+    # contrato]," que ficou desnecessária. Os trechos vivem em <w:t>s
+    # separados, então o replace casa cada um individualmente.
+    if tipo == "homologacao":
+        new_document_xml = new_document_xml.replace("celebrou, em ", "celebrou ")
+        new_document_xml = new_document_xml.replace("{{DATA_CONTRATO}}", "")
+        new_document_xml = new_document_xml.replace(", contrato(s) oneroso(s)", "contrato(s) oneroso(s)")
+
     tmp = dst + ".tmp"
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
         for name, data in other_files.items():
