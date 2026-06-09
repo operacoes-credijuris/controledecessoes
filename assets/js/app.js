@@ -3976,20 +3976,27 @@ async function _buscarInvestidorPorNome(nome){
 // Monta a "qualificação" do cessionário para a petição de homologação.
 // Detecta PF (CPF, 11 dígitos) vs PJ (CNPJ, 14 dígitos) pelo campo cpf
 // do investidor (que aceita os dois).
+//
+// PF: "brasileiro(a), inscrito(a) no CPF sob o nº X, documento de
+//      identidade nº Y, residente e domiciliado(a) à Z"
+// PJ: "pessoa jurídica de direito privado, inscrita no CNPJ sob o nº X,
+//      com sede em Z"
 function _montarQualificacaoCessionario(inv){
   if(!inv)return'(qualificação não disponível — investidor não encontrado)';
   const doc=String(inv.cpf||'').trim();
   const digitos=doc.replace(/\D/g,'');
   const endereco=String(inv.endereco||'').trim();
+  const rg=String(inv.rg||'').trim();
   const partes=[];
   if(digitos.length===14){
     partes.push('pessoa jurídica de direito privado');
-    partes.push(`inscrita no CNPJ nº ${doc}`);
+    partes.push(`inscrita no CNPJ sob o nº ${doc}`);
     if(endereco)partes.push(`com sede em ${endereco}`);
   } else if(digitos.length===11){
-    partes.push(`inscrito(a) no CPF nº ${doc}`);
-    if(inv.rg)partes.push(`RG nº ${inv.rg}`);
-    if(endereco)partes.push(`residente em ${endereco}`);
+    partes.push('brasileiro(a)');
+    partes.push(`inscrito(a) no CPF sob o nº ${doc}`);
+    if(rg)partes.push(`documento de identidade nº ${rg}`);
+    if(endereco)partes.push(`residente e domiciliado(a) à ${endereco}`);
   } else {
     if(doc)partes.push(`documento ${doc}`);
     if(endereco)partes.push(`com endereço em ${endereco}`);
