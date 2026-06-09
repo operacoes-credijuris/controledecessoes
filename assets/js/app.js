@@ -3977,8 +3977,8 @@ async function _buscarInvestidorPorNome(nome){
 // Detecta PF (CPF, 11 dígitos) vs PJ (CNPJ, 14 dígitos) pelo campo cpf
 // do investidor (que aceita os dois).
 //
-// PF: "brasileiro(a), inscrito(a) no CPF sob o nº X, documento de
-//      identidade nº Y, residente e domiciliado(a) à Z"
+// PF: "brasileiro(a), inscrito(a) no CPF sob o nº X, RG nº Y, residente
+//      e domiciliado(a) à Z"
 // PJ: "pessoa jurídica de direito privado, inscrita no CNPJ sob o nº X,
 //      com sede em Z"
 function _montarQualificacaoCessionario(inv){
@@ -3995,7 +3995,7 @@ function _montarQualificacaoCessionario(inv){
   } else if(digitos.length===11){
     partes.push('brasileiro(a)');
     partes.push(`inscrito(a) no CPF sob o nº ${doc}`);
-    if(rg)partes.push(`documento de identidade nº ${rg}`);
+    if(rg)partes.push(`RG nº ${rg}`);
     if(endereco)partes.push(`residente e domiciliado(a) à ${endereco}`);
   } else {
     if(doc)partes.push(`documento ${doc}`);
