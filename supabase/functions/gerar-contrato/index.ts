@@ -25,7 +25,8 @@
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// @ts-ignore — o d.ts do esm.sh não declara default export, mas o módulo runtime tem.
 import JSZip from 'https://esm.sh/jszip@3.10.1';
 import { DOMParser, XMLSerializer } from 'https://esm.sh/@xmldom/xmldom@0.8.10';
 import { encode as b64encode } from 'https://deno.land/std@0.168.0/encoding/base64.ts';
@@ -100,6 +101,11 @@ type ClaudeContentBlock =
   | { type: 'document'; source: { type: 'base64'; media_type: 'application/pdf'; data: string } };
 
 type Vars = Record<string, string | null>;
+
+// Cliente Supabase com schema não-tipado (o projeto não roda `supabase gen types`):
+// trata as tabelas como `any` em vez de `never`, evitando ~13 erros de type-check
+// nos acessos a linhas/updates. Gerar os tipos do banco eliminaria esta gambiarra.
+type SB = SupabaseClient<any, any, any>;
 
 const SCHEMA_CEDENTE: Vars = {
   CEDENTE_NOME: 'nome completo',
@@ -253,7 +259,7 @@ function mimeForExtension(ext: string): string {
 // Document Reading — converte Storage path -> blocos de conteúdo do Claude
 // ============================================================================
 
-async function storageGetBytes(sb: ReturnType<typeof createClient>, bucket: string, path: string): Promise<Uint8Array> {
+async function storageGetBytes(sb: SB, bucket: string, path: string): Promise<Uint8Array> {
   const { data, error } = await sb.storage.from(bucket).download(path);
   if (error) throw new Error(`Storage download falhou (${bucket}/${path}): ${error.message}`);
   const buf = await data.arrayBuffer();
@@ -283,7 +289,7 @@ async function extractDocxText(bytes: Uint8Array): Promise<string> {
   if (!xml) return '';
   // Extrai texto entre <w:t ...>...</w:t> — suficiente pra Claude entender o conteúdo
   const tags = xml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-  return tags.map(t => t.replace(/<w:t[^>]*>/, '').replace(/<\/w:t>/, '')).join(' ');
+  return tags.map((t: string) => t.replace(/<w:t[^>]*>/, '').replace(/<\/w:t>/, '')).join(' ');
 }
 
 // Extrai a letra da coluna do atributo r="A12" → "A". Usado pra preservar a
@@ -471,13 +477,13 @@ async function bytesToContentBlocks(filename: string, bytes: Uint8Array): Promis
   if (PDF_EXTS.has(ext)) {
     return [header, {
       type: 'document',
-      source: { type: 'base64', media_type: 'application/pdf', data: b64encode(bytes) },
+      source: { type: 'base64', media_type: 'application/pdf', data: b64encode(bytes as unknown as ArrayBuffer) },
     }];
   }
   if (IMG_EXTS.has(ext)) {
     return [header, {
       type: 'image',
-      source: { type: 'base64', media_type: mediaTypeForImage(ext), data: b64encode(bytes) },
+      source: { type: 'base64', media_type: mediaTypeForImage(ext), data: b64encode(bytes as unknown as ArrayBuffer) },
     }];
   }
   if (DOCX_EXTS.has(ext)) {
@@ -494,7 +500,7 @@ async function bytesToContentBlocks(filename: string, bytes: Uint8Array): Promis
 }
 
 async function readFileAsContent(
-  sb: ReturnType<typeof createClient>,
+  sb: SB,
   bucket: string,
   path: string,
 ): Promise<ClaudeContentBlock[]> {
@@ -551,7 +557,7 @@ async function callClaude(apiKey: string, content: ClaudeContentBlock[], schema:
 }
 
 async function buildContentFromPaths(
-  sb: ReturnType<typeof createClient>,
+  sb: SB,
   paths: string[],
 ): Promise<ClaudeContentBlock[]> {
   const blocks: ClaudeContentBlock[] = [];
@@ -563,7 +569,7 @@ async function buildContentFromPaths(
 }
 
 async function extractParte(
-  sb: ReturnType<typeof createClient>,
+  sb: SB,
   apiKey: string,
   paths: string[],
   schema: Vars,
@@ -1055,7 +1061,7 @@ function determinarTipos(tipoExplicito: string | null | undefined, aprVars: Vars
 
 interface InputPaths { apresentacao: string[]; cedente: string[]; escritorio: string[] }
 
-async function listInputPaths(sb: ReturnType<typeof createClient>, jobPrefix: string): Promise<InputPaths> {
+async function listInputPaths(sb: SB, jobPrefix: string): Promise<InputPaths> {
   const out: InputPaths = { apresentacao: [], cedente: [], escritorio: [] };
   for (const papel of ['apresentacao','cedente','escritorio'] as const) {
     const { data, error } = await sb.storage.from(BUCKET_INPUT).list(`${jobPrefix}/${papel}`, { limit: 100 });
@@ -1069,7 +1075,7 @@ async function listInputPaths(sb: ReturnType<typeof createClient>, jobPrefix: st
   return out;
 }
 
-async function cleanupInputs(sb: ReturnType<typeof createClient>, paths: string[]): Promise<void> {
+async function cleanupInputs(sb: SB, paths: string[]): Promise<void> {
   if (paths.length === 0) return;
   try { await sb.storage.from(BUCKET_INPUT).remove(paths); } catch (_) { /* best-effort */ }
 }
@@ -1083,7 +1089,7 @@ serve(async (req) => {
   if (req.method !== 'POST') return errorResponse('Method not allowed', 405);
 
   let jobRow: { id: string } | null = null;
-  let sbAdmin: ReturnType<typeof createClient> | null = null;
+  let sbAdmin: SB | null = null;
   let inputPathsAll: string[] = [];
 
   try {
@@ -1093,7 +1099,7 @@ serve(async (req) => {
       return errorResponse('Não autenticado', 401);
     }
     const userJwt = authHeader.slice(7);
-    const sbUser = createClient(
+    const sbUser = createClient<any, any, any>(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: 'Bearer ' + userJwt } } },
@@ -1117,7 +1123,7 @@ serve(async (req) => {
     }
 
     // 3. Service-role client (lê secrets, faz cleanup, escreve auditoria)
-    sbAdmin = createClient(
+    sbAdmin = createClient<any, any, any>(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
