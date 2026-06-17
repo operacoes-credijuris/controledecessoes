@@ -806,13 +806,9 @@
         <div class="gc-lbl">Documentos</div>
 
         <div class="gc-papel">
-          <div class="gc-papel-hdr">Apresentação do crédito <span class="gc-papel-req">obrigatório</span></div>
-          <label class="gc-dropzone">
-            <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx" onchange="gcOnFileSelect('apresentacao',this)" style="display:none">
-            <div class="gc-dropzone-text">+ Selecionar arquivos</div>
-            <div class="gc-dropzone-sub">PDF, imagem, DOCX ou XLSX</div>
-          </label>
-          <div id="gc-files-apresentacao" class="gc-files"></div>
+          <div class="gc-papel-hdr">Número do processo <span class="gc-papel-req">obrigatório</span></div>
+          <input id="gc-numero-processo" type="text" class="gc-input" placeholder="ex: 0001234-56.2024.8.26.0100" oninput="gcRenderFiles()" autocomplete="off">
+          <div class="gc-hint">A análise de crédito é puxada automaticamente do Drive em <em>A. Análises de crédito → Requisições de Pequeno Valor → {intermediador} → {cedente}</em>. O nome do cedente sai dos documentos do cedente abaixo.</div>
         </div>
 
         <div class="gc-papel">

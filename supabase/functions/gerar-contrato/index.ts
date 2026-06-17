@@ -71,6 +71,14 @@ const DRIVE_SUBPASTAS = [
 ];
 const DRIVE_PASTA_CONTRATOS = '2. Contratos assinados';
 const DRIVE_PASTA_ANALISE = '1. Análise(s) de crédito';
+const DRIVE_PASTA_CEDENTE_DOCS = '4. Documentos do cedente e advogado';
+// Raiz das análises de crédito (irmã de "B. Processos" no shared drive).
+// Match tolerante (normalizar + includes) cobre sufixos como "RPV" no nome real.
+const DRIVE_ANALISES_NAME = 'A. Análises de crédito';
+// Tipos nativos do Google Workspace — não baixam com alt=media, precisam de export.
+const GOOGLE_SHEET_MIME = 'application/vnd.google-apps.spreadsheet';
+const GOOGLE_DOC_MIME = 'application/vnd.google-apps.document';
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -453,14 +461,11 @@ function nonEmptyText(text: string, fallback: string): string {
   return text && text.trim().length > 0 ? text : fallback;
 }
 
-async function readFileAsContent(
-  sb: ReturnType<typeof createClient>,
-  bucket: string,
-  path: string,
-): Promise<ClaudeContentBlock[]> {
-  const filename = path.split('/').pop() || path;
-  const ext = extOf(path);
-  const bytes = await storageGetBytes(sb, bucket, path);
+// Converte bytes + nome de arquivo em blocos de conteúdo do Claude.
+// Compartilhado entre input do Storage (cedente/escritório) e arquivos
+// baixados do Drive (análise de crédito).
+async function bytesToContentBlocks(filename: string, bytes: Uint8Array): Promise<ClaudeContentBlock[]> {
+  const ext = extOf(filename);
   const header: ClaudeContentBlock = { type: 'text', text: `[Documento: ${filename}]` };
 
   if (PDF_EXTS.has(ext)) {
@@ -486,6 +491,16 @@ async function readFileAsContent(
   // .txt/.md ou desconhecido — tenta decodificar como UTF-8
   const text = new TextDecoder().decode(bytes);
   return [header, { type: 'text', text: nonEmptyText(text, `(arquivo '${filename}' sem conteúdo de texto)`) }];
+}
+
+async function readFileAsContent(
+  sb: ReturnType<typeof createClient>,
+  bucket: string,
+  path: string,
+): Promise<ClaudeContentBlock[]> {
+  const filename = path.split('/').pop() || path;
+  const bytes = await storageGetBytes(sb, bucket, path);
+  return bytesToContentBlocks(filename, bytes);
 }
 
 // ============================================================================
@@ -558,12 +573,10 @@ async function extractParte(
 }
 
 async function extractApresentacao(
-  sb: ReturnType<typeof createClient>,
   apiKey: string,
-  paths: string[],
+  content: ClaudeContentBlock[],
   templateVars: string[],
 ): Promise<Vars> {
-  const content = await buildContentFromPaths(sb, paths);
   // Passo 1 — campos fixos
   const fixos = await callClaude(apiKey, content, SCHEMA_APRESENTACAO_FIXOS);
   // Passo 2 — campos extras que ainda estão no template
@@ -818,22 +831,128 @@ async function driveListIntermediadores(
   return { intermediadores: out, debug };
 }
 
+// Acha uma subpasta por nome tolerante a acento/encoding/caixa (normalizar + includes).
+async function driveFindChildByTolerantName(
+  token: string,
+  parentId: string,
+  needle: string,
+  mustBeFolder = true,
+): Promise<DriveFile | null> {
+  let q = `'${parentId}' in parents and trashed = false`;
+  if (mustBeFolder) q += ` and mimeType = '${FOLDER_MIME}'`;
+  const files = await driveListFiles(token, q);
+  const n = normalizar(needle);
+  return files.find(f => normalizar(f.name) === n)
+      ?? files.find(f => normalizar(f.name).includes(n))
+      ?? null;
+}
+
+// Acha a pasta "A. Análises de crédito" (irmã de "B. Processos") dentro do shared
+// drive "Credijuris - Atualizado", com fallback pra pasta normal.
+async function driveEncontrarAnalisesRoot(token: string): Promise<string> {
+  const drive = await driveFindSharedDrive(token, DRIVE_ROOT_NAME);
+  if (drive) {
+    const child = await driveFindChildByTolerantName(token, drive.id, DRIVE_ANALISES_NAME);
+    if (child) return child.id;
+    throw new Error(`Shared Drive '${DRIVE_ROOT_NAME}' achado, mas pasta '${DRIVE_ANALISES_NAME}' não existe nele.`);
+  }
+  const roots = await driveListFiles(token, `name = '${escapeDriveQuery(DRIVE_ROOT_NAME)}' and trashed = false and mimeType = '${FOLDER_MIME}'`);
+  if (!roots[0]) throw new Error(`'${DRIVE_ROOT_NAME}' não encontrado no Drive. Confirma que a conta do refresh_token tem acesso.`);
+  const child = await driveFindChildByTolerantName(token, roots[0].id, DRIVE_ANALISES_NAME);
+  if (!child) throw new Error(`Pasta '${DRIVE_ANALISES_NAME}' não existe dentro de '${DRIVE_ROOT_NAME}'.`);
+  return child.id;
+}
+
+// Navega A. Análises de crédito / Requisições de Pequeno Valor / {intermediador} /
+// {pasta do cedente} e lista os arquivos (não-pasta) lá dentro.
+// Match da pasta leaf: preferência pelo número do processo (mais específico),
+// fallback pro nome do cedente.
+async function driveEncontrarAnaliseArquivos(
+  token: string,
+  intermediadorNome: string,
+  cedenteNome: string,
+  numeroProcesso: string,
+): Promise<{ folderId: string; folderName: string; arquivos: DriveFile[]; debug: Record<string, unknown> }> {
+  const analisesRootId = await driveEncontrarAnalisesRoot(token);
+
+  const categoria = await driveFindChildByTolerantName(token, analisesRootId, DRIVE_CATEGORIA_PADRAO);
+  if (!categoria) throw new Error(`Categoria '${DRIVE_CATEGORIA_PADRAO}' não encontrada em '${DRIVE_ANALISES_NAME}'.`);
+
+  const inter = await driveFindChildByTolerantName(token, categoria.id, intermediadorNome);
+  if (!inter) {
+    const disponiveis = await driveListFiles(token, `'${categoria.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
+    throw new Error(`Intermediador '${intermediadorNome}' não encontrado em '${DRIVE_ANALISES_NAME}/${DRIVE_CATEGORIA_PADRAO}'. Disponíveis: ${disponiveis.map(d => d.name).join(', ') || '(nenhum)'}`);
+  }
+
+  const subs = await driveListFiles(token, `'${inter.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
+  const procDigits = numeroProcesso.replace(/\D/g, '');
+  const cedNorm = normalizar(cedenteNome);
+  let leaf: DriveFile | null = null;
+  if (procDigits) leaf = subs.find(s => s.name.replace(/\D/g, '').includes(procDigits)) ?? null;
+  if (!leaf && cedNorm) leaf = subs.find(s => normalizar(s.name).includes(cedNorm)) ?? null;
+  if (!leaf) {
+    throw new Error(`Pasta da análise não encontrada em '${inter.name}'. Procurei por processo '${numeroProcesso}' e cedente '${cedenteNome || '(sem nome)'}'. Pastas disponíveis: ${subs.map(s => s.name).join(', ') || '(nenhuma)'}`);
+  }
+
+  const todos = await driveListFiles(token, `'${leaf.id}' in parents and trashed = false`);
+  const arquivos = todos.filter(f => f.mimeType !== FOLDER_MIME);
+  return {
+    folderId: leaf.id,
+    folderName: leaf.name,
+    arquivos,
+    debug: { intermediador_id: inter.id, leaf_id: leaf.id, subpastas: subs.map(s => s.name) },
+  };
+}
+
+function ensureExt(name: string, ext: string): string {
+  return name.toLowerCase().endsWith(ext) ? name : name + ext;
+}
+
+// Baixa um arquivo do Drive. Arquivos nativos do Google (Sheets/Docs) não saem
+// com alt=media — exporta pra xlsx/docx; outros nativos viram PDF.
+async function driveBaixarArquivo(token: string, file: DriveFile): Promise<{ filename: string; bytes: Uint8Array }> {
+  const mt = file.mimeType || '';
+  let url: string;
+  let filename = file.name;
+  if (mt === GOOGLE_SHEET_MIME) {
+    url = `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=${encodeURIComponent(XLSX_MIME)}&supportsAllDrives=true`;
+    filename = ensureExt(file.name, '.xlsx');
+  } else if (mt === GOOGLE_DOC_MIME) {
+    url = `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=${encodeURIComponent(DOCX_MIME)}&supportsAllDrives=true`;
+    filename = ensureExt(file.name, '.docx');
+  } else if (mt.startsWith('application/vnd.google-apps.')) {
+    url = `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=${encodeURIComponent('application/pdf')}&supportsAllDrives=true`;
+    filename = ensureExt(file.name, '.pdf');
+  } else {
+    url = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`;
+  }
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Drive download '${file.name}' (${res.status}): ${txt.slice(0, 300)}`);
+  }
+  return { filename, bytes: new Uint8Array(await res.arrayBuffer()) };
+}
+
 async function driveGarantirEstruturaCedente(
   token: string,
   intermediadorId: string,
   nomePasta: string,
-): Promise<{ contratosId: string; analiseId: string }> {
+): Promise<{ contratosId: string; analiseId: string; cedenteDocsId: string }> {
   const cedenteId = await driveFindOrCreateFolder(token, nomePasta, intermediadorId);
   let contratosId = '';
   let analiseId = '';
+  let cedenteDocsId = '';
   for (const sub of DRIVE_SUBPASTAS) {
     const id = await driveFindOrCreateFolder(token, sub, cedenteId);
-    if (sub === DRIVE_PASTA_CONTRATOS) contratosId = id;
-    if (sub === DRIVE_PASTA_ANALISE)   analiseId = id;
+    if (sub === DRIVE_PASTA_CONTRATOS)    contratosId = id;
+    if (sub === DRIVE_PASTA_ANALISE)      analiseId = id;
+    if (sub === DRIVE_PASTA_CEDENTE_DOCS) cedenteDocsId = id;
   }
-  if (!contratosId) throw new Error(`Subpasta '${DRIVE_PASTA_CONTRATOS}' não pôde ser criada.`);
-  if (!analiseId)   throw new Error(`Subpasta '${DRIVE_PASTA_ANALISE}' não pôde ser criada.`);
-  return { contratosId, analiseId };
+  if (!contratosId)   throw new Error(`Subpasta '${DRIVE_PASTA_CONTRATOS}' não pôde ser criada.`);
+  if (!analiseId)     throw new Error(`Subpasta '${DRIVE_PASTA_ANALISE}' não pôde ser criada.`);
+  if (!cedenteDocsId) throw new Error(`Subpasta '${DRIVE_PASTA_CEDENTE_DOCS}' não pôde ser criada.`);
+  return { contratosId, analiseId, cedenteDocsId };
 }
 
 async function driveUploadBytes(
@@ -989,8 +1108,12 @@ serve(async (req) => {
     const investidorId: string = body.investidor_id;
     const intermediadorNome: string = body.intermediador;
     const tipoExplicito: string | null = body.tipo || null;
+    const numeroProcesso: string = (body.numero_processo || '').trim();
     if (!jobId || !investidorId || !intermediadorNome) {
       return errorResponse('Campos obrigatórios: job_id, investidor_id, intermediador');
+    }
+    if (!numeroProcesso) {
+      return errorResponse('Campo obrigatório: numero_processo (usado pra localizar a análise no Drive)');
     }
 
     // 3. Service-role client (lê secrets, faz cleanup, escreve auditoria)
@@ -1037,13 +1160,11 @@ serve(async (req) => {
     if (jobErr) throw new Error('Erro criando job: ' + jobErr.message);
     jobRow = createdJob;
 
-    // 7. Lista arquivos de input no Storage
+    // 7. Lista arquivos de input no Storage (cedente/escritório).
+    //    Apresentação (análise de crédito) não é mais upload — vem do Drive no passo 9b.
     const jobPrefix = `${userId}/${jobId}`;
     const inputPaths = await listInputPaths(sbAdmin, jobPrefix);
     inputPathsAll = [...inputPaths.apresentacao, ...inputPaths.cedente, ...inputPaths.escritorio];
-    if (inputPaths.apresentacao.length === 0) {
-      return errorResponse(`Pasta '${jobPrefix}/apresentacao' está vazia no bucket ${BUCKET_INPUT}`, 400);
-    }
 
     // 8. Lê templates do bucket → coleta união de variáveis
     const templateBytes: Record<string, Uint8Array> = {};
@@ -1059,23 +1180,62 @@ serve(async (req) => {
       for (const v of vars) allTemplateVars.add(v);
     }
 
-    // 9. Extrações em paralelo
-    const apresentacaoP = extractApresentacao(sbAdmin, cfg.anthropic_api_key, inputPaths.apresentacao, Array.from(allTemplateVars));
+    // 9. Extrai cedente + escritório primeiro — o nome do cedente define qual pasta
+    //    da análise buscar no Drive.
     const cedenteP = inputPaths.cedente.length > 0
       ? extractParte(sbAdmin, cfg.anthropic_api_key, inputPaths.cedente, SCHEMA_CEDENTE)
       : Promise.resolve<Vars>({});
     const escritorioP = inputPaths.escritorio.length > 0
       ? extractParte(sbAdmin, cfg.anthropic_api_key, inputPaths.escritorio, SCHEMA_ESCRITORIO)
       : Promise.resolve<Vars>({});
-    const [apresentacao, cedente, escritorio] = await Promise.all([apresentacaoP, cedenteP, escritorioP]);
+    const [cedente, escritorio] = await Promise.all([cedenteP, escritorioP]);
 
-    // 9b. Override determinístico das 3 checkboxes a partir do XLSX (se houver).
-    // A IA tende a errar quando o input é grande (sheet2/sheet3 da análise são
-    // gigantes), então sobrescrevemos com leitura direta do XML do xlsx.
+    // 9a. Refresh do token Google — usado pra buscar a análise no Drive e, depois, pro upload.
+    const accessToken = await refreshGoogleAccessToken(
+      cfg.google_oauth_client_id,
+      cfg.google_oauth_client_secret,
+      cfg.google_oauth_refresh_token,
+    );
+
+    // 9b. Localiza a análise de crédito no Drive:
+    //     A. Análises de crédito / Requisições de Pequeno Valor / {intermediador} / {cedente - processo}
+    const cedenteNome = (cedente.CEDENTE_NOME as string) || '';
+    let analiseFolderName = '';
+    let analiseArquivos: DriveFile[];
+    try {
+      const found = await driveEncontrarAnaliseArquivos(accessToken, intermediadorNome, cedenteNome, numeroProcesso);
+      analiseArquivos = found.arquivos;
+      analiseFolderName = found.folderName;
+      console.log('[gerar-contrato] análise localizada:', JSON.stringify({ folder: found.folderName, debug: found.debug }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return errorResponse(`Não localizei a análise de crédito no Drive: ${msg}`, 404, {
+        intermediador: intermediadorNome, cedente: cedenteNome, numero_processo: numeroProcesso,
+      });
+    }
+    if (analiseArquivos.length === 0) {
+      return errorResponse(`Pasta da análise ('${analiseFolderName}') está vazia no Drive.`, 400);
+    }
+
+    // 9c. Baixa os arquivos da análise (export se forem Google Sheets/Docs nativos)
+    //     e monta o conteúdo pro Claude.
+    const analiseBaixados: Array<{ filename: string; bytes: Uint8Array }> = [];
+    const apresentacaoContent: ClaudeContentBlock[] = [];
+    for (const f of analiseArquivos) {
+      const baixado = await driveBaixarArquivo(accessToken, f);
+      analiseBaixados.push(baixado);
+      apresentacaoContent.push(...(await bytesToContentBlocks(baixado.filename, baixado.bytes)));
+    }
+
+    // 9d. Extrai a apresentação a partir do conteúdo baixado.
+    const apresentacao = await extractApresentacao(cfg.anthropic_api_key, apresentacaoContent, Array.from(allTemplateVars));
+
+    // 9e. Override determinístico das 3 checkboxes a partir do xlsx baixado (a IA erra
+    //     quando o input é grande). Sobrescreve as NEGOCIAR_*.
     const checkboxDebug: Record<string, unknown> = {
-      apresentacao_paths: inputPaths.apresentacao,
+      analise_folder: analiseFolderName,
+      analise_arquivos: analiseBaixados.map(a => a.filename),
       tentou_xlsx: false,
-      xlsx_path: null as string | null,
       detectado: null as Vars | null,
       erro: null as string | null,
       valor_ia_antes: {
@@ -1084,14 +1244,12 @@ serve(async (req) => {
         NEGOCIAR_HONORARIOS_SUCUMBENCIAIS: apresentacao.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS,
       },
     };
-    for (const path of inputPaths.apresentacao) {
-      const ext = extOf(path);
+    for (const a of analiseBaixados) {
+      const ext = extOf(a.filename);
       if (ext !== '.xlsx' && ext !== '.xls') continue;
       checkboxDebug.tentou_xlsx = true;
-      checkboxDebug.xlsx_path = path;
       try {
-        const bytes = await storageGetBytes(sbAdmin, BUCKET_INPUT, path);
-        const detectado = await detectCheckboxesFromXlsx(bytes);
+        const detectado = await detectCheckboxesFromXlsx(a.bytes);
         checkboxDebug.detectado = detectado;
         for (const [k, v] of Object.entries(detectado)) {
           if (v != null) apresentacao[k] = v;
@@ -1099,7 +1257,7 @@ serve(async (req) => {
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         checkboxDebug.erro = msg;
-        console.error('[gerar-contrato] override de checkboxes falhou', path, e);
+        console.error('[gerar-contrato] override de checkboxes falhou', a.filename, e);
       }
       break; // primeiro xlsx é suficiente
     }
@@ -1156,12 +1314,7 @@ serve(async (req) => {
       });
     }
 
-    // 13. Drive: refresh token + walk + create + upload
-    const accessToken = await refreshGoogleAccessToken(
-      cfg.google_oauth_client_id,
-      cfg.google_oauth_client_secret,
-      cfg.google_oauth_refresh_token,
-    );
+    // 13. Drive: walk + create + upload (token já obtido no passo 9a)
     const processosId = await driveEncontrarProcessosFolder(accessToken);
     const { intermediadores, debug: driveDebug } = await driveListIntermediadores(accessToken, processosId);
     const interTermo = normalizar(intermediadorNome);
@@ -1181,7 +1334,7 @@ serve(async (req) => {
     const nomeTitular = toTitleCasePT(escritorio.ESCRITORIO_NOME || cedente.CEDENTE_NOME || inv.nome) ?? 'sem-titular';
     const processo = apresentacao.NUMERO_PROCESSO || 'sem-processo';
     const nomePastaCedente = `${nomeTitular} - ${processo}`;
-    const { contratosId: contratosFolderId, analiseId: analiseFolderId } =
+    const { contratosId: contratosFolderId, analiseId: analiseFolderId, cedenteDocsId: cedenteDocsFolderId } =
       await driveGarantirEstruturaCedente(accessToken, interMatch.id, nomePastaCedente);
 
     // 13a. Upload dos contratos gerados pra "2. Contratos assinados"
@@ -1191,19 +1344,32 @@ serve(async (req) => {
       uploads.push({ tipo: a.tipo, nome: a.nome, drive_id: r.id, webViewLink: r.webViewLink, pendentes: a.pendentes });
     }
 
-    // 13b. Upload dos arquivos de apresentação (análise de RPV, anexos) pra "1. Análise(s) de crédito"
-    // Mantém o nome original do arquivo, faz upload com mime detectado por extensão.
+    // 13b. Copia os arquivos da análise (baixados do Drive no passo 9c) pra
+    // "1. Análise(s) de crédito" do processo. Mantém uma cópia junto do processo.
     const analiseUploads: Array<{ nome: string; drive_id: string }> = [];
-    for (const path of inputPaths.apresentacao) {
+    for (const a of analiseBaixados) {
+      try {
+        const mime = mimeForExtension(extOf(a.filename));
+        const r = await driveUploadBytes(accessToken, a.filename, analiseFolderId, a.bytes, mime);
+        analiseUploads.push({ nome: a.filename, drive_id: r.id });
+      } catch (e) {
+        console.error('[gerar-contrato] falha upload análise', a.filename, e);
+        // Best-effort — não derruba a operação inteira por causa de 1 anexo
+      }
+    }
+
+    // 13c. Upload dos documentos do cedente (RG, comprovantes, etc.) pra "4. Documentos do cedente e advogado"
+    const cedenteUploads: Array<{ nome: string; drive_id: string }> = [];
+    for (const path of inputPaths.cedente) {
       try {
         const bytes = await storageGetBytes(sbAdmin, BUCKET_INPUT, path);
         const nomeArquivo = path.split('/').pop() || 'arquivo';
         const mime = mimeForExtension(extOf(path));
-        const r = await driveUploadBytes(accessToken, nomeArquivo, analiseFolderId, bytes, mime);
-        analiseUploads.push({ nome: nomeArquivo, drive_id: r.id });
+        const r = await driveUploadBytes(accessToken, nomeArquivo, cedenteDocsFolderId, bytes, mime);
+        cedenteUploads.push({ nome: nomeArquivo, drive_id: r.id });
       } catch (e) {
-        console.error('[gerar-contrato] falha upload análise', path, e);
-        // Best-effort — não derruba a operação inteira por causa de 1 anexo
+        console.error('[gerar-contrato] falha upload doc cedente', path, e);
+        // Best-effort — não derruba a operação por causa de 1 anexo
       }
     }
 
@@ -1236,6 +1402,7 @@ serve(async (req) => {
       drive_folder_url: folderUrl,
       analise_folder_url: analiseFolderUrl,
       analise_uploads: analiseUploads,
+      cedente_uploads: cedenteUploads,
       uploads,
       variaveis_extraidas: dados,
       pendentes: todasPendentes,

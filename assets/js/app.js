@@ -1484,7 +1484,7 @@ function sbNav(item){
 const GC={
   job_id:null,
   investidores:[],
-  uploads:{apresentacao:[],cedente:[],escritorio:[]},
+  uploads:{cedente:[],escritorio:[]},
 };
 
 function _sbShowContratos(){
@@ -1499,8 +1499,9 @@ function _sbShowContratos(){
 
 async function gcInit(){
   GC.job_id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
-  GC.uploads={apresentacao:[],cedente:[],escritorio:[]};
+  GC.uploads={cedente:[],escritorio:[]};
   const res=document.getElementById('gc-result');if(res)res.innerHTML='';
+  const np=document.getElementById('gc-numero-processo');if(np)np.value='';
   await gcLoadInvestidores();
   gcRenderInvestidores();
   gcRenderFiles();
@@ -1530,7 +1531,7 @@ function gcRenderInvestidores(){
 }
 
 function gcRenderFiles(){
-  for(const papel of ['apresentacao','cedente','escritorio']){
+  for(const papel of ['cedente','escritorio']){
     const list=document.getElementById('gc-files-'+papel);
     if(!list)continue;
     const arr=GC.uploads[papel];
@@ -1550,8 +1551,8 @@ function gcRenderFiles(){
   if(!btn)return;
   const inv=document.getElementById('gc-investidor')?.value||'';
   const inter=(document.getElementById('gc-intermediador')?.value||'').trim();
-  const hasApresentacao=GC.uploads.apresentacao.length>0;
-  btn.disabled=!(inv&&inter&&hasApresentacao);
+  const proc=(document.getElementById('gc-numero-processo')?.value||'').trim();
+  btn.disabled=!(inv&&inter&&proc);
 }
 
 function gcOnFileSelect(papel,input){
@@ -1618,6 +1619,7 @@ async function gcSubmit(){
   const investidor_id=document.getElementById('gc-investidor').value;
   const intermediador=(document.getElementById('gc-intermediador').value||'').trim();
   const tipo=document.getElementById('gc-tipo').value||null;
+  const numero_processo=(document.getElementById('gc-numero-processo').value||'').trim();
 
   try{
     if(!sb)throw new Error('Supabase não inicializado');
@@ -1626,9 +1628,9 @@ async function gcSubmit(){
     if(!userId)throw new Error('Sessão expirada — faça login de novo');
 
     // 1. Upload de arquivos
-    const total=GC.uploads.apresentacao.length+GC.uploads.cedente.length+GC.uploads.escritorio.length;
+    const total=GC.uploads.cedente.length+GC.uploads.escritorio.length;
     let done=0;
-    for(const papel of ['apresentacao','cedente','escritorio']){
+    for(const papel of ['cedente','escritorio']){
       for(const file of GC.uploads[papel]){
         done++;
         _gcProgress(`Enviando arquivos… (${done}/${total}) ${file.name}`);
@@ -1645,7 +1647,7 @@ async function gcSubmit(){
     // 2. Invoca a Edge Function
     _gcProgress('Extraindo dados e gerando contratos… (pode levar 30–90s)');
     const{data,error}=await sb.functions.invoke('gerar-contrato',{
-      body:{job_id:GC.job_id,investidor_id,intermediador,tipo},
+      body:{job_id:GC.job_id,investidor_id,intermediador,tipo,numero_processo},
     });
     if(error){
       // Tenta extrair mensagem detalhada do response body
@@ -1673,7 +1675,8 @@ async function gcSubmit(){
 
     // Reset state pra próxima geração
     GC.job_id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
-    GC.uploads={apresentacao:[],cedente:[],escritorio:[]};
+    GC.uploads={cedente:[],escritorio:[]};
+    document.getElementById('gc-numero-processo').value='';
     gcRenderFiles();
   }catch(e){
     console.error('[GC] submit',e);
