@@ -1355,8 +1355,14 @@ serve(async (req) => {
     // 13a. Upload dos contratos gerados pra "2. Contratos assinados"
     const uploads: Array<{ tipo: string; nome: string; drive_id: string; webViewLink?: string; pendentes: string[] }> = [];
     for (const a of arquivosGerados) {
-      const r = await driveUploadDocx(accessToken, a.nome, contratosFolderId, a.bytes);
-      uploads.push({ tipo: a.tipo, nome: a.nome, drive_id: r.id, webViewLink: r.webViewLink, pendentes: a.pendentes });
+      // Não sobrescreve contrato já existente (pode estar assinado): se houver colisão de nome,
+      // sobe versão datada. Re-runs no mesmo dia regravam só a versão datada, nunca o original.
+      let nome = a.nome;
+      if (await driveFindChild(accessToken, nome, contratosFolderId)) {
+        nome = nome.replace(/\.docx$/i, '') + ` - ${dateStamp()}.docx`;
+      }
+      const r = await driveUploadDocx(accessToken, nome, contratosFolderId, a.bytes);
+      uploads.push({ tipo: a.tipo, nome, drive_id: r.id, webViewLink: r.webViewLink, pendentes: a.pendentes });
     }
 
     // 13b. Copia os arquivos da análise (baixados do Drive no passo 9c) pra
