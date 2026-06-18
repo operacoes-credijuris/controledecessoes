@@ -795,12 +795,14 @@
       <div class="gc-step-body">
         <div class="gc-lbl">Categoria</div>
         <div style="display:flex;gap:20px;margin-bottom:14px">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="gc-categoria" value="Requisições de Pequeno Valor" checked> Requisições de Pequeno Valor</label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="gc-categoria" value="Precatórios"> Precatórios</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="gc-categoria" value="Requisições de Pequeno Valor" checked onchange="gcLoadIntermediadores()"> Requisições de Pequeno Valor</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="gc-categoria" value="Precatórios" onchange="gcLoadIntermediadores()"> Precatórios</label>
         </div>
-        <div class="gc-lbl">Intermediador (nome da pasta no Drive)</div>
-        <input id="gc-intermediador" type="text" class="gc-input" placeholder="ex: Cred Service" oninput="gcRenderFiles()" autocomplete="off">
-        <div class="gc-hint">Match aproximado — se errar o nome, a resposta lista as opções disponíveis. (Busca dentro da categoria escolhida acima.)</div>
+        <div class="gc-lbl">Intermediador</div>
+        <select id="gc-intermediador" class="gc-select" onchange="gcRenderFiles()">
+          <option value="">— carregando… —</option>
+        </select>
+        <div class="gc-hint">Puxado do Drive pra categoria escolhida acima.</div>
       </div>
     </div>
 

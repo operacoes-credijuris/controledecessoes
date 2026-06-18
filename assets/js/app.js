@@ -1504,6 +1504,7 @@ async function gcInit(){
   const np=document.getElementById('gc-numero-processo');if(np)np.value='';
   await gcLoadInvestidores();
   gcRenderInvestidores();
+  gcLoadIntermediadores();
   gcRenderFiles();
 }
 
@@ -1528,6 +1529,27 @@ function gcRenderInvestidores(){
   }
   sel.innerHTML='<option value="">— selecione —</option>'+
     GC.investidores.map(i=>`<option value="${esc(i.id)}">${esc(i.nome)}${i.cpf?` (${esc(i.cpf)})`:''}</option>`).join('');
+}
+
+async function gcLoadIntermediadores(){
+  const sel=document.getElementById('gc-intermediador');
+  if(!sel)return;
+  const categoria=document.querySelector('input[name="gc-categoria"]:checked')?.value||'Requisições de Pequeno Valor';
+  sel.innerHTML='<option value="">— carregando… —</option>';
+  gcRenderFiles();
+  try{
+    if(!sb)throw new Error('Supabase não inicializado');
+    const{data,error}=await sb.functions.invoke('gerar-contrato',{body:{acao:'listar_intermediadores',categoria}});
+    if(error)throw error;
+    const lista=(data&&data.intermediadores)||[];
+    sel.innerHTML=lista.length===0
+      ? '<option value="">(nenhum intermediador em '+esc(categoria)+')</option>'
+      : '<option value="">— selecione —</option>'+lista.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  }catch(e){
+    console.error('[GC] loadIntermediadores',e);
+    sel.innerHTML='<option value="">(erro ao carregar — recarrega a página)</option>';
+  }
+  gcRenderFiles();
 }
 
 function gcRenderFiles(){

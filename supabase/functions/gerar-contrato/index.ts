@@ -870,6 +870,16 @@ async function driveEncontrarAnalisesRoot(token: string): Promise<string> {
   return child.id;
 }
 
+// Lista os nomes das pastas de intermediador dentro de A. Análises de crédito / {categoria}.
+// Popula o dropdown de intermediador no front (browser não acessa o Drive direto).
+async function driveListarIntermediadoresAnalise(token: string, categoria: string): Promise<string[]> {
+  const analisesRootId = await driveEncontrarAnalisesRoot(token);
+  const catFolder = await driveFindChildByTolerantName(token, analisesRootId, categoria);
+  if (!catFolder) return [];
+  const subs = await driveListFiles(token, `'${catFolder.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
+  return subs.map(s => s.name).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 // Navega A. Análises de crédito / {categoria} / {intermediador} / {pasta do cedente}
 // e lista os arquivos de análise. Pasta do cedente casa pelo NOME do cedente
 // (fallback nº processo). Se o cedente tem múltiplos processos, há subpastas
@@ -886,7 +896,8 @@ async function driveEncontrarAnaliseArquivos(
   const catFolder = await driveFindChildByTolerantName(token, analisesRootId, categoria);
   if (!catFolder) throw new Error(`Categoria '${categoria}' não encontrada em '${DRIVE_ANALISES_NAME}'.`);
 
-  const inter = await driveFindChildByTolerantName(token, catFolder.id, intermediadorNome);
+  // Match exato — o nome vem do dropdown, populado da mesma listagem do Drive.
+  const inter = await driveFindChild(token, intermediadorNome, catFolder.id, FOLDER_MIME);
   if (!inter) {
     const disponiveis = await driveListFiles(token, `'${catFolder.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
     throw new Error(`Intermediador '${intermediadorNome}' não encontrado em '${DRIVE_ANALISES_NAME}/${categoria}'. Disponíveis: ${disponiveis.map(d => d.name).join(', ') || '(nenhum)'}`);
@@ -1132,6 +1143,23 @@ serve(async (req) => {
     const tipoExplicito: string | null = body.tipo || null;
     const numeroProcesso: string = (body.numero_processo || '').trim();
     const categoria: string = (body.categoria || DRIVE_CATEGORIA_PADRAO).trim();
+
+    // Ação leve: só lista os intermediadores da categoria (popular o dropdown do front).
+    // Não cria job nem gera nada — auth do JWT já validada acima.
+    if (body.acao === 'listar_intermediadores') {
+      sbAdmin = createClient<any, any, any>(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      );
+      const { data: gRows } = await sbAdmin.from('configuracoes').select('chave,valor')
+        .in('chave', ['google_oauth_client_id','google_oauth_client_secret','google_oauth_refresh_token']);
+      const g: Record<string, string> = {};
+      for (const r of (gRows || [])) g[r.chave] = r.valor;
+      const token = await refreshGoogleAccessToken(g.google_oauth_client_id, g.google_oauth_client_secret, g.google_oauth_refresh_token);
+      const intermediadores = await driveListarIntermediadoresAnalise(token, categoria);
+      return jsonResponse({ intermediadores });
+    }
+
     if (!jobId || !investidorId || !intermediadorNome) {
       return errorResponse('Campos obrigatórios: job_id, investidor_id, intermediador');
     }
