@@ -870,10 +870,10 @@ async function driveEncontrarAnalisesRoot(token: string): Promise<string> {
   return child.id;
 }
 
-// Navega A. Análises de crédito / Requisições de Pequeno Valor / {intermediador} /
-// {pasta do cedente} e lista os arquivos (não-pasta) lá dentro.
-// Match da pasta leaf: preferência pelo número do processo (mais específico),
-// fallback pro nome do cedente.
+// Navega A. Análises de crédito / {categoria} / {intermediador} / {pasta do cedente}
+// e lista os arquivos de análise. Pasta do cedente casa pelo NOME do cedente
+// (fallback nº processo). Se o cedente tem múltiplos processos, há subpastas
+// nomeadas por nº de processo lá dentro — desce na que casa antes de listar.
 async function driveEncontrarAnaliseArquivos(
   token: string,
   categoria: string,
@@ -902,19 +902,27 @@ async function driveEncontrarAnaliseArquivos(
     throw new Error(`Pasta do cedente não encontrada em '${inter.name}'. Procurei cedente '${cedenteNome || '(sem nome)'}' e processo '${numeroProcesso}'. Pastas disponíveis: ${subs.map(s => s.name).join(', ') || '(nenhuma)'}`);
   }
 
-  // Dentro da pasta do cedente: prefere a "Análise de ..." que casa com o processo.
-  const todos = await driveListFiles(token, `'${leaf.id}' in parents and trashed = false`);
-  const naoPastas = todos.filter(f => f.mimeType !== FOLDER_MIME);
+  // Cedente multi-processo: as análises ficam em subpastas nomeadas pelo nº de cada
+  // processo. Desce na que casa; senão (single) usa a própria pasta do cedente.
+  const leafChildren = await driveListFiles(token, `'${leaf.id}' in parents and trashed = false`);
+  const procFolder = procDigits
+    ? leafChildren.find(f => f.mimeType === FOLDER_MIME && f.name.replace(/\D/g, '').includes(procDigits)) ?? null
+    : null;
+  const alvo = procFolder ?? leaf;
+  const naoPastas = procFolder
+    ? (await driveListFiles(token, `'${procFolder.id}' in parents and trashed = false`)).filter(f => f.mimeType !== FOLDER_MIME)
+    : leafChildren.filter(f => f.mimeType !== FOLDER_MIME);
+
+  // Prefere a "Análise de ..." que casa com o processo; senão (ponytail) todos os arquivos da pasta.
   const match = naoPastas.filter(f =>
     normalizar(f.name).includes('analisede') && (!procDigits || f.name.replace(/\D/g, '').includes(procDigits))
   );
-  // ponytail: fallback p/ todos os arquivos se o nome fugir do padrão "Análise de ... - processo"
   const arquivos = match.length ? match : naoPastas;
   return {
-    folderId: leaf.id,
-    folderName: leaf.name,
+    folderId: alvo.id,
+    folderName: procFolder ? `${leaf.name}/${procFolder.name}` : leaf.name,
     arquivos,
-    debug: { categoria_id: catFolder.id, intermediador_id: inter.id, leaf_id: leaf.id, subpastas: subs.map(s => s.name), arquivos_na_pasta: naoPastas.map(f => f.name) },
+    debug: { categoria_id: catFolder.id, intermediador_id: inter.id, leaf_id: leaf.id, proc_folder: procFolder?.name ?? null, subpastas: subs.map(s => s.name), arquivos_na_pasta: naoPastas.map(f => f.name) },
   };
 }
 
