@@ -812,6 +812,7 @@ async function driveEncontrarProcessosFolder(token: string): Promise<string> {
 async function driveListIntermediadores(
   token: string,
   processosId: string,
+  categoria: string,
 ): Promise<{ intermediadores: Array<{ id: string; name: string; categoria: string }>; debug: { categorias_em_processos: string[]; categoria_rpv_id: string | null } }> {
   const cats = await driveListFiles(
     token,
@@ -823,9 +824,9 @@ async function driveListIntermediadores(
   };
   const out: Array<{ id: string; name: string; categoria: string }> = [];
   // Match tolerante a acentos/encoding — resiste a deploys que quebrem UTF-8 da constante
-  const alvoNorm = normalizar(DRIVE_CATEGORIA_PADRAO);
+  const alvoNorm = normalizar(categoria);
   for (const cat of cats) {
-    if (normalizar(cat.name) !== alvoNorm) continue; // só RPV por enquanto (matching Python default)
+    if (normalizar(cat.name) !== alvoNorm) continue; // só a categoria escolhida (RPV ou Precatórios)
     debug.categoria_rpv_id = cat.id;
     const subs = await driveListFiles(
       token,
@@ -875,38 +876,45 @@ async function driveEncontrarAnalisesRoot(token: string): Promise<string> {
 // fallback pro nome do cedente.
 async function driveEncontrarAnaliseArquivos(
   token: string,
+  categoria: string,
   intermediadorNome: string,
   cedenteNome: string,
   numeroProcesso: string,
 ): Promise<{ folderId: string; folderName: string; arquivos: DriveFile[]; debug: Record<string, unknown> }> {
   const analisesRootId = await driveEncontrarAnalisesRoot(token);
 
-  const categoria = await driveFindChildByTolerantName(token, analisesRootId, DRIVE_CATEGORIA_PADRAO);
-  if (!categoria) throw new Error(`Categoria '${DRIVE_CATEGORIA_PADRAO}' não encontrada em '${DRIVE_ANALISES_NAME}'.`);
+  const catFolder = await driveFindChildByTolerantName(token, analisesRootId, categoria);
+  if (!catFolder) throw new Error(`Categoria '${categoria}' não encontrada em '${DRIVE_ANALISES_NAME}'.`);
 
-  const inter = await driveFindChildByTolerantName(token, categoria.id, intermediadorNome);
+  const inter = await driveFindChildByTolerantName(token, catFolder.id, intermediadorNome);
   if (!inter) {
-    const disponiveis = await driveListFiles(token, `'${categoria.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
-    throw new Error(`Intermediador '${intermediadorNome}' não encontrado em '${DRIVE_ANALISES_NAME}/${DRIVE_CATEGORIA_PADRAO}'. Disponíveis: ${disponiveis.map(d => d.name).join(', ') || '(nenhum)'}`);
+    const disponiveis = await driveListFiles(token, `'${catFolder.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
+    throw new Error(`Intermediador '${intermediadorNome}' não encontrado em '${DRIVE_ANALISES_NAME}/${categoria}'. Disponíveis: ${disponiveis.map(d => d.name).join(', ') || '(nenhum)'}`);
   }
 
+  // Pasta leaf = pasta do cedente. Match pelo NOME do cedente (extraído dos docs), fallback pro processo.
   const subs = await driveListFiles(token, `'${inter.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
-  const procDigits = numeroProcesso.replace(/\D/g, '');
   const cedNorm = normalizar(cedenteNome);
-  let leaf: DriveFile | null = null;
-  if (procDigits) leaf = subs.find(s => s.name.replace(/\D/g, '').includes(procDigits)) ?? null;
-  if (!leaf && cedNorm) leaf = subs.find(s => normalizar(s.name).includes(cedNorm)) ?? null;
+  const procDigits = numeroProcesso.replace(/\D/g, '');
+  let leaf: DriveFile | null = cedNorm ? subs.find(s => normalizar(s.name).includes(cedNorm)) ?? null : null;
+  if (!leaf && procDigits) leaf = subs.find(s => s.name.replace(/\D/g, '').includes(procDigits)) ?? null;
   if (!leaf) {
-    throw new Error(`Pasta da análise não encontrada em '${inter.name}'. Procurei por processo '${numeroProcesso}' e cedente '${cedenteNome || '(sem nome)'}'. Pastas disponíveis: ${subs.map(s => s.name).join(', ') || '(nenhuma)'}`);
+    throw new Error(`Pasta do cedente não encontrada em '${inter.name}'. Procurei cedente '${cedenteNome || '(sem nome)'}' e processo '${numeroProcesso}'. Pastas disponíveis: ${subs.map(s => s.name).join(', ') || '(nenhuma)'}`);
   }
 
+  // Dentro da pasta do cedente: prefere a "Análise de ..." que casa com o processo.
   const todos = await driveListFiles(token, `'${leaf.id}' in parents and trashed = false`);
-  const arquivos = todos.filter(f => f.mimeType !== FOLDER_MIME);
+  const naoPastas = todos.filter(f => f.mimeType !== FOLDER_MIME);
+  const match = naoPastas.filter(f =>
+    normalizar(f.name).includes('analisede') && (!procDigits || f.name.replace(/\D/g, '').includes(procDigits))
+  );
+  // ponytail: fallback p/ todos os arquivos se o nome fugir do padrão "Análise de ... - processo"
+  const arquivos = match.length ? match : naoPastas;
   return {
     folderId: leaf.id,
     folderName: leaf.name,
     arquivos,
-    debug: { intermediador_id: inter.id, leaf_id: leaf.id, subpastas: subs.map(s => s.name) },
+    debug: { categoria_id: catFolder.id, intermediador_id: inter.id, leaf_id: leaf.id, subpastas: subs.map(s => s.name), arquivos_na_pasta: naoPastas.map(f => f.name) },
   };
 }
 
@@ -1115,6 +1123,7 @@ serve(async (req) => {
     const intermediadorNome: string = body.intermediador;
     const tipoExplicito: string | null = body.tipo || null;
     const numeroProcesso: string = (body.numero_processo || '').trim();
+    const categoria: string = (body.categoria || DRIVE_CATEGORIA_PADRAO).trim();
     if (!jobId || !investidorId || !intermediadorNome) {
       return errorResponse('Campos obrigatórios: job_id, investidor_id, intermediador');
     }
@@ -1209,7 +1218,7 @@ serve(async (req) => {
     let analiseFolderName = '';
     let analiseArquivos: DriveFile[];
     try {
-      const found = await driveEncontrarAnaliseArquivos(accessToken, intermediadorNome, cedenteNome, numeroProcesso);
+      const found = await driveEncontrarAnaliseArquivos(accessToken, categoria, intermediadorNome, cedenteNome, numeroProcesso);
       analiseArquivos = found.arquivos;
       analiseFolderName = found.folderName;
       console.log('[gerar-contrato] análise localizada:', JSON.stringify({ folder: found.folderName, debug: found.debug }));
@@ -1322,7 +1331,7 @@ serve(async (req) => {
 
     // 13. Drive: walk + create + upload (token já obtido no passo 9a)
     const processosId = await driveEncontrarProcessosFolder(accessToken);
-    const { intermediadores, debug: driveDebug } = await driveListIntermediadores(accessToken, processosId);
+    const { intermediadores, debug: driveDebug } = await driveListIntermediadores(accessToken, processosId, categoria);
     const interTermo = normalizar(intermediadorNome);
     const interMatch = intermediadores.find(i => normalizar(i.name) === interTermo)
                     ?? intermediadores.find(i => normalizar(i.name).includes(interTermo));
@@ -1333,7 +1342,7 @@ serve(async (req) => {
           processos_folder_id: processosId,
           categorias_em_processos: driveDebug.categorias_em_processos,
           categoria_rpv_id: driveDebug.categoria_rpv_id,
-          categoria_procurada: DRIVE_CATEGORIA_PADRAO,
+          categoria_procurada: categoria,
         },
       });
     }

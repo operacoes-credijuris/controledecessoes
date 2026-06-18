@@ -793,9 +793,14 @@
     <div class="gc-step">
       <div class="gc-step-num">2</div>
       <div class="gc-step-body">
+        <div class="gc-lbl">Categoria</div>
+        <div style="display:flex;gap:20px;margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="gc-categoria" value="Requisições de Pequeno Valor" checked> Requisições de Pequeno Valor</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="gc-categoria" value="Precatórios"> Precatórios</label>
+        </div>
         <div class="gc-lbl">Intermediador (nome da pasta no Drive)</div>
         <input id="gc-intermediador" type="text" class="gc-input" placeholder="ex: Cred Service" oninput="gcRenderFiles()" autocomplete="off">
-        <div class="gc-hint">Match aproximado — se errar o nome, a resposta lista as opções disponíveis. (Filtra só pasta "Requisições de Pequeno Valor".)</div>
+        <div class="gc-hint">Match aproximado — se errar o nome, a resposta lista as opções disponíveis. (Busca dentro da categoria escolhida acima.)</div>
       </div>
     </div>
 
@@ -808,7 +813,7 @@
         <div class="gc-papel">
           <div class="gc-papel-hdr">Número do processo <span class="gc-papel-req">obrigatório</span></div>
           <input id="gc-numero-processo" type="text" class="gc-input" placeholder="ex: 0001234-56.2024.8.26.0100" oninput="gcRenderFiles()" autocomplete="off">
-          <div class="gc-hint">A análise de crédito é puxada automaticamente do Drive em <em>A. Análises de crédito → Requisições de Pequeno Valor → {intermediador} → {cedente}</em>. O nome do cedente sai dos documentos do cedente abaixo.</div>
+          <div class="gc-hint">A análise de crédito é puxada automaticamente do Drive em <em>A. Análises de crédito → {categoria} → {intermediador} → {cedente}</em>. O nome do cedente sai dos documentos do cedente abaixo.</div>
         </div>
 
         <div class="gc-papel">
