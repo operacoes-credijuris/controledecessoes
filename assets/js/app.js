@@ -6542,6 +6542,30 @@ function _acShowErr(msg){
     </div>`;
 }
 
+// Lê o texto de um PDF DENTRO do navegador (sem limite de páginas e sem estourar a CPU do servidor)
+let _pdfjsWorkerSet = false;
+function _ensurePdfjsWorker(){
+  if(_pdfjsWorkerSet) return;
+  if(window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions){
+    try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(_){}
+    _pdfjsWorkerSet = true;
+  }
+}
+async function acExtrairTextoPdf(file){
+  if(!window.pdfjsLib) throw new Error('o leitor de PDF (pdf.js) não carregou — recarregue a página');
+  _ensurePdfjsWorker();
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const partes = [];
+  for(let i = 1; i <= pdf.numPages; i++){
+    const page = await pdf.getPage(i);
+    const tc = await page.getTextContent();
+    partes.push(tc.items.map(it => (it && it.str) ? it.str : '').join(' '));
+  }
+  try{ await pdf.destroy(); }catch(_){}
+  return partes.join('\n');
+}
+
 async function acSubmit(){
   const btn = document.getElementById('ac-submit');
   if(!btn || btn.disabled) return;
@@ -6558,17 +6582,35 @@ async function acSubmit(){
     const userId = userData?.user?.id;
     if(!userId) throw new Error('Sessão expirada — faça login de novo');
 
-    // 1. Upload do(s) arquivo(s) do processo pro bucket temporário
+    // 1. Para cada arquivo: PDF é LIDO AQUI no navegador e enviado como TEXTO (.txt) — sem limite de páginas
+    //    e sem estourar a CPU do servidor (plano gratuito). Outros arquivos vão como estão.
     const total = AC.uploads.processo.length;
     let done = 0;
     for(const file of AC.uploads.processo){
       done++;
-      _acProgress(`Enviando arquivos… (${done}/${total}) ${file.name}`);
-      const safeName = file.name
+      const ehPdf = /\.pdf$/i.test(file.name);
+      const baseSafe = file.name
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^\w.\-()]/g, '_');
-      const path = `${userId}/${AC.job_id}/processo/${safeName}`;
-      const { error } = await sb.storage.from('analises-input').upload(path, file, { upsert: true });
+
+      let blobParaEnviar = file;
+      let nomeFinal = baseSafe;
+
+      if(ehPdf){
+        _acProgress(`Lendo o PDF no navegador… (${done}/${total}) ${file.name}`);
+        let texto = '';
+        try{ texto = await acExtrairTextoPdf(file); }
+        catch(e){ console.error('[AC] pdf->texto', e); throw new Error(`Não consegui ler o PDF ${file.name} no navegador: ${e.message || e}`); }
+        if(!texto || !texto.trim()){
+          throw new Error(`O PDF ${file.name} não tem texto selecionável (parece escaneado). Envie um PDF com texto.`);
+        }
+        blobParaEnviar = new Blob([texto], { type: 'text/plain' });
+        nomeFinal = baseSafe.replace(/\.pdf$/i, '') + '.txt';
+      }
+
+      _acProgress(`Enviando… (${done}/${total}) ${nomeFinal}`);
+      const path = `${userId}/${AC.job_id}/processo/${nomeFinal}`;
+      const { error } = await sb.storage.from('analises-input').upload(path, blobParaEnviar, { upsert: true });
       if(error) throw new Error(`Upload de ${file.name} falhou: ${error.message}`);
     }
 
