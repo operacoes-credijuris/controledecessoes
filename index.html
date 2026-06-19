@@ -763,10 +763,65 @@
 </div>
 
 <!-- PAINEL ANÁLISES DE CRÉDITO -->
-<div id="pane-credito" style="display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;color:#4b5563">
-  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="opacity:.3"><rect x="4" y="24" width="7" height="12" rx="1.5" stroke="#6b7280" stroke-width="1.8"/><rect x="16.5" y="14" width="7" height="22" rx="1.5" stroke="#6b7280" stroke-width="1.8"/><rect x="29" y="4" width="7" height="32" rx="1.5" stroke="#6b7280" stroke-width="1.8"/></svg>
-  <div style="font-size:16px;font-weight:600;color:#6b7280;margin-top:16px">Análises de Crédito</div>
-  <div style="font-size:13px;color:#4b5563;margin-top:6px">Em construção</div>
+<div id="pane-credito" style="display:none;flex-direction:column;padding:32px 40px;overflow-y:auto">
+  <div class="gc-hdr">
+    <div class="gc-hdr-kicker">Operacional</div>
+    <div class="gc-hdr-title">Análises de Crédito</div>
+    <div class="gc-hdr-sub">Suba o PDF com o processo completo (incluindo a CUC). A precificação lê tudo, monta a planilha e entrega direto na pasta certa do Drive.</div>
+  </div>
+
+  <div class="gc-form">
+    <!-- Passo 1: Categoria + Intermediador -->
+    <div class="gc-step">
+      <div class="gc-step-num">1</div>
+      <div class="gc-step-body">
+        <div class="gc-lbl">Categoria</div>
+        <div style="display:flex;gap:20px;margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="ac-categoria" value="Requisições de Pequeno Valor" checked onchange="acLoadIntermediadores()"> Requisições de Pequeno Valor</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="ac-categoria" value="Precatórios" onchange="acLoadIntermediadores()"> Precatórios</label>
+        </div>
+        <div class="gc-lbl">Intermediador</div>
+        <select id="ac-intermediador" class="gc-select" onchange="acRenderFiles()">
+          <option value="">— carregando… —</option>
+        </select>
+        <div class="gc-hint">Puxado do Drive (pasta "A. Análises de crédito" da categoria escolhida).</div>
+      </div>
+    </div>
+
+    <!-- Passo 2: Número do processo -->
+    <div class="gc-step">
+      <div class="gc-step-num">2</div>
+      <div class="gc-step-body">
+        <div class="gc-lbl">Número do processo <span class="gc-papel-req">obrigatório</span></div>
+        <input id="ac-numero-processo" type="text" class="gc-input" placeholder="ex: 0001234-56.2024.8.09.0051" oninput="acRenderFiles()" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Passo 3: Processo completo (PDF único) -->
+    <div class="gc-step">
+      <div class="gc-step-num">3</div>
+      <div class="gc-step-body">
+        <div class="gc-lbl">Processo completo <span class="gc-papel-req">obrigatório</span></div>
+        <label class="gc-dropzone">
+          <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx" onchange="acOnFileSelect(this)" style="display:none">
+          <div class="gc-dropzone-text">+ Selecionar arquivo</div>
+          <div class="gc-dropzone-sub">um PDF com tudo — cálculo (CUC), petições, decisões, sentença, RPV…</div>
+        </label>
+        <div id="ac-files-processo" class="gc-files"></div>
+      </div>
+    </div>
+
+    <div class="gc-actions">
+      <button id="ac-submit" class="btn btn-gold" onclick="acSubmit()" disabled>Analisar e gerar planilha</button>
+    </div>
+
+    <div id="ac-progress" class="gc-progress" style="display:none">
+      <div class="spin"></div>
+      <div id="ac-progress-text">Processando…</div>
+    </div>
+
+    <div id="ac-result"></div>
+  </div>
 </div>
 
 <!-- PAINEL GERAR CONTRATOS -->
