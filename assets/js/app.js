@@ -458,6 +458,12 @@ function _normNome(s){return(s||'').toLowerCase().normalize('NFD').replace(/[̀-
 function _invFindByNome(nome){const q=_normNome(nome);return _crtInvestidoresData.find(i=>_normNome(i.nome)===q)||_crtInvestidoresData.find(i=>{const n=_normNome(i.nome);return n.startsWith(q)||q.startsWith(n);});}
 function _invCadastroIncompleto(nome){const inv=_invFindByNome(nome);if(!inv)return true;return['cpf','rg','endereco','banco','agencia','conta','pix'].filter(c=>inv[c]&&String(inv[c]).trim()).length<5;}
 
+// Estado da tela de Análises de Crédito — declarado ANTES do _initSidebar p/ evitar erro de inicialização ao restaurar a aba
+const AC = {
+  job_id: null,
+  uploads: { processo: [] },
+};
+
 // SIDEBAR
 (function _initSidebar(){
   const saved=localStorage.getItem('cj-sidebar-state'); const collapsed=saved?saved!=='expanded':false;
@@ -6437,11 +6443,6 @@ async function _cfgAdvboxRefreshSettings(){
 /* ======================================================
    ANÁLISES DE CRÉDITO — pane
 ====================================================== */
-const AC = {
-  job_id: null,
-  uploads: { processo: [] },
-};
-
 function acInit(){
   AC.job_id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+'-'+Math.random().toString(36).slice(2));
   AC.uploads = { processo: [] };
