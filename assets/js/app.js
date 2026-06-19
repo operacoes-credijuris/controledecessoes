@@ -553,6 +553,7 @@ function _sbShowCredito(){
   document.getElementById('pane-credito').style.display='flex';
   document.getElementById('sb-item-credito').classList.add('active');
   localStorage.setItem('cj-sidebar-active','credito');
+  acInit();
 }
 
 function _sbShowConfig(){
@@ -6437,3 +6438,173 @@ async function _cfgAdvboxRefreshSettings(){
    INIT
 ====================================================== */
 _initApp();
+
+
+/* ======================================================
+   ANÁLISES DE CRÉDITO — pane
+====================================================== */
+const AC = {
+  job_id: null,
+  uploads: { processo: [] },
+};
+
+function acInit(){
+  AC.job_id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+'-'+Math.random().toString(36).slice(2));
+  AC.uploads = { processo: [] };
+  const res = document.getElementById('ac-result'); if(res) res.innerHTML = '';
+  const np = document.getElementById('ac-numero-processo'); if(np) np.value = '';
+  acLoadIntermediadores();
+  acRenderFiles();
+}
+
+async function acLoadIntermediadores(){
+  const sel = document.getElementById('ac-intermediador');
+  if(!sel) return;
+  const categoria = document.querySelector('input[name="ac-categoria"]:checked')?.value || 'Requisições de Pequeno Valor';
+  sel.innerHTML = '<option value="">— carregando… —</option>';
+  acRenderFiles();
+  try{
+    if(!sb) throw new Error('Supabase não inicializado');
+    const { data, error } = await sb.functions.invoke('gerar-analise-rpv', { body: { acao: 'listar_intermediadores', categoria } });
+    if(error) throw error;
+    const lista = (data && data.intermediadores) || [];
+    sel.innerHTML = lista.length === 0
+      ? '<option value="">(nenhum intermediador em ' + esc(categoria) + ')</option>'
+      : '<option value="">— selecione —</option>' + lista.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  }catch(e){
+    console.error('[AC] loadIntermediadores', e);
+    sel.innerHTML = '<option value="">(erro ao carregar — recarrega a página)</option>';
+  }
+  acRenderFiles();
+}
+
+function acRenderFiles(){
+  const list = document.getElementById('ac-files-processo');
+  if(list){
+    const arr = AC.uploads.processo;
+    list.innerHTML = arr.length === 0
+      ? '<div class="gc-files-empty">Nenhum arquivo selecionado</div>'
+      : arr.map((f, idx) => `
+        <div class="gc-file-item">
+          <span class="gc-file-name">${esc(f.name)}</span>
+          <span class="gc-file-size">${(f.size/1024).toFixed(1)} KB</span>
+          <button class="gc-file-rm" onclick="acRemoveFile(${idx})" title="Remover">✕</button>
+        </div>`).join('');
+  }
+  const btn = document.getElementById('ac-submit');
+  if(!btn) return;
+  const inter = (document.getElementById('ac-intermediador')?.value || '').trim();
+  const proc = (document.getElementById('ac-numero-processo')?.value || '').trim();
+  const hasFile = AC.uploads.processo.length > 0;
+  btn.disabled = !(inter && proc && hasFile);
+}
+
+function acOnFileSelect(input){
+  if(!input || !input.files) return;
+  for(const f of Array.from(input.files)) AC.uploads.processo.push(f);
+  input.value = '';
+  acRenderFiles();
+}
+
+function acRemoveFile(idx){
+  AC.uploads.processo.splice(idx, 1);
+  acRenderFiles();
+}
+
+function _acProgress(msg){
+  const p = document.getElementById('ac-progress');
+  const t = document.getElementById('ac-progress-text');
+  if(p) p.style.display = 'flex';
+  if(t) t.textContent = msg;
+}
+
+function _acHideProgress(){
+  const p = document.getElementById('ac-progress');
+  if(p) p.style.display = 'none';
+}
+
+const DRIVE_PASTA_ANALISE_LABEL = 'A. Análises de crédito';
+
+function _acShowOk(data){
+  const r = document.getElementById('ac-result');
+  if(!r) return;
+  const cedente = data.cedente ? ` — cedente <strong>${esc(data.cedente)}</strong>` : '';
+  r.innerHTML = `
+    <div class="gc-result-ok">
+      <div class="gc-result-title ok">✓ Planilha gerada${cedente}</div>
+      <div class="gc-result-msg">Enviada pra pasta <em>${esc(DRIVE_PASTA_ANALISE_LABEL)}</em> no Drive.</div>
+      ${data.drive_folder_url ? `<a href="${esc(data.drive_folder_url)}" target="_blank" rel="noopener" class="btn btn-gold btn-sm">Abrir pasta no Drive ↗</a>` : ''}
+    </div>`;
+}
+
+function _acShowErr(msg){
+  const r = document.getElementById('ac-result');
+  if(!r) return;
+  r.innerHTML = `
+    <div class="gc-result-err">
+      <div class="gc-result-title err">✕ Erro ao gerar a análise</div>
+      <div class="gc-result-msg">${esc(msg)}</div>
+    </div>`;
+}
+
+async function acSubmit(){
+  const btn = document.getElementById('ac-submit');
+  if(!btn || btn.disabled) return;
+  const r = document.getElementById('ac-result'); if(r) r.innerHTML = '';
+  btn.disabled = true;
+
+  const intermediador = (document.getElementById('ac-intermediador').value || '').trim();
+  const numero_processo = (document.getElementById('ac-numero-processo').value || '').trim();
+  const categoria = document.querySelector('input[name="ac-categoria"]:checked')?.value || 'Requisições de Pequeno Valor';
+
+  try{
+    if(!sb) throw new Error('Supabase não inicializado');
+    const { data: userData } = await sb.auth.getUser();
+    const userId = userData?.user?.id;
+    if(!userId) throw new Error('Sessão expirada — faça login de novo');
+
+    // 1. Upload do(s) arquivo(s) do processo pro bucket temporário
+    const total = AC.uploads.processo.length;
+    let done = 0;
+    for(const file of AC.uploads.processo){
+      done++;
+      _acProgress(`Enviando arquivos… (${done}/${total}) ${file.name}`);
+      const safeName = file.name
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w.\-()]/g, '_');
+      const path = `${userId}/${AC.job_id}/processo/${safeName}`;
+      const { error } = await sb.storage.from('analises-input').upload(path, file, { upsert: true });
+      if(error) throw new Error(`Upload de ${file.name} falhou: ${error.message}`);
+    }
+
+    // 2. Invoca a Edge Function (lê o processo, roda a precificação, entrega no Drive)
+    _acProgress('Lendo o processo e gerando a planilha… (pode levar 1–2 min)');
+    const { data, error } = await sb.functions.invoke('gerar-analise-rpv', {
+      body: { job_id: AC.job_id, intermediador, numero_processo, categoria },
+    });
+    if(error){
+      let detail = error.message || String(error);
+      try{
+        if(error.context && typeof error.context.json === 'function'){
+          const j = await error.context.json();
+          if(j?.error) detail = j.error;
+        }
+      }catch(_){}
+      throw new Error(detail);
+    }
+    if(data?.error) throw new Error(data.error);
+
+    _acHideProgress();
+    _acShowOk(data);
+
+    // Reset pra próxima análise
+    AC.job_id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+'-'+Math.random().toString(36).slice(2));
+    AC.uploads = { processo: [] };
+    acRenderFiles();
+  }catch(e){
+    _acHideProgress();
+    console.error('[AC] submit', e);
+    _acShowErr(e.message || String(e));
+    btn.disabled = false;
+  }
+}
