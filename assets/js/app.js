@@ -5547,16 +5547,20 @@ function renderAuxiliares(){
     tbody.innerHTML='<tr><td colspan="7" class="empty">Nenhum órgão auxiliar cadastrado.</td></tr>';
     return;
   }
-  tbody.innerHTML=CACHE_AUX.map(c=>`
+  tbody.innerHTML=CACHE_AUX.map(c=>{
+    const waDigits=(c.whatsapp||'').replace(/\D/g,'');
+    const waCell=waDigits?`<a href="https://wa.me/55${waDigits}" target="_blank" rel="noopener" style="color:var(--grn2)">${esc(c.whatsapp)}</a>`:'—';
+    const emCell=c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--blue2)">${esc(c.email)}</a>`:'—';
+    return`
     <tr>
       <td style="font-size:12px">${esc(c.orgao||'')}</td>
       <td style="font-size:11px;color:#94a3b8">${esc(c.tribunal||'')||'—'}</td>
-      <td style="font-size:11px;color:#94a3b8">${esc(c.whatsapp||'')||'—'}</td>
+      <td style="font-size:11px;color:#94a3b8">${waCell}</td>
       <td style="font-size:11px;color:#94a3b8">${esc(c.telefone||'')||'—'}</td>
-      <td style="font-size:11px;color:#94a3b8">${esc(c.email||'')||'—'}</td>
+      <td style="font-size:11px;color:#94a3b8">${emCell}</td>
       <td><button class="btn btn-blue btn-xs" onclick="editAux('${esc(c.id)}')">Editar</button></td>
       <td><button class="btn btn-red btn-xs" onclick="deleteAux('${esc(c.id)}')">Excluir</button></td>
-    </tr>`).join('');
+    </tr>`;}).join('');
 }
 
 async function loadAuxiliares(){
