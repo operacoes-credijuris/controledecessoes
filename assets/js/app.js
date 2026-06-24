@@ -6524,11 +6524,28 @@ function _acShowOk(data){
   const r = document.getElementById('ac-result');
   if(!r) return;
   const cedente = data.cedente ? ` — cedente <strong>${esc(data.cedente)}</strong>` : '';
+  const naoAtingiu = data.atingiu_alvo === false;
+  const tituloClasse = naoAtingiu ? 'gc-result-title' : 'gc-result-title ok';
+  const tituloTxt = naoAtingiu ? '⚠ Planilha gerada — confira a rentabilidade' : '✓ Planilha gerada';
+  const resumo = (data.desagio || data.rentabilidade_mensal || data.cessao) ? `
+      <div class="gc-result-msg" style="margin-top:6px">
+        Deságio: <strong>${esc(data.desagio || '—')}</strong> ·
+        Rentabilidade: <strong>${esc(data.rentabilidade_mensal || '—')}</strong>/mês ·
+        Cessão: <strong>${esc(data.cessao || '—')}</strong>
+      </div>` : '';
+  const avisoBox = data.aviso ? `
+      <div style="margin-top:10px;padding:10px 12px;border:1px solid #e0a800;background:#fff8e1;color:#7a5b00;border-radius:8px;font-size:13px;line-height:1.45">
+        <strong>⚠ Atenção:</strong> ${esc(data.aviso)}
+      </div>` : '';
+  const btnPasta = data.drive_folder_url ? `<a href="${esc(data.drive_folder_url)}" target="_blank" rel="noopener" class="btn btn-gold btn-sm">Abrir pasta no Drive ↗</a>` : '';
+  const btnArquivo = data.drive_file_url ? ` <a href="${esc(data.drive_file_url)}" target="_blank" rel="noopener" class="btn btn-blue btn-sm">Abrir planilha ↗</a>` : '';
   r.innerHTML = `
     <div class="gc-result-ok">
-      <div class="gc-result-title ok">✓ Planilha gerada${cedente}</div>
+      <div class="${tituloClasse}">${tituloTxt}${cedente}</div>
       <div class="gc-result-msg">Enviada pra pasta <em>${esc(DRIVE_PASTA_ANALISE_LABEL)}</em> no Drive.</div>
-      ${data.drive_folder_url ? `<a href="${esc(data.drive_folder_url)}" target="_blank" rel="noopener" class="btn btn-gold btn-sm">Abrir pasta no Drive ↗</a>` : ''}
+      ${resumo}
+      ${avisoBox}
+      <div style="margin-top:10px">${btnPasta}${btnArquivo}</div>
     </div>`;
 }
 
