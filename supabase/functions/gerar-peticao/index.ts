@@ -63,7 +63,7 @@ function sanitizeFilenamePart(s: string | null | undefined): string {
   return String(s).replace(/[\/\\:*?"<>|\r\n\t]/g, '_').replace(/\s+/g, ' ').trim();
 }
 
-function nomeArquivo(tipo: string, dados: Vars): string {
+function nomeArquivo(tipo: string, dados: Vars, tituloOverride?: string | null): string {
   const cessionario = sanitizeFilenamePart(dados.NOME_CESSIONARIO) || 'Cessionario';
   const processo    = sanitizeFilenamePart(dados.NUMERO_PROCESSO) || 'sem-processo';
   const labels: Record<string, string> = {
@@ -76,7 +76,10 @@ function nomeArquivo(tipo: string, dados: Vars): string {
     ai_com_qualif:    'Petição Personalizada (IA)',
     ai_sem_qualif:    'Petição Personalizada (IA)',
   };
-  const labelTipo = labels[tipo] || `Petição - ${tipo}`;
+  // Se houver titulo override (vindo do Claude pros tipos IA), usa ele
+  const labelTipo = tituloOverride
+    ? sanitizeFilenamePart(tituloOverride)
+    : (labels[tipo] || `Petição - ${tipo}`);
   return `${labelTipo} - ${cessionario} - ${processo}.docx`;
 }
 
@@ -489,7 +492,12 @@ const CLAUDE_SYSTEM_PROMPT =
   'Use formal Português jurídico brasileiro. Estruture com seções (I, II, III...) ' +
   'quando fizer sentido. Use **negrito** em destaques importantes (citações, ' +
   'números de lei, conclusões). Cada parágrafo em sua própria linha, com linha em ' +
-  'branco entre eles.';
+  'branco entre eles.\n\n' +
+  'FORMATO OBRIGATÓRIO DA RESPOSTA: na PRIMEIRA linha, escreva apenas o título curto da peça ' +
+  'no formato "TÍTULO: <até 3 palavras>". Exemplos válidos: "TÍTULO: Recurso Especial", ' +
+  '"TÍTULO: Embargos Declaratórios", "TÍTULO: Manifestação", "TÍTULO: Petição de Cumprimento", ' +
+  '"TÍTULO: Contrarrazões". Use o nome técnico da peça processual. Depois, pule uma linha ' +
+  'e comece o corpo da petição em Markdown normalmente.';
 
 function escapeXmlText(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -628,13 +636,15 @@ function inserirCorpoNoXml(xml: string, markdown: string): string {
   return xml.replace(original, novosParagrafos);
 }
 
-// Chama Claude API com prompt + contexto. Retorna o markdown gerado.
+// Chama Claude API com prompt + contexto. Retorna o titulo (curto, até 3 palavras)
+// e o corpo em markdown. Se o Claude não seguir o formato "TÍTULO: ...", titulo
+// vem null e o body é o texto inteiro.
 async function gerarCorpoComClaude(
   apiKey: string,
   orientacao: string,
   contexto: Record<string, string>,
   anexos: ClaudeBlock[],
-): Promise<string> {
+): Promise<{ title: string | null; body: string }> {
   const contextoTexto = Object.entries(contexto)
     .filter(([_, v]) => v && v !== '(não informado)')
     .map(([k, v]) => `- ${k}: ${v}`)
@@ -673,7 +683,16 @@ async function gerarCorpoComClaude(
   const data = await res.json();
   const block = data.content?.find((c: { type: string }) => c.type === 'text');
   if (!block) throw new Error('Claude retornou sem bloco de texto');
-  return String(block.text || '').trim();
+  const raw = String(block.text || '').trim();
+  // Tenta extrair "TÍTULO: ..." da primeira linha. Tolerante a variações:
+  // TITULO/TÍTULO, com ou sem acento, com ou sem dois-pontos, em qualquer caixa.
+  const m = raw.match(/^\s*T[ÍI]TULO\s*[:\-]\s*([^\n]+)\s*\n([\s\S]*)$/i);
+  if (m) {
+    // Limpa o titulo: tira aspas, asteriscos, pontuação final, e capa em 60 chars
+    let title = m[1].trim().replace(/^["'*]+|["'*.,;:]+$/g, '').slice(0, 60);
+    return { title: title || null, body: m[2].trim() };
+  }
+  return { title: null, body: raw };
 }
 
 // Le os anexos (PDFs/imagens/docx) do bucket temp e converte em ClaudeBlocks.
@@ -787,6 +806,7 @@ serve(async (req) => {
     let anexosUsadosPaths: string[] = [];
     let corpoMarkdownGerado: string | null = null;
     let orientacaoOriginal: string = '';
+    let tituloPersonalizado: string | null = null;
     if (tipo === 'ai_com_qualif' || tipo === 'ai_sem_qualif') {
       const orientacao = String(body.orientacao || '').trim();
       if (!orientacao) return errorResponse('Orientação vazia. Descreva o que a petição deve fazer.', 400);
@@ -816,9 +836,11 @@ serve(async (req) => {
         'Créditos cedidos':       String(dados.CREDITOS_CEDIDOS || ''),
         'Observações da tarefa (Advbox)': String(body.notes_tarefa || ''),
       };
-      const corpoMarkdown = await gerarCorpoComClaude(anthKey, orientacao, contexto, anexoBlocks);
+      const { title: tituloIA, body: corpoMarkdown } = await gerarCorpoComClaude(anthKey, orientacao, contexto, anexoBlocks);
       corpoMarkdownGerado = corpoMarkdown;
       orientacaoOriginal = orientacao;
+      // Se o Claude sugeriu um titulo curto, sobrescreve o label do nome do arquivo
+      if (tituloIA) tituloPersonalizado = tituloIA;
 
       // 5b. Preenche os placeholders do header (sem o CORPO) e depois injeta o corpo
       const { bytes: bytesParcial, pendentes: pend1 } = await fillTemplate(templateBytes, dados);
@@ -837,7 +859,9 @@ serve(async (req) => {
       bytes = r.bytes;
       pendentes = r.pendentes;
     }
-    const filename = nomeArquivo(tipo, dados);
+    // Pra tipos IA, usa o titulo sugerido pelo Claude (ex: "Recurso Especial");
+    // pros outros, usa o label padrão da tabela.
+    const filename = nomeArquivo(tipo, dados, tituloPersonalizado);
 
     // 6. (Opcional) sobe a peticao pro Google Drive. Best-effort: se falhar,
     // o download local continua normalmente — apenas reporta o status.
