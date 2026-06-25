@@ -3752,10 +3752,12 @@ function _peticaoTipo(task,notes){
 }
 function peticaoBtn(r){
   const m=_peticaoTipo(r._task,r._notes);
-  // Sempre devolve a coluna (vazia ou com botao) pra manter o alinhamento
-  // vertical das datas em todos os cards.
-  if(!m)return`<div class="al-peticao-col"></div>`;
-  return`<div class="al-peticao-col"><button type="button" class="al-peticao-btn" onclick="_openPeticaoModal('${m.tipo}','${r._mod}','${esc(r._id)}')" title="${esc(m.label)}">${_DOC_SVG}</button></div>`;
+  // SEMPRE retorna o botão. Se casar com algum modelo conhecido, abre o
+  // fluxo desse modelo. Senão, abre o fluxo "IA personalizada" — usuário
+  // escreve uma orientação e o Claude gera o corpo da petição.
+  const tipo = m ? m.tipo : '__ai__';
+  const titulo = m ? m.label : 'Gerar petição personalizada (IA)';
+  return`<div class="al-peticao-col"><button type="button" class="al-peticao-btn" onclick="_openPeticaoModal('${tipo}','${r._mod}','${esc(r._id)}')" title="${esc(titulo)}">${_DOC_SVG}</button></div>`;
 }
 
 /* ============================================================
@@ -3818,6 +3820,8 @@ function _formatBRL(n){
 }
 
 function _openPeticaoModal(tipo,mod,id){
+  // Tipo especial '__ai__' -> abre o fluxo de IA (modal próprio)
+  if(tipo==='__ai__'){_openPeticaoIaModal(mod,id);return;}
   const rec=(CACHE[mod]||[]).find(x=>String(x.id)===String(id));
   if(!rec){showToast('Processo não encontrado.');return;}
   const def=_PETICAO_TIPO_MAP.find(m=>m.tipo===tipo);
@@ -3862,7 +3866,178 @@ function _petRenderCampos(def,rec,tipo){
 
   const btn=document.getElementById('pet-modal-submit');
   btn.disabled=false;btn.textContent='Gerar';btn.style.display='';
+  // Restaura o handler padrao (modal IA sobrescreve com _submitPeticaoIa)
+  btn.onclick=_submitPeticao;
   setTimeout(()=>{const first=document.querySelector('#pet-modal-fields [data-petf]');if(first&&first.tagName==='INPUT')first.focus();},50);
+}
+
+/* ============================================================
+   Fluxo "Petição Personalizada (IA)" — modal próprio
+   ============================================================ */
+const _PET_IA_MAX_FILES = 5;
+const _PET_IA_MAX_BYTES = 10 * 1024 * 1024; // 10 MB total
+let _PET_IA_ANEXOS = []; // File[] selecionados no modal
+
+function _openPeticaoIaModal(mod, id){
+  const rec=(CACHE[mod]||[]).find(x=>String(x.id)===String(id));
+  if(!rec){showToast('Processo não encontrado.');return;}
+  _PET_CTX={tipo:'__ai__',mod,id,rec,def:null};
+  _PET_IA_ANEXOS=[];
+
+  document.getElementById('pet-modal-title').textContent='Petição Personalizada (IA)';
+  const cnj=rec.numeroProcesso||'(sem CNJ)';
+  const partes=(rec.cedente||'')+(rec.cedente&&rec.cessionario?' v. ':'')+(rec.cessionario||'');
+  const info=document.getElementById('pet-modal-info');
+  info.style.display='';
+  info.innerHTML=
+    `<div class="pet-info-cnj">${esc(cnj)}</div>`+
+    (partes?`<div style="margin-top:4px">${esc(partes)}</div>`:'');
+  document.getElementById('pet-modal-err').style.display='none';
+  const ft=document.querySelector('.pet-modal-ft');
+  if(ft)ft.style.display='';
+  const cancelBtn=document.getElementById('pet-modal-cancel');
+  if(cancelBtn)cancelBtn.textContent='Cancelar';
+
+  document.getElementById('pet-modal-fields').innerHTML = `
+    <div class="pet-field">
+      <div class="pet-lbl">Tipo de petição</div>
+      <label class="pet-chk" style="margin-bottom:4px"><input type="radio" name="pet-ia-qualif" value="sem" checked> Sem qualificação (já nos autos)</label>
+      <label class="pet-chk"><input type="radio" name="pet-ia-qualif" value="com"> Com qualificação completa (recurso, inicial, RPV complementar)</label>
+    </div>
+    <div class="pet-field">
+      <label class="pet-lbl" for="pet-ia-orientacao">Orientação para a IA</label>
+      <textarea id="pet-ia-orientacao" class="pet-input" rows="6" placeholder="Descreva o que essa petição deve fazer. Ex: 'Apresentar contrarrazões ao recurso do executado, sustentando que a cessão de crédito é válida e que o cessionário tem legitimidade...'"></textarea>
+    </div>
+    <div class="pet-field">
+      <div class="pet-lbl">Anexos (opcional) — máx ${_PET_IA_MAX_FILES} arquivos, ${(_PET_IA_MAX_BYTES/1024/1024)|0}MB total</div>
+      <label class="btn btn-blue btn-sm" style="cursor:pointer;display:inline-block">
+        + Adicionar arquivos
+        <input id="pet-ia-anexo-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.txt" style="display:none" onchange="_petIaOnFileSelect(this)">
+      </label>
+      <div id="pet-ia-anexos-lista" style="margin-top:8px"></div>
+    </div>
+  `;
+
+  const btn=document.getElementById('pet-modal-submit');
+  btn.disabled=false; btn.textContent='Gerar com IA'; btn.style.display='';
+  btn.onclick=_submitPeticaoIa;
+  document.getElementById('pet-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('pet-ia-orientacao').focus(),50);
+}
+
+// Adiciona arquivos selecionados (com validação de limite). Re-renderiza a lista.
+function _petIaOnFileSelect(input){
+  const files = Array.from(input.files || []);
+  input.value = ''; // permite re-selecionar o mesmo arquivo se removido
+  for (const f of files){
+    if (_PET_IA_ANEXOS.length >= _PET_IA_MAX_FILES){
+      showToast(`Máximo de ${_PET_IA_MAX_FILES} anexos.`);
+      break;
+    }
+    const totalAtual = _PET_IA_ANEXOS.reduce((s,x)=>s+x.size,0);
+    if (totalAtual + f.size > _PET_IA_MAX_BYTES){
+      showToast(`Total ultrapassa ${(_PET_IA_MAX_BYTES/1024/1024)|0}MB.`);
+      break;
+    }
+    _PET_IA_ANEXOS.push(f);
+  }
+  _petIaRenderAnexos();
+}
+
+function _petIaRenderAnexos(){
+  const lista = document.getElementById('pet-ia-anexos-lista');
+  if (!lista) return;
+  if (!_PET_IA_ANEXOS.length){ lista.innerHTML=''; return; }
+  lista.innerHTML = _PET_IA_ANEXOS.map((f,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border-radius:4px;margin-bottom:4px;font-size:12px">
+      <span>📎 ${esc(f.name)}</span>
+      <span style="color:var(--txt3);font-size:11px">${((f.size/1024)|0)} KB</span>
+      <button type="button" onclick="_petIaRemoveAnexo(${i})" style="margin-left:auto;background:transparent;border:none;color:#f87171;cursor:pointer;font-size:14px">×</button>
+    </div>
+  `).join('');
+}
+
+function _petIaRemoveAnexo(idx){
+  _PET_IA_ANEXOS.splice(idx,1);
+  _petIaRenderAnexos();
+}
+
+async function _submitPeticaoIa(){
+  if(!_PET_CTX){showToast('Estado inválido — reabra o modal.');return;}
+  const {rec} = _PET_CTX;
+  const orientacao = (document.getElementById('pet-ia-orientacao')?.value||'').trim();
+  if(!orientacao){_petShowErr('Descreva a orientação para a IA.');return;}
+  const qualifSel = document.querySelector('input[name="pet-ia-qualif"]:checked')?.value || 'sem';
+  const tipoFinal = qualifSel === 'com' ? 'ai_com_qualif' : 'ai_sem_qualif';
+
+  const btn=document.getElementById('pet-modal-submit');
+  btn.disabled=true; btn.textContent='Enviando...';
+  document.getElementById('pet-modal-err').style.display='none';
+
+  try{
+    // 1. Faz upload dos anexos pro bucket temp (se houver)
+    let anexosPrefix = '';
+    if (_PET_IA_ANEXOS.length > 0){
+      btn.textContent = `Subindo anexos (0/${_PET_IA_ANEXOS.length})...`;
+      const { data: userData } = await sb.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) throw new Error('Sessão expirada — faça login de novo');
+      const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+      anexosPrefix = `${userId}/${jobId}`;
+      let i=0;
+      for (const f of _PET_IA_ANEXOS){
+        i++;
+        btn.textContent = `Subindo anexos (${i}/${_PET_IA_ANEXOS.length})...`;
+        const safeName = f.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w.\-()]/g,'_');
+        const path = `${anexosPrefix}/${safeName}`;
+        const { error } = await sb.storage.from('peticoes-input-ia').upload(path, f, { upsert: true });
+        if (error) throw new Error(`Upload de ${f.name} falhou: ${error.message}`);
+      }
+    }
+
+    // 2. Monta dados do processo (mesma lógica de _submitPeticao mas só os auto-vars)
+    btn.textContent = 'Claude está escrevendo...';
+    let inv=null;
+    try{inv=await _buscarInvestidorPorNome(rec.cessionario);}catch(e){}
+    const dadosBancarios=_formataDadosBancarios(inv);
+    const trib=String(rec.tribunal||'').trim().toUpperCase();
+    const tribCurto=/^TJ.+$/.test(trib)?trib.replace(/^TJ/,''):trib;
+    const juizo=rec.orgaoJulgador||rec.orgao_julgador||'';
+    const enderecamento=(juizo&&tribCurto?`${juizo}/${tribCurto}`:(juizo||tribCurto||'(juízo a indicar)')).toUpperCase();
+    const creditosCedidos=_parseCreditosDoObjeto(rec.objeto);
+    const qualificacao=_montarQualificacaoCessionario(inv);
+    const dados={
+      ENDERECAMENTO_JUIZO:enderecamento,
+      NUMERO_PROCESSO:rec.numeroProcesso||'',
+      NOME_CESSIONARIO:(rec.cessionario||'').toUpperCase(),
+      DADOS_BANCARIOS:dadosBancarios||'(dados bancários não cadastrados no investidor)',
+      CREDITOS_CEDIDOS:creditosCedidos||'',
+      QUALIFICACAO_CESSIONARIO:qualificacao,
+    };
+
+    // 3. Notes da tarefa (contexto extra pro Claude)
+    const notesTarefa = _notesDaTarefaPorTipo(rec, tipoFinal) || '';
+
+    // 4. Chama a edge function
+    const driveParams={cedente:rec.cedente||'',processo:rec.numeroProcesso||''};
+    const{data,error}=await sb.functions.invoke('gerar-peticao',{
+      body:{
+        tipo: tipoFinal,
+        dados,
+        drive: driveParams,
+        orientacao,
+        anexos_prefix: anexosPrefix,
+        notes_tarefa: notesTarefa,
+      },
+    });
+    if(error)throw new Error(error.message||'Falha ao gerar petição');
+    if(!data||!data.docx_base64)throw new Error('Resposta inesperada da função.');
+    _PET_LAST={docx_base64:data.docx_base64,filename:data.filename||'peticao.docx'};
+    _petShowResultado(data,[]);
+  }catch(e){
+    _petShowErr('Erro: '+(e.message||e));
+    btn.disabled=false; btn.textContent='Gerar com IA';
+  }
 }
 
 
@@ -3870,6 +4045,7 @@ function _closePeticaoModal(e){
   if(e&&e.target&&e.target.id!=='pet-modal')return; // so fecha se clicou no overlay
   document.getElementById('pet-modal').style.display='none';
   _PET_CTX=null;
+  _PET_IA_ANEXOS=[];
 }
 
 function _petShowErr(msg){
