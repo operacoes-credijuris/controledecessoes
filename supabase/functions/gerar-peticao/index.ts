@@ -502,36 +502,73 @@ function rPrComNegrito(rPrBase: string): string {
   return rPrBase.replace('<w:rPr>', '<w:rPr><w:b w:val="1"/><w:bCs w:val="1"/>');
 }
 
-// Constroi um <w:r> com texto. Se bold=true, aplica negrito ao rPr.
-function montarRun(texto: string, rPrBase: string, bold: boolean): string {
-  const rPr = bold ? rPrComNegrito(rPrBase) : rPrBase;
+// Inicializa um <w:rPr> com italico, baseado num rPr existente.
+function rPrComItalico(rPrBase: string): string {
+  if (!rPrBase) return '<w:rPr><w:i w:val="1"/><w:iCs w:val="1"/></w:rPr>';
+  if (rPrBase.includes('<w:i ') || rPrBase.includes('<w:i/>')) return rPrBase;
+  return rPrBase.replace('<w:rPr>', '<w:rPr><w:i w:val="1"/><w:iCs w:val="1"/>');
+}
+
+// Constroi um <w:r> com texto. Aplica bold/italic ao rPr conforme flags.
+function montarRun(texto: string, rPrBase: string, bold: boolean, italic = false): string {
+  let rPr = rPrBase;
+  if (bold) rPr = rPrComNegrito(rPr);
+  if (italic) rPr = rPrComItalico(rPr);
   return `<w:r>${rPr}<w:t xml:space="preserve">${escapeXmlText(texto)}</w:t></w:r>`;
 }
 
-// Processa **negrito** dentro de uma linha de texto, gerando uma sequência de runs.
+// Processa **negrito** e *italico* dentro de uma linha, gerando sequência de runs.
+// Ordem importa: **bold** vem antes do *italic* na regex pra não confundir.
 function processarInline(linha: string, rPrBase: string): string {
   const out: string[] = [];
-  const re = /\*\*([^*]+?)\*\*/g;
+  // Captura **bold** OU *italic* (regex única, distingue pelo grupo casado)
+  const re = /(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
   let lastIdx = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(linha)) !== null) {
     if (m.index > lastIdx) out.push(montarRun(linha.substring(lastIdx, m.index), rPrBase, false));
-    out.push(montarRun(m[1], rPrBase, true));
+    if (m[1]) {
+      // Group 1 casou: bold
+      out.push(montarRun(m[2], rPrBase, true));
+    } else {
+      // Group 3 casou: italic
+      out.push(montarRun(m[4], rPrBase, false, true));
+    }
     lastIdx = re.lastIndex;
   }
   if (lastIdx < linha.length) out.push(montarRun(linha.substring(lastIdx), rPrBase, false));
   return out.join('');
 }
 
-// Converte markdown em sequência de <w:p>...</w:p>, preservando o pPr/rPr
-// do paragrafo original (pra manter fonte, tamanho, alinhamento).
+// Adiciona/substitui indentação à esquerda no pPr (pra blockquote).
+function pPrComIndent(pPrBase: string, leftTwips = 720): string {
+  if (!pPrBase) return `<w:pPr><w:ind w:left="${leftTwips}"/></w:pPr>`;
+  const semInd = pPrBase.replace(/<w:ind\b[^/]*\/>/g, '');
+  return semInd.replace('<w:pPr>', `<w:pPr><w:ind w:left="${leftTwips}"/>`);
+}
+
+// Converte markdown em sequência de <w:p>...</w:p>. Suporta:
+//   - linha em branco → parágrafo vazio
+//   - "# Heading" → parágrafo em negrito
+//   - "> texto" → blockquote (paragrafo indentado à esquerda)
+//   - "- item" / "* item" → parágrafo simples (sem bullet visual)
+//   - **bold** e *italic* inline
 function markdownParaParagrafos(markdown: string, pPr: string, rPrBase: string): string {
   const linhas = markdown.split('\n');
   const out: string[] = [];
   for (const raw of linhas) {
-    const linha = raw.replace(/\s+$/, ''); // tira espaço final
+    const linha = raw.replace(/\s+$/, '');
     if (!linha.trim()) {
       out.push(`<w:p>${pPr}</w:p>`);
+      continue;
+    }
+    // Blockquote: linha começa com > (markdown citação)
+    const bq = linha.match(/^>\s*(.*)$/);
+    if (bq) {
+      const conteudo = bq[1].trim();
+      const pPrInd = pPrComIndent(pPr, 720);
+      if (!conteudo) { out.push(`<w:p>${pPrInd}</w:p>`); continue; }
+      out.push(`<w:p>${pPrInd}${processarInline(conteudo, rPrBase)}</w:p>`);
       continue;
     }
     // Headings (# ou ## ou ###) → parágrafo em negrito
@@ -540,7 +577,7 @@ function markdownParaParagrafos(markdown: string, pPr: string, rPrBase: string):
       out.push(`<w:p>${pPr}${montarRun(head[2], rPrBase, true)}</w:p>`);
       continue;
     }
-    // Linha de tópico (- ou *) — trata como parágrafo simples (não criamos lista)
+    // Listas (- ou *) — tratamos como parágrafo simples sem bullet
     const bullet = linha.match(/^[-*]\s+(.+)$/);
     const conteudo = bullet ? bullet[1] : linha;
     out.push(`<w:p>${pPr}${processarInline(conteudo, rPrBase)}</w:p>`);
@@ -561,14 +598,18 @@ function inserirCorpoNoXml(xml: string, markdown: string): string {
     return xml.replace(/\{\{CORPO\}\}/g, escapeXmlText(markdown));
   }
   const original = m[0];
-  // Extrai pPr e limpa centralização e bold (pra evitar herdar do destaque visual)
+  // Extrai pPr, limpa bold e força alinhamento JUSTIFICADO (padrão jurídico).
   let pPr = '';
   const pPrMatch = original.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
   if (pPrMatch) {
     pPr = pPrMatch[0]
-      .replace(/<w:jc\b[^/]*\/>/g, '') // remove alinhamento (volta ao default = esquerda)
-      .replace(/<w:b\b[^/]*\/>/g, '')  // remove bold do rPr-default do paragrafo
+      .replace(/<w:jc\b[^/]*\/>/g, '')   // remove alinhamento existente (era center)
+      .replace(/<w:b\b[^/]*\/>/g, '')    // remove bold do rPr-default do paragrafo
       .replace(/<w:bCs\b[^/]*\/>/g, '');
+    // Insere justified no início do pPr (logo após <w:pPr>)
+    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:jc w:val="both"/>');
+  } else {
+    pPr = '<w:pPr><w:jc w:val="both"/></w:pPr>';
   }
   // Extrai rPr de um run e limpa bold
   let rPrBase = '';
