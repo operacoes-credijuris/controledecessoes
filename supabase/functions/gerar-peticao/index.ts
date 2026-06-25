@@ -726,6 +726,8 @@ serve(async (req) => {
     let bytes: Uint8Array;
     let pendentes: string[];
     let anexosUsadosPaths: string[] = [];
+    let corpoMarkdownGerado: string | null = null;
+    let orientacaoOriginal: string = '';
     if (tipo === 'ai_com_qualif' || tipo === 'ai_sem_qualif') {
       const orientacao = String(body.orientacao || '').trim();
       if (!orientacao) return errorResponse('Orientação vazia. Descreva o que a petição deve fazer.', 400);
@@ -756,6 +758,8 @@ serve(async (req) => {
         'Observações da tarefa (Advbox)': String(body.notes_tarefa || ''),
       };
       const corpoMarkdown = await gerarCorpoComClaude(anthKey, orientacao, contexto, anexoBlocks);
+      corpoMarkdownGerado = corpoMarkdown;
+      orientacaoOriginal = orientacao;
 
       // 5b. Preenche os placeholders do header (sem o CORPO) e depois injeta o corpo
       const { bytes: bytesParcial, pendentes: pend1 } = await fillTemplate(templateBytes, dados);
@@ -793,12 +797,17 @@ serve(async (req) => {
     if (anexosUsadosPaths.length) await limparAnexos(sbAdmin, anexosUsadosPaths);
 
     // 7. Retorna base64 pro browser + status do Drive
+    // Pra tipos AI, devolve também o markdown gerado e a orientação,
+    // pro frontend montar o botão "Refinar com Claude" abrindo o chat
+    // com contexto carregado.
     return jsonResponse({
       success: true,
       filename,
       docx_base64: b64encode(bytes),
       pendentes,
       drive,
+      corpo_markdown: corpoMarkdownGerado,
+      orientacao: orientacaoOriginal || undefined,
     });
 
   } catch (e) {

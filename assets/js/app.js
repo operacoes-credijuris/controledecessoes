@@ -4032,7 +4032,20 @@ async function _submitPeticaoIa(){
     });
     if(error)throw new Error(error.message||'Falha ao gerar petição');
     if(!data||!data.docx_base64)throw new Error('Resposta inesperada da função.');
-    _PET_LAST={docx_base64:data.docx_base64,filename:data.filename||'peticao.docx'};
+    _PET_LAST={
+      docx_base64:data.docx_base64,
+      filename:data.filename||'peticao.docx',
+      // Dados extras pro botao "Refinar com Claude" (modo IA)
+      corpo_markdown:data.corpo_markdown||null,
+      orientacao:data.orientacao||orientacao,
+      contexto:{
+        processo:rec.numeroProcesso||'',
+        juizo:enderecamento,
+        cessionario:rec.cessionario||'',
+        cedente:rec.cedente||'',
+        creditos:creditosCedidos||'',
+      },
+    };
     _petShowResultado(data,[]);
   }catch(e){
     _petShowErr('Erro: '+(e.message||e));
@@ -4300,6 +4313,43 @@ function _petBaixarFallback(){
   if(_PET_LAST)_downloadDocx(_PET_LAST.docx_base64,_PET_LAST.filename);
 }
 
+// Abre o claude.ai em nova aba com o contexto e a peticao carregados,
+// pra o usuario refinar atraves de conversa. Se o prompt for muito longo
+// pra caber na URL (~6000 chars seguros), copia pra clipboard e abre o
+// claude vazio com um toast pedindo Ctrl+V.
+function _petAbrirClaudeRefinamento(){
+  if(!_PET_LAST||!_PET_LAST.corpo_markdown){showToast('Sem texto da petição pra refinar.');return;}
+  const ctx=_PET_LAST.contexto||{};
+  const prompt =
+    `Olá! Acabei de gerar uma petição com sua ajuda usando uma ferramenta interna do meu escritório. Quero refiná-la.\n\n` +
+    `📄 CONTEXTO DO PROCESSO\n` +
+    `- Número: ${ctx.processo||'—'}\n` +
+    `- Juízo: ${ctx.juizo||'—'}\n` +
+    `- Cessionário: ${ctx.cessionario||'—'}\n` +
+    `- Cedente: ${ctx.cedente||'—'}\n` +
+    `- Créditos cedidos: ${ctx.creditos||'—'}\n\n` +
+    `🎯 ORIENTAÇÃO ORIGINAL\n${_PET_LAST.orientacao||'(não informada)'}\n\n` +
+    `📝 PETIÇÃO GERADA (markdown)\n\n${_PET_LAST.corpo_markdown}\n\n---\n\n` +
+    `Por favor leia e me ajude a refinar. O que você sugere melhorar primeiro?`;
+  // Tenta abrir com prompt na URL (claude.ai aceita ?q=)
+  const url=`https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+  // Limite seguro pra URL — Chrome aceita ~32KB mas claude.ai pode truncar.
+  // Se passar de ~6000 chars, melhor copiar pra clipboard e abrir vazio.
+  if(url.length<=6500){
+    window.open(url,'_blank','noopener,noreferrer');
+    return;
+  }
+  // Fallback: copia pra clipboard e abre claude.ai vazio
+  navigator.clipboard.writeText(prompt).then(()=>{
+    window.open('https://claude.ai/new','_blank','noopener,noreferrer');
+    showToast('Texto copiado — cole (Ctrl+V) no Claude pra começar.',5000);
+  }).catch(()=>{
+    // Se clipboard falhar, tenta abrir com URL mesmo (truncará)
+    window.open(url,'_blank','noopener,noreferrer');
+    showToast('Aviso: o texto pode ter sido truncado.',5000);
+  });
+}
+
 // Mostra o resultado de forma minimalista: o status vai colado no TITULO
 // do modal (ao lado do tipo), e o corpo fica so com o botao de acao.
 function _petShowResultado(data,pend){
@@ -4324,11 +4374,15 @@ function _petShowResultado(data,pend){
   if(pend&&pend.length){
     html+=`<div class="pet-success-msg warn">${pend.length} campo(s) sem dado: ${esc(pend.join(', '))}.</div>`;
   }
-  html+='<div style="display:flex;justify-content:center;margin-top:4px">';
+  html+='<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:4px">';
   if(driveOk&&drive.folder_url){
     html+=`<a href="${esc(drive.folder_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">Abrir pasta no Drive ↗</a>`;
   } else {
     html+=`<button type="button" class="btn btn-gold btn-sm" onclick="_petBaixarFallback()">Baixar no computador</button>`;
+  }
+  // Botão "Refinar com Claude" — só pra petições geradas pela IA
+  if(_PET_LAST && _PET_LAST.corpo_markdown){
+    html+=`<button type="button" class="btn btn-blue btn-sm" onclick="_petAbrirClaudeRefinamento()" style="display:inline-flex;align-items:center;gap:6px">Refinar com Claude ↗</button>`;
   }
   html+='</div></div>';
 
