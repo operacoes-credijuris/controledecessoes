@@ -3996,7 +3996,7 @@ async function _submitPeticaoIa(){
     }
 
     // 2. Monta dados do processo (mesma lógica de _submitPeticao mas só os auto-vars)
-    btn.textContent = 'Claude está escrevendo...';
+    btn.textContent = 'Claude está escrevendo… (1-2 min)';
     let inv=null;
     try{inv=await _buscarInvestidorPorNome(rec.cessionario);}catch(e){}
     const dadosBancarios=_formataDadosBancarios(inv);
