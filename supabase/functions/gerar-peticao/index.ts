@@ -562,6 +562,8 @@ function markdownParaParagrafos(markdown: string, pPr: string, rPrBase: string):
       out.push(`<w:p>${pPr}</w:p>`);
       continue;
     }
+    // Horizontal rule (--- ou *** ou ___) — markdown separator, ignora
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(linha.trim())) continue;
     // Blockquote: linha começa com > (markdown citação)
     const bq = linha.match(/^>\s*(.*)$/);
     if (bq) {
@@ -599,17 +601,20 @@ function inserirCorpoNoXml(xml: string, markdown: string): string {
   }
   const original = m[0];
   // Extrai pPr, limpa bold e força alinhamento JUSTIFICADO (padrão jurídico).
+  // Também substitui o espaçamento (era after=200/before=200, muito espaçado)
+  // por um mais compacto: after=0/before=0/line=276 (~1.15x).
   let pPr = '';
   const pPrMatch = original.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
   if (pPrMatch) {
     pPr = pPrMatch[0]
-      .replace(/<w:jc\b[^/]*\/>/g, '')   // remove alinhamento existente (era center)
-      .replace(/<w:b\b[^/]*\/>/g, '')    // remove bold do rPr-default do paragrafo
-      .replace(/<w:bCs\b[^/]*\/>/g, '');
-    // Insere justified no início do pPr (logo após <w:pPr>)
-    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:jc w:val="both"/>');
+      .replace(/<w:jc\b[^/]*\/>/g, '')      // remove alinhamento existente
+      .replace(/<w:b\b[^/]*\/>/g, '')       // remove bold do rPr-default do paragrafo
+      .replace(/<w:bCs\b[^/]*\/>/g, '')
+      .replace(/<w:spacing\b[^/]*\/>/g, ''); // remove spacing existente (era muito grande)
+    // Insere justified e spacing compacto
+    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:jc w:val="both"/>');
   } else {
-    pPr = '<w:pPr><w:jc w:val="both"/></w:pPr>';
+    pPr = '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr>';
   }
   // Extrai rPr de um run e limpa bold
   let rPrBase = '';
