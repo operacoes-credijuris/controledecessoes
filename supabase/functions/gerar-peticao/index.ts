@@ -33,6 +33,7 @@ const TEMPLATES: Record<string, string> = {
   // Templates para o fluxo IA — o corpo central é gerado pelo Claude
   ai_com_qualif:    'ai_com_qualif.docx',
   ai_sem_qualif:    'ai_sem_qualif.docx',
+  ai_livre:         'ai_livre.docx',  // peças com formato próprio (recurso, apelação...)
 };
 
 const CLAUDE_MODEL = 'claude-opus-4-5';
@@ -75,6 +76,7 @@ function nomeArquivo(tipo: string, dados: Vars, tituloOverride?: string | null):
     homologacao:      'Petição de Homologação de Cessão',
     ai_com_qualif:    'Petição Personalizada (IA)',
     ai_sem_qualif:    'Petição Personalizada (IA)',
+    ai_livre:         'Petição Personalizada (IA)',
   };
   // Se houver titulo override (vindo do Claude pros tipos IA), usa ele
   const labelTipo = tituloOverride
@@ -483,7 +485,9 @@ type ClaudeBlock =
   | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
   | { type: 'document'; source: { type: 'base64'; media_type: 'application/pdf'; data: string } };
 
-const CLAUDE_SYSTEM_PROMPT =
+// Prompt usado quando o template já tem cabeçalho (AO JUÍZO...) e rodapé
+// (assinatura) fixos — Claude escreve só o CORPO central da petição.
+const CLAUDE_SYSTEM_PROMPT_PADRAO =
   'Você é um assistente jurídico especializado em redigir petições brasileiras. ' +
   'O usuário vai te passar uma orientação e dados de um processo. Você deve gerar ' +
   'APENAS o CORPO da petição em Markdown (sem cabeçalho, sem rodapé, sem assinatura). ' +
@@ -498,6 +502,33 @@ const CLAUDE_SYSTEM_PROMPT =
   '"TÍTULO: Embargos Declaratórios", "TÍTULO: Manifestação", "TÍTULO: Petição de Cumprimento", ' +
   '"TÍTULO: Contrarrazões". Use o nome técnico da peça processual. Depois, pule uma linha ' +
   'e comece o corpo da petição em Markdown normalmente.';
+
+// Prompt usado quando o template é "livre" (só timbrado + assinatura fixa) —
+// Claude escreve tudo: endereçamento adequado, qualificação se aplicável,
+// corpo, pedidos. NÃO escreve a assinatura final (que já está fixa).
+const CLAUDE_SYSTEM_PROMPT_LIVRE =
+  'Você é um assistente jurídico especializado em redigir petições brasileiras. ' +
+  'O usuário vai te passar uma orientação e dados de um processo. Você deve gerar ' +
+  'a peça COMPLETA em Markdown — INCLUINDO endereçamento, qualificação (quando ' +
+  'aplicável), corpo, pedidos e a fórmula "Nestes termos, pede deferimento". ' +
+  'NÃO inclua a assinatura final (Pedro Carrara Avilés, OAB/GO...) — ela já ' +
+  'está fixa no rodapé do template.\n\n' +
+  'IMPORTANTE — endereçamento correto:\n' +
+  '- Recurso Especial: endereçado ao Tribunal a quo (TJ); razões dirigidas ao STJ.\n' +
+  '- Recurso Extraordinário: ao TJ (interposição) e ao STF (razões).\n' +
+  '- Apelação: ao Juízo de origem (interposição) e ao Tribunal (razões).\n' +
+  '- Agravo de Instrumento: diretamente ao Tribunal competente.\n' +
+  '- Petições iniciais: ao Juízo competente, com seções "Das Partes", "Dos Fatos", ' +
+  '"Do Direito", "Dos Pedidos", "Do Valor da Causa".\n' +
+  '- Manifestações/petições no curso: ao Juízo da causa.\n\n' +
+  'Use formal Português jurídico brasileiro. Estruture com seções numeradas ' +
+  '(I, II, III...) quando fizer sentido. Use **negrito** em destaques (citações ' +
+  'de lei, números, conclusões). Para citações de artigos use markdown blockquote ' +
+  '(linhas começando com ">").\n\n' +
+  'FORMATO OBRIGATÓRIO DA RESPOSTA: na PRIMEIRA linha, escreva apenas o título curto da peça ' +
+  'no formato "TÍTULO: <até 3 palavras>". Exemplos válidos: "TÍTULO: Recurso Especial", ' +
+  '"TÍTULO: Embargos Declaratórios", "TÍTULO: Apelação". Use o nome técnico. ' +
+  'Depois, pule uma linha e comece a peça completa em Markdown.';
 
 function escapeXmlText(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -645,7 +676,9 @@ async function gerarCorpoComClaude(
   orientacao: string,
   contexto: Record<string, string>,
   anexos: ClaudeBlock[],
+  modo: 'padrao' | 'livre' = 'padrao',
 ): Promise<{ title: string | null; body: string }> {
+  const systemPrompt = modo === 'livre' ? CLAUDE_SYSTEM_PROMPT_LIVRE : CLAUDE_SYSTEM_PROMPT_PADRAO;
   const contextoTexto = Object.entries(contexto)
     .filter(([_, v]) => v && v !== '(não informado)')
     .map(([k, v]) => `- ${k}: ${v}`)
@@ -673,7 +706,7 @@ async function gerarCorpoComClaude(
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 4000,
-      system: CLAUDE_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [{ role: 'user', content: userContent }],
     }),
   });
@@ -808,7 +841,7 @@ serve(async (req) => {
     let corpoMarkdownGerado: string | null = null;
     let orientacaoOriginal: string = '';
     let tituloPersonalizado: string | null = null;
-    if (tipo === 'ai_com_qualif' || tipo === 'ai_sem_qualif') {
+    if (tipo === 'ai_com_qualif' || tipo === 'ai_sem_qualif' || tipo === 'ai_livre') {
       const orientacao = String(body.orientacao || '').trim();
       if (!orientacao) return errorResponse('Orientação vazia. Descreva o que a petição deve fazer.', 400);
 
@@ -837,7 +870,8 @@ serve(async (req) => {
         'Créditos cedidos':       String(dados.CREDITOS_CEDIDOS || ''),
         'Observações da tarefa (Advbox)': String(body.notes_tarefa || ''),
       };
-      const { title: tituloIA, body: corpoMarkdown } = await gerarCorpoComClaude(anthKey, orientacao, contexto, anexoBlocks);
+      const modoClaude = tipo === 'ai_livre' ? 'livre' : 'padrao';
+      const { title: tituloIA, body: corpoMarkdown } = await gerarCorpoComClaude(anthKey, orientacao, contexto, anexoBlocks, modoClaude);
       corpoMarkdownGerado = corpoMarkdown;
       orientacaoOriginal = orientacao;
       // Se o Claude sugeriu um titulo curto, sobrescreve o label do nome do arquivo
