@@ -30,7 +30,13 @@ const TEMPLATES: Record<string, string> = {
   rpv_complementar: 'rpv_complementar.docx',
   registro_publico: 'registro_publico.docx',
   homologacao:      'homologacao.docx',
+  // Templates para o fluxo IA — o corpo central é gerado pelo Claude
+  ai_com_qualif:    'ai_com_qualif.docx',
+  ai_sem_qualif:    'ai_sem_qualif.docx',
 };
+
+const CLAUDE_MODEL = 'claude-opus-4-5';
+const BUCKET_INPUT_IA = 'peticoes-input-ia'; // anexos temporários do fluxo IA
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
@@ -67,6 +73,8 @@ function nomeArquivo(tipo: string, dados: Vars): string {
     rpv_complementar: 'Petição de RPV Complementar',
     registro_publico: 'Petição de Juntada de Registro Público',
     homologacao:      'Petição de Homologação de Cessão',
+    ai_com_qualif:    'Petição Personalizada (IA)',
+    ai_sem_qualif:    'Petição Personalizada (IA)',
   };
   const labelTipo = labels[tipo] || `Petição - ${tipo}`;
   return `${labelTipo} - ${cessionario} - ${processo}.docx`;
@@ -464,6 +472,191 @@ async function subirPeticaoNoDrive(
 }
 
 // ============================================================================
+// IA — Claude API + Markdown → docx
+// ============================================================================
+
+type ClaudeBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+  | { type: 'document'; source: { type: 'base64'; media_type: 'application/pdf'; data: string } };
+
+const CLAUDE_SYSTEM_PROMPT =
+  'Você é um assistente jurídico especializado em redigir petições brasileiras. ' +
+  'O usuário vai te passar uma orientação e dados de um processo. Você deve gerar ' +
+  'APENAS o CORPO da petição em Markdown (sem cabeçalho, sem rodapé, sem assinatura). ' +
+  'O cabeçalho (AO JUÍZO, processo, qualificação) e o rodapé (Nestes termos, pede ' +
+  'deferimento; assinatura) já estão no template — NÃO os reescreva. ' +
+  'Use formal Português jurídico brasileiro. Estruture com seções (I, II, III...) ' +
+  'quando fizer sentido. Use **negrito** em destaques importantes (citações, ' +
+  'números de lei, conclusões). Cada parágrafo em sua própria linha, com linha em ' +
+  'branco entre eles.';
+
+function escapeXmlText(s: string): string {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Inicializa um <w:rPr> com negrito, baseado num rPr existente (preserva fonte/tamanho).
+function rPrComNegrito(rPrBase: string): string {
+  if (!rPrBase) return '<w:rPr><w:b w:val="1"/><w:bCs w:val="1"/></w:rPr>';
+  if (rPrBase.includes('<w:b ') || rPrBase.includes('<w:b/>')) return rPrBase;
+  return rPrBase.replace('<w:rPr>', '<w:rPr><w:b w:val="1"/><w:bCs w:val="1"/>');
+}
+
+// Constroi um <w:r> com texto. Se bold=true, aplica negrito ao rPr.
+function montarRun(texto: string, rPrBase: string, bold: boolean): string {
+  const rPr = bold ? rPrComNegrito(rPrBase) : rPrBase;
+  return `<w:r>${rPr}<w:t xml:space="preserve">${escapeXmlText(texto)}</w:t></w:r>`;
+}
+
+// Processa **negrito** dentro de uma linha de texto, gerando uma sequência de runs.
+function processarInline(linha: string, rPrBase: string): string {
+  const out: string[] = [];
+  const re = /\*\*([^*]+?)\*\*/g;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(linha)) !== null) {
+    if (m.index > lastIdx) out.push(montarRun(linha.substring(lastIdx, m.index), rPrBase, false));
+    out.push(montarRun(m[1], rPrBase, true));
+    lastIdx = re.lastIndex;
+  }
+  if (lastIdx < linha.length) out.push(montarRun(linha.substring(lastIdx), rPrBase, false));
+  return out.join('');
+}
+
+// Converte markdown em sequência de <w:p>...</w:p>, preservando o pPr/rPr
+// do paragrafo original (pra manter fonte, tamanho, alinhamento).
+function markdownParaParagrafos(markdown: string, pPr: string, rPrBase: string): string {
+  const linhas = markdown.split('\n');
+  const out: string[] = [];
+  for (const raw of linhas) {
+    const linha = raw.replace(/\s+$/, ''); // tira espaço final
+    if (!linha.trim()) {
+      out.push(`<w:p>${pPr}</w:p>`);
+      continue;
+    }
+    // Headings (# ou ## ou ###) → parágrafo em negrito
+    const head = linha.match(/^(#{1,3})\s+(.+)$/);
+    if (head) {
+      out.push(`<w:p>${pPr}${montarRun(head[2], rPrBase, true)}</w:p>`);
+      continue;
+    }
+    // Linha de tópico (- ou *) — trata como parágrafo simples (não criamos lista)
+    const bullet = linha.match(/^[-*]\s+(.+)$/);
+    const conteudo = bullet ? bullet[1] : linha;
+    out.push(`<w:p>${pPr}${processarInline(conteudo, rPrBase)}</w:p>`);
+  }
+  return out.join('');
+}
+
+// Encontra o <w:p> que contém {{CORPO}} no XML e substitui pelos paragrafos
+// do markdown. Preserva o pPr/rPr originais pra manter formatação visual.
+function inserirCorpoNoXml(xml: string, markdown: string): string {
+  // Match não-greedy do <w:p> que contém {{CORPO}}
+  const re = /<w:p\b[^>]*>(?:(?!<w:p\b)[\s\S])*?\{\{CORPO\}\}(?:(?!<w:p\b)[\s\S])*?<\/w:p>/;
+  const m = xml.match(re);
+  if (!m) {
+    // Sem placeholder de corpo — só substitui texto
+    return xml.replace(/\{\{CORPO\}\}/g, escapeXmlText(markdown));
+  }
+  const original = m[0];
+  // Extrai pPr (propriedades do parágrafo)
+  const pPrMatch = original.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
+  const pPr = pPrMatch ? pPrMatch[0] : '';
+  // Extrai rPr de um run (propriedades do texto — fonte, tamanho)
+  const rPrMatch = original.match(/<w:rPr>(?:(?!<w:rPr)[\s\S])*?<\/w:rPr>/);
+  const rPrBase = rPrMatch ? rPrMatch[0] : '';
+  const novosParagrafos = markdownParaParagrafos(markdown, pPr, rPrBase);
+  return xml.replace(original, novosParagrafos);
+}
+
+// Chama Claude API com prompt + contexto. Retorna o markdown gerado.
+async function gerarCorpoComClaude(
+  apiKey: string,
+  orientacao: string,
+  contexto: Record<string, string>,
+  anexos: ClaudeBlock[],
+): Promise<string> {
+  const contextoTexto = Object.entries(contexto)
+    .filter(([_, v]) => v && v !== '(não informado)')
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join('\n');
+
+  const userContent: ClaudeBlock[] = [
+    ...anexos,
+    {
+      type: 'text',
+      text:
+        `DADOS DO PROCESSO:\n${contextoTexto}\n\n` +
+        `ORIENTAÇÃO DO USUÁRIO:\n${orientacao}\n\n` +
+        `Gere o corpo da petição em Markdown agora. Lembre: SEM cabeçalho, SEM rodapé, ` +
+        `SEM "Nestes termos, pede deferimento" — só o corpo central.`,
+    },
+  ];
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 4000,
+      system: CLAUDE_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userContent }],
+    }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Claude API (${res.status}): ${txt.slice(0, 400)}`);
+  }
+  const data = await res.json();
+  const block = data.content?.find((c: { type: string }) => c.type === 'text');
+  if (!block) throw new Error('Claude retornou sem bloco de texto');
+  return String(block.text || '').trim();
+}
+
+// Le os anexos (PDFs/imagens/docx) do bucket temp e converte em ClaudeBlocks.
+async function lerAnexosParaClaude(
+  sbAdmin: ReturnType<typeof createClient>,
+  prefix: string,
+): Promise<{ blocks: ClaudeBlock[]; paths: string[] }> {
+  const { data: files, error } = await sbAdmin.storage.from(BUCKET_INPUT_IA).list(prefix, { limit: 20 });
+  if (error || !files || files.length === 0) return { blocks: [], paths: [] };
+  const blocks: ClaudeBlock[] = [];
+  const paths: string[] = [];
+  for (const f of files) {
+    if (!f.name || f.name === '.emptyFolderPlaceholder') continue;
+    const path = `${prefix}/${f.name}`;
+    paths.push(path);
+    try {
+      const bytes = await storageGetBytes(sbAdmin, BUCKET_INPUT_IA, path);
+      const ext = (f.name.split('.').pop() || '').toLowerCase();
+      blocks.push({ type: 'text', text: `[Anexo: ${f.name}]` });
+      if (ext === 'pdf') {
+        blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64encode(bytes) } });
+      } else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+        const mt = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+        blocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: b64encode(bytes) } });
+      } else {
+        // Outros tipos: tenta como texto
+        try { blocks.push({ type: 'text', text: new TextDecoder().decode(bytes).slice(0, 50000) }); }
+        catch (_) { blocks.push({ type: 'text', text: '(arquivo não-textual ignorado)' }); }
+      }
+    } catch (e) {
+      console.error('[gerar-peticao] erro lendo anexo', path, e);
+    }
+  }
+  return { blocks, paths };
+}
+
+async function limparAnexos(sbAdmin: ReturnType<typeof createClient>, paths: string[]): Promise<void> {
+  if (!paths.length) return;
+  try { await sbAdmin.storage.from(BUCKET_INPUT_IA).remove(paths); } catch (_) { /* best-effort */ }
+}
+
+// ============================================================================
 // HTTP Handler
 // ============================================================================
 
@@ -528,8 +721,59 @@ serve(async (req) => {
       );
     }
 
-    // 5. Preenche
-    const { bytes, pendentes } = await fillTemplate(templateBytes, dados);
+    // 5a. (Apenas para tipos AI) chama Claude pra gerar o corpo da petição
+    // e injeta como parágrafos {{CORPO}} antes do fillTemplate.
+    let bytes: Uint8Array;
+    let pendentes: string[];
+    let anexosUsadosPaths: string[] = [];
+    if (tipo === 'ai_com_qualif' || tipo === 'ai_sem_qualif') {
+      const orientacao = String(body.orientacao || '').trim();
+      if (!orientacao) return errorResponse('Orientação vazia. Descreva o que a petição deve fazer.', 400);
+
+      // Le secret do Anthropic
+      const { data: cfgRows } = await sbAdmin.from('configuracoes')
+        .select('chave,valor').in('chave', ['anthropic_api_key']);
+      const anthKey = (cfgRows || [])[0]?.valor;
+      if (!anthKey) return errorResponse("Secret 'anthropic_api_key' não configurado em configuracoes", 500);
+
+      // Le anexos (se houver) do bucket temp — frontend os subiu antes de chamar
+      const anexosPrefix = String(body.anexos_prefix || '');
+      let anexoBlocks: ClaudeBlock[] = [];
+      if (anexosPrefix) {
+        const { blocks, paths } = await lerAnexosParaClaude(sbAdmin, anexosPrefix);
+        anexoBlocks = blocks;
+        anexosUsadosPaths = paths;
+      }
+
+      // Monta o contexto que vai pro Claude
+      const contexto: Record<string, string> = {
+        'Número do processo':    String(dados.NUMERO_PROCESSO || ''),
+        'Juízo':                  String(dados.ENDERECAMENTO_JUIZO || ''),
+        'Cessionário':            String(dados.NOME_CESSIONARIO || ''),
+        'Qualificação do cessionário': String(dados.QUALIFICACAO_CESSIONARIO || ''),
+        'Dados bancários do cessionário': String(dados.DADOS_BANCARIOS || ''),
+        'Créditos cedidos':       String(dados.CREDITOS_CEDIDOS || ''),
+        'Observações da tarefa (Advbox)': String(body.notes_tarefa || ''),
+      };
+      const corpoMarkdown = await gerarCorpoComClaude(anthKey, orientacao, contexto, anexoBlocks);
+
+      // 5b. Preenche os placeholders do header (sem o CORPO) e depois injeta o corpo
+      const { bytes: bytesParcial, pendentes: pend1 } = await fillTemplate(templateBytes, dados);
+      // Pega o XML do template parcialmente preenchido e injeta o corpo no lugar de {{CORPO}}
+      const zipParcial = await JSZip.loadAsync(bytesParcial);
+      const docFileParcial = zipParcial.file('word/document.xml');
+      if (!docFileParcial) throw new Error('Template AI inválido: word/document.xml não encontrado');
+      let xmlParcial = await docFileParcial.async('string');
+      xmlParcial = inserirCorpoNoXml(xmlParcial, corpoMarkdown);
+      zipParcial.file('word/document.xml', xmlParcial);
+      bytes = await zipParcial.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
+      pendentes = pend1.filter(p => p !== 'CORPO');
+    } else {
+      // Caminho normal — preenche tudo via fillTemplate
+      const r = await fillTemplate(templateBytes, dados);
+      bytes = r.bytes;
+      pendentes = r.pendentes;
+    }
     const filename = nomeArquivo(tipo, dados);
 
     // 6. (Opcional) sobe a peticao pro Google Drive. Best-effort: se falhar,
@@ -544,6 +788,9 @@ serve(async (req) => {
         bytes,
       );
     }
+
+    // 6b. Limpa anexos temporários do storage (best-effort)
+    if (anexosUsadosPaths.length) await limparAnexos(sbAdmin, anexosUsadosPaths);
 
     // 7. Retorna base64 pro browser + status do Drive
     return jsonResponse({

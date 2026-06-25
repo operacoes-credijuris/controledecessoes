@@ -33,6 +33,10 @@ MODELS = [
     "rpv_complementar",
     "registro_publico",
     "homologacao",
+    # Templates para o fluxo "IA personalizada" — o corpo central é preenchido
+    # pelo Claude com markdown convertido em parágrafos.
+    "ai_com_qualif",
+    "ai_sem_qualif",
 ]
 
 # Mapa: trecho exato no docx -> placeholder. Apenas placeholders que existem
@@ -51,6 +55,8 @@ REPLACEMENTS = [
     # --- Homologação ---
     ("[qualificação do cessionário]",     "{{QUALIFICACAO_CESSIONARIO}}"),
     ("[data do contrato]",                "{{DATA_CONTRATO}}"),
+    # --- IA personalizada (corpo central preenchido pelo Claude) ---
+    ("[CORPO DO TEXTO]",                  "{{CORPO}}"),
     # --- RPV Complementar ---
     ("[sentença, decisão]",               "{{TIPO_DECISAO}}"),
     ("[de procedência, de parcial procedência, homologatória]",
