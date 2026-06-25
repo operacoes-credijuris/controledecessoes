@@ -4313,11 +4313,12 @@ function _petBaixarFallback(){
   if(_PET_LAST)_downloadDocx(_PET_LAST.docx_base64,_PET_LAST.filename);
 }
 
-// Abre o claude.ai em nova aba com o contexto e a peticao carregados,
-// pra o usuario refinar atraves de conversa. Se o prompt for muito longo
-// pra caber na URL (~6000 chars seguros), copia pra clipboard e abre o
-// claude vazio com um toast pedindo Ctrl+V.
-function _petAbrirClaudeRefinamento(){
+// Abre o claude.ai em nova aba pra o usuário refinar a petição.
+// Estratégia: SEMPRE copia o contexto+petição pra clipboard e abre o
+// claude.ai vazio. Mostra um toast bem visível pedindo Ctrl+V.
+// (Tentei usar ?q= na URL, mas o claude.ai trunca prompts longos —
+// clipboard é o caminho mais confiável.)
+async function _petAbrirClaudeRefinamento(){
   if(!_PET_LAST||!_PET_LAST.corpo_markdown){showToast('Sem texto da petição pra refinar.');return;}
   const ctx=_PET_LAST.contexto||{};
   const prompt =
@@ -4331,23 +4332,17 @@ function _petAbrirClaudeRefinamento(){
     `🎯 ORIENTAÇÃO ORIGINAL\n${_PET_LAST.orientacao||'(não informada)'}\n\n` +
     `📝 PETIÇÃO GERADA (markdown)\n\n${_PET_LAST.corpo_markdown}\n\n---\n\n` +
     `Por favor leia e me ajude a refinar. O que você sugere melhorar primeiro?`;
-  // Tenta abrir com prompt na URL (claude.ai aceita ?q=)
-  const url=`https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
-  // Limite seguro pra URL — Chrome aceita ~32KB mas claude.ai pode truncar.
-  // Se passar de ~6000 chars, melhor copiar pra clipboard e abrir vazio.
-  if(url.length<=6500){
-    window.open(url,'_blank','noopener,noreferrer');
-    return;
-  }
-  // Fallback: copia pra clipboard e abre claude.ai vazio
-  navigator.clipboard.writeText(prompt).then(()=>{
+
+  try{
+    await navigator.clipboard.writeText(prompt);
     window.open('https://claude.ai/new','_blank','noopener,noreferrer');
-    showToast('Texto copiado — cole (Ctrl+V) no Claude pra começar.',5000);
-  }).catch(()=>{
-    // Se clipboard falhar, tenta abrir com URL mesmo (truncará)
-    window.open(url,'_blank','noopener,noreferrer');
-    showToast('Aviso: o texto pode ter sido truncado.',5000);
-  });
+    showToast('Contexto copiado! No Claude que abriu, dê Ctrl+V e Enter pra iniciar.', 8000);
+  }catch(e){
+    // Clipboard pode falhar em contextos não-seguros. Fallback: prompt() dialog
+    // que o usuário copia manualmente.
+    window.prompt('Copie o texto abaixo (Ctrl+C) e cole no Claude que acabou de abrir:', prompt);
+    window.open('https://claude.ai/new','_blank','noopener,noreferrer');
+  }
 }
 
 // Mostra o resultado de forma minimalista: o status vai colado no TITULO

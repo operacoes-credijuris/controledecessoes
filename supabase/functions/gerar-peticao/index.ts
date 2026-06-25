@@ -549,7 +549,9 @@ function markdownParaParagrafos(markdown: string, pPr: string, rPrBase: string):
 }
 
 // Encontra o <w:p> que contém {{CORPO}} no XML e substitui pelos paragrafos
-// do markdown. Preserva o pPr/rPr originais pra manter formatação visual.
+// do markdown. Preserva fonte/tamanho/spacing do paragrafo original, mas
+// LIMPA: alinhamento centralizado e negrito (pra evitar herdar destaques
+// visuais do placeholder).
 function inserirCorpoNoXml(xml: string, markdown: string): string {
   // Match não-greedy do <w:p> que contém {{CORPO}}
   const re = /<w:p\b[^>]*>(?:(?!<w:p\b)[\s\S])*?\{\{CORPO\}\}(?:(?!<w:p\b)[\s\S])*?<\/w:p>/;
@@ -559,12 +561,23 @@ function inserirCorpoNoXml(xml: string, markdown: string): string {
     return xml.replace(/\{\{CORPO\}\}/g, escapeXmlText(markdown));
   }
   const original = m[0];
-  // Extrai pPr (propriedades do parágrafo)
+  // Extrai pPr e limpa centralização e bold (pra evitar herdar do destaque visual)
+  let pPr = '';
   const pPrMatch = original.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
-  const pPr = pPrMatch ? pPrMatch[0] : '';
-  // Extrai rPr de um run (propriedades do texto — fonte, tamanho)
+  if (pPrMatch) {
+    pPr = pPrMatch[0]
+      .replace(/<w:jc\b[^/]*\/>/g, '') // remove alinhamento (volta ao default = esquerda)
+      .replace(/<w:b\b[^/]*\/>/g, '')  // remove bold do rPr-default do paragrafo
+      .replace(/<w:bCs\b[^/]*\/>/g, '');
+  }
+  // Extrai rPr de um run e limpa bold
+  let rPrBase = '';
   const rPrMatch = original.match(/<w:rPr>(?:(?!<w:rPr)[\s\S])*?<\/w:rPr>/);
-  const rPrBase = rPrMatch ? rPrMatch[0] : '';
+  if (rPrMatch) {
+    rPrBase = rPrMatch[0]
+      .replace(/<w:b\b[^/]*\/>/g, '')
+      .replace(/<w:bCs\b[^/]*\/>/g, '');
+  }
   const novosParagrafos = markdownParaParagrafos(markdown, pPr, rPrBase);
   return xml.replace(original, novosParagrafos);
 }
