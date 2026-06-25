@@ -609,8 +609,8 @@ function inserirCorpoNoXml(xml: string, markdown: string): string {
   }
   const original = m[0];
   // Extrai pPr, limpa bold e força alinhamento JUSTIFICADO (padrão jurídico).
-  // Também substitui o espaçamento (era after=200/before=200, muito espaçado)
-  // por um mais compacto: after=0/before=0/line=276 (~1.15x).
+  // Substitui o espaçamento por um compacto (after=0/before=0/line=276).
+  // Adiciona recuo de primeira linha de 1.25cm (708 twips) — padrão jurídico.
   let pPr = '';
   const pPrMatch = original.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
   if (pPrMatch) {
@@ -618,11 +618,12 @@ function inserirCorpoNoXml(xml: string, markdown: string): string {
       .replace(/<w:jc\b[^/]*\/>/g, '')      // remove alinhamento existente
       .replace(/<w:b\b[^/]*\/>/g, '')       // remove bold do rPr-default do paragrafo
       .replace(/<w:bCs\b[^/]*\/>/g, '')
-      .replace(/<w:spacing\b[^/]*\/>/g, ''); // remove spacing existente (era muito grande)
-    // Insere justified e spacing compacto
-    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:jc w:val="both"/>');
+      .replace(/<w:spacing\b[^/]*\/>/g, '')  // remove spacing antigo (muito grande)
+      .replace(/<w:ind\b[^/]*\/>/g, '');     // remove indentação existente
+    // Insere justified, spacing compacto e recuo de primeira linha
+    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/>');
   } else {
-    pPr = '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr>';
+    pPr = '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/></w:pPr>';
   }
   // Extrai rPr de um run e limpa bold
   let rPrBase = '';
