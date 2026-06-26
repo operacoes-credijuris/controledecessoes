@@ -624,10 +624,10 @@ function inserirCorpoNoXml(xml: string, markdown: string): string {
       .replace(/<w:bCs\b[^/]*\/>/g, '')
       .replace(/<w:spacing\b[^/]*\/>/g, '')  // remove spacing antigo (muito grande)
       .replace(/<w:ind\b[^/]*\/>/g, '');     // remove indentação existente
-    // Insere justified, spacing compacto e recuo de primeira linha
-    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/>');
+    // Insere justified, spacing 1.5x (line=360) e recuo de primeira linha
+    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:spacing w:after="0" w:before="0" w:line="360" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/>');
   } else {
-    pPr = '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/></w:pPr>';
+    pPr = '<w:pPr><w:spacing w:after="0" w:before="0" w:line="360" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/></w:pPr>';
   }
   // Extrai rPr de um run e limpa bold
   let rPrBase = '';
