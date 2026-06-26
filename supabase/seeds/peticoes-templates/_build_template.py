@@ -37,7 +37,6 @@ MODELS = [
     # pelo Claude com markdown convertido em parágrafos.
     "ai_com_qualif",
     "ai_sem_qualif",
-    "ai_livre",  # peças com formato próprio (recurso, apelação, inicial...)
 ]
 
 # Mapa: trecho exato no docx -> placeholder. Apenas placeholders que existem

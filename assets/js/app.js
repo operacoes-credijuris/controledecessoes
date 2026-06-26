@@ -3902,8 +3902,7 @@ function _openPeticaoIaModal(mod, id){
     <div class="pet-field">
       <div class="pet-lbl">Tipo de petição</div>
       <label class="pet-chk" style="margin-bottom:4px"><input type="radio" name="pet-ia-qualif" value="sem" checked> Sem qualificação (já nos autos)</label>
-      <label class="pet-chk" style="margin-bottom:4px"><input type="radio" name="pet-ia-qualif" value="com"> Com qualificação completa</label>
-      <label class="pet-chk"><input type="radio" name="pet-ia-qualif" value="livre"> Peça com formato próprio (recurso, apelação, inicial, etc.)</label>
+      <label class="pet-chk"><input type="radio" name="pet-ia-qualif" value="com"> Com qualificação completa</label>
     </div>
     <div class="pet-field">
       <label class="pet-lbl" for="pet-ia-orientacao">Orientação para a IA</label>
@@ -3969,9 +3968,7 @@ async function _submitPeticaoIa(){
   const orientacao = (document.getElementById('pet-ia-orientacao')?.value||'').trim();
   if(!orientacao){_petShowErr('Descreva a orientação para a IA.');return;}
   const qualifSel = document.querySelector('input[name="pet-ia-qualif"]:checked')?.value || 'sem';
-  const tipoFinal = qualifSel === 'com' ? 'ai_com_qualif'
-                  : qualifSel === 'livre' ? 'ai_livre'
-                  : 'ai_sem_qualif';
+  const tipoFinal = qualifSel === 'com' ? 'ai_com_qualif' : 'ai_sem_qualif';
 
   const btn=document.getElementById('pet-modal-submit');
   btn.disabled=true; btn.textContent='Enviando...';
