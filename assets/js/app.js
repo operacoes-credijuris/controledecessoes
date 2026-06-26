@@ -6524,9 +6524,9 @@ function _acShowOk(data){
   const r = document.getElementById('ac-result');
   if(!r) return;
   const cedente = data.cedente ? ` — cedente <strong>${esc(data.cedente)}</strong>` : '';
-  const naoAtingiu = data.atingiu_alvo === false;
-  const tituloClasse = naoAtingiu ? 'gc-result-title' : 'gc-result-title ok';
-  const tituloTxt = naoAtingiu ? '⚠ Planilha gerada — confira a rentabilidade' : '✓ Planilha gerada';
+  const temAviso = !!data.aviso || data.atingiu_alvo === false;
+  const tituloClasse = temAviso ? 'gc-result-title' : 'gc-result-title ok';
+  const tituloTxt = temAviso ? '⚠ Planilha gerada — confira os avisos' : '✓ Planilha gerada';
   const resumo = (data.desagio || data.rentabilidade_mensal || data.cessao) ? `
       <div class="gc-result-msg" style="margin-top:6px">
         Deságio: <strong>${esc(data.desagio || '—')}</strong> ·
