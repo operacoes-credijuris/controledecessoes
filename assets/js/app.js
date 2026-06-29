@@ -1618,6 +1618,7 @@ async function gcSubmit(){
   const investidor_id=document.getElementById('gc-investidor').value;
   const intermediador=(document.getElementById('gc-intermediador').value||'').trim();
   const tipo=document.getElementById('gc-tipo').value||null;
+  const cedente_genero=(document.querySelector('input[name="gc-cedente-genero"]:checked')||{}).value||'M';
 
   try{
     if(!sb)throw new Error('Supabase não inicializado');
@@ -1645,7 +1646,7 @@ async function gcSubmit(){
     // 2. Invoca a Edge Function
     _gcProgress('Extraindo dados e gerando contratos… (pode levar 30–90s)');
     const{data,error}=await sb.functions.invoke('gerar-contrato',{
-      body:{job_id:GC.job_id,investidor_id,intermediador,tipo},
+      body:{job_id:GC.job_id,investidor_id,intermediador,tipo,cedente_genero},
     });
     if(error){
       // Tenta extrair mensagem detalhada do response body

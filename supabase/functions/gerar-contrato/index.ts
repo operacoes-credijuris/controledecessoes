@@ -25,7 +25,8 @@
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// @ts-ignore — o d.ts do esm.sh não declara default export, mas o módulo runtime tem.
 import JSZip from 'https://esm.sh/jszip@3.10.1';
 import { DOMParser, XMLSerializer } from 'https://esm.sh/@xmldom/xmldom@0.8.10';
 import { encode as b64encode } from 'https://deno.land/std@0.168.0/encoding/base64.ts';
@@ -71,6 +72,14 @@ const DRIVE_SUBPASTAS = [
 ];
 const DRIVE_PASTA_CONTRATOS = '2. Contratos assinados';
 const DRIVE_PASTA_ANALISE = '1. Análise(s) de crédito';
+const DRIVE_PASTA_CEDENTE_DOCS = '4. Documentos do cedente e advogado';
+// Raiz das análises de crédito (irmã de "B. Processos" no shared drive).
+// Match tolerante (normalizar + includes) cobre sufixos como "RPV" no nome real.
+const DRIVE_ANALISES_NAME = 'A. Análises de crédito';
+// Tipos nativos do Google Workspace — não baixam com alt=media, precisam de export.
+const GOOGLE_SHEET_MIME = 'application/vnd.google-apps.spreadsheet';
+const GOOGLE_DOC_MIME = 'application/vnd.google-apps.document';
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -92,6 +101,11 @@ type ClaudeContentBlock =
   | { type: 'document'; source: { type: 'base64'; media_type: 'application/pdf'; data: string } };
 
 type Vars = Record<string, string | null>;
+
+// Cliente Supabase com schema não-tipado (o projeto não roda `supabase gen types`):
+// trata as tabelas como `any` em vez de `never`, evitando ~13 erros de type-check
+// nos acessos a linhas/updates. Gerar os tipos do banco eliminaria esta gambiarra.
+type SB = SupabaseClient<any, any, any>;
 
 const SCHEMA_CEDENTE: Vars = {
   CEDENTE_NOME: 'nome completo',
@@ -150,7 +164,7 @@ function normalizar(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036F]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[.\-/() ]/g, '');
 }
 
@@ -245,7 +259,7 @@ function mimeForExtension(ext: string): string {
 // Document Reading — converte Storage path -> blocos de conteúdo do Claude
 // ============================================================================
 
-async function storageGetBytes(sb: ReturnType<typeof createClient>, bucket: string, path: string): Promise<Uint8Array> {
+async function storageGetBytes(sb: SB, bucket: string, path: string): Promise<Uint8Array> {
   const { data, error } = await sb.storage.from(bucket).download(path);
   if (error) throw new Error(`Storage download falhou (${bucket}/${path}): ${error.message}`);
   const buf = await data.arrayBuffer();
@@ -275,7 +289,7 @@ async function extractDocxText(bytes: Uint8Array): Promise<string> {
   if (!xml) return '';
   // Extrai texto entre <w:t ...>...</w:t> — suficiente pra Claude entender o conteúdo
   const tags = xml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-  return tags.map(t => t.replace(/<w:t[^>]*>/, '').replace(/<\/w:t>/, '')).join(' ');
+  return tags.map((t: string) => t.replace(/<w:t[^>]*>/, '').replace(/<\/w:t>/, '')).join(' ');
 }
 
 // Extrai a letra da coluna do atributo r="A12" → "A". Usado pra preservar a
@@ -453,26 +467,23 @@ function nonEmptyText(text: string, fallback: string): string {
   return text && text.trim().length > 0 ? text : fallback;
 }
 
-async function readFileAsContent(
-  sb: ReturnType<typeof createClient>,
-  bucket: string,
-  path: string,
-): Promise<ClaudeContentBlock[]> {
-  const filename = path.split('/').pop() || path;
-  const ext = extOf(path);
-  const bytes = await storageGetBytes(sb, bucket, path);
+// Converte bytes + nome de arquivo em blocos de conteúdo do Claude.
+// Compartilhado entre input do Storage (cedente/escritório) e arquivos
+// baixados do Drive (análise de crédito).
+async function bytesToContentBlocks(filename: string, bytes: Uint8Array): Promise<ClaudeContentBlock[]> {
+  const ext = extOf(filename);
   const header: ClaudeContentBlock = { type: 'text', text: `[Documento: ${filename}]` };
 
   if (PDF_EXTS.has(ext)) {
     return [header, {
       type: 'document',
-      source: { type: 'base64', media_type: 'application/pdf', data: b64encode(bytes) },
+      source: { type: 'base64', media_type: 'application/pdf', data: b64encode(bytes as unknown as ArrayBuffer) },
     }];
   }
   if (IMG_EXTS.has(ext)) {
     return [header, {
       type: 'image',
-      source: { type: 'base64', media_type: mediaTypeForImage(ext), data: b64encode(bytes) },
+      source: { type: 'base64', media_type: mediaTypeForImage(ext), data: b64encode(bytes as unknown as ArrayBuffer) },
     }];
   }
   if (DOCX_EXTS.has(ext)) {
@@ -486,6 +497,16 @@ async function readFileAsContent(
   // .txt/.md ou desconhecido — tenta decodificar como UTF-8
   const text = new TextDecoder().decode(bytes);
   return [header, { type: 'text', text: nonEmptyText(text, `(arquivo '${filename}' sem conteúdo de texto)`) }];
+}
+
+async function readFileAsContent(
+  sb: SB,
+  bucket: string,
+  path: string,
+): Promise<ClaudeContentBlock[]> {
+  const filename = path.split('/').pop() || path;
+  const bytes = await storageGetBytes(sb, bucket, path);
+  return bytesToContentBlocks(filename, bytes);
 }
 
 // ============================================================================
@@ -536,7 +557,7 @@ async function callClaude(apiKey: string, content: ClaudeContentBlock[], schema:
 }
 
 async function buildContentFromPaths(
-  sb: ReturnType<typeof createClient>,
+  sb: SB,
   paths: string[],
 ): Promise<ClaudeContentBlock[]> {
   const blocks: ClaudeContentBlock[] = [];
@@ -548,7 +569,7 @@ async function buildContentFromPaths(
 }
 
 async function extractParte(
-  sb: ReturnType<typeof createClient>,
+  sb: SB,
   apiKey: string,
   paths: string[],
   schema: Vars,
@@ -558,12 +579,10 @@ async function extractParte(
 }
 
 async function extractApresentacao(
-  sb: ReturnType<typeof createClient>,
   apiKey: string,
-  paths: string[],
+  content: ClaudeContentBlock[],
   templateVars: string[],
 ): Promise<Vars> {
-  const content = await buildContentFromPaths(sb, paths);
   // Passo 1 — campos fixos
   const fixos = await callClaude(apiKey, content, SCHEMA_APRESENTACAO_FIXOS);
   // Passo 2 — campos extras que ainda estão no template
@@ -597,48 +616,86 @@ function getTemplateVariablesFromXml(xml: string): string[] {
   return Array.from(set);
 }
 
+// Substitui por <w:t> preservando a formatacao de cada run (NOME em run bold
+// continua bold), com fallback de merge só pra placeholder fragmentado entre
+// runs. Implementação idêntica à de gerar-peticao/index.ts.
 function fillParagraph(para: Element, variables: Vars): number {
   const runs = Array.from(para.getElementsByTagName('w:r'));
   if (runs.length === 0) return 0;
 
-  const runTexts: Array<{ run: Element; text: string; tElems: Element[] }> = runs.map(r => {
-    const ts = Array.from(r.getElementsByTagName('w:t'));
-    return {
-      run: r,
-      text: ts.map(t => t.textContent || '').join(''),
-      tElems: ts,
-    };
-  });
-  const fullText = runTexts.map(rt => rt.text).join('');
-  if (!fullText.includes('{{')) return 0;
+  // Lista plana de TODOS os <w:t> do paragrafo, em ordem
+  const tList: Element[] = [];
+  for (const r of runs) {
+    for (const t of Array.from(r.getElementsByTagName('w:t'))) tList.push(t as Element);
+  }
+  if (tList.length === 0) return 0;
 
-  let newText = fullText;
+  // Tenta substituicao PER-<w:t> primeiro — preserva a formatacao
+  // individual de cada run (NOME em run bold continua bold apos substituir).
   let count = 0;
-  for (const [key, value] of Object.entries(variables)) {
-    const placeholder = '{{' + key + '}}';
-    if (newText.includes(placeholder)) {
-      const replacement = value === null || value === undefined ? '' : String(value);
-      newText = newText.split(placeholder).join(replacement);
+  let anyPlaceholderRemainingInFull = false;
+
+  const placeholderKeys = Object.keys(variables);
+  for (const t of tList) {
+    let text = t.textContent || '';
+    if (!text.includes('{{')) continue;
+    let touched = false;
+    for (const key of placeholderKeys) {
+      const ph = '{{' + key + '}}';
+      if (text.includes(ph)) {
+        const value = variables[key];
+        const replacement = value === null || value === undefined ? '' : String(value);
+        text = text.split(ph).join(replacement);
+        touched = true;
+      }
+    }
+    if (touched) {
+      t.textContent = text;
+      t.setAttribute('xml:space', 'preserve');
       count++;
     }
   }
-  if (count === 0) return 0;
 
-  // Escreve todo o novo texto no primeiro run, zera os outros
-  const first = runTexts[0];
-  if (first.tElems.length > 0) {
-    first.tElems[0].textContent = newText;
-    first.tElems[0].setAttribute('xml:space', 'preserve');
-    for (let i = 1; i < first.tElems.length; i++) first.tElems[i].textContent = '';
-  } else {
-    const doc = para.ownerDocument!;
-    const t = doc.createElementNS(W_NS, 'w:t');
-    t.setAttribute('xml:space', 'preserve');
-    t.textContent = newText;
-    first.run.appendChild(t);
+  // Apos o per-<w:t>, ve se sobrou algum {{}} (significa fragmentacao
+  // entre runs — placeholder partido por spellcheck/rsid do Word).
+  const fullAfter = tList.map(t => t.textContent || '').join('');
+  for (const key of placeholderKeys) {
+    if (fullAfter.includes('{{' + key + '}}')) {
+      anyPlaceholderRemainingInFull = true;
+      break;
+    }
   }
-  for (let i = 1; i < runTexts.length; i++) {
-    for (const t of runTexts[i].tElems) t.textContent = '';
+  if (!anyPlaceholderRemainingInFull) return count;
+
+  // FALLBACK: existe pelo menos um placeholder fragmentado. Mescla o
+  // texto completo, substitui, e escreve no <w:t> com mais texto ja
+  // preenchido (geralmente o run "normal" da continuacao).
+  let merged = fullAfter;
+  for (const key of placeholderKeys) {
+    const ph = '{{' + key + '}}';
+    if (merged.includes(ph)) {
+      const value = variables[key];
+      const replacement = value === null || value === undefined ? '' : String(value);
+      merged = merged.split(ph).join(replacement);
+      count++;
+    }
+  }
+
+  // Escolhe o <w:t> alvo: o com mais texto atual
+  let targetIdx = 0;
+  let targetLen = -1;
+  for (let i = 0; i < tList.length; i++) {
+    const L = (tList[i].textContent || '').length;
+    if (L >= targetLen) {
+      targetIdx = i;
+      targetLen = L;
+    }
+  }
+  tList[targetIdx].textContent = merged;
+  tList[targetIdx].setAttribute('xml:space', 'preserve');
+  for (let i = 0; i < tList.length; i++) {
+    if (i === targetIdx) continue;
+    tList[i].textContent = '';
   }
   return count;
 }
@@ -793,6 +850,7 @@ async function driveEncontrarProcessosFolder(token: string): Promise<string> {
 async function driveListIntermediadores(
   token: string,
   processosId: string,
+  categoria: string,
 ): Promise<{ intermediadores: Array<{ id: string; name: string; categoria: string }>; debug: { categorias_em_processos: string[]; categoria_rpv_id: string | null } }> {
   const cats = await driveListFiles(
     token,
@@ -804,9 +862,9 @@ async function driveListIntermediadores(
   };
   const out: Array<{ id: string; name: string; categoria: string }> = [];
   // Match tolerante a acentos/encoding — resiste a deploys que quebrem UTF-8 da constante
-  const alvoNorm = normalizar(DRIVE_CATEGORIA_PADRAO);
+  const alvoNorm = normalizar(categoria);
   for (const cat of cats) {
-    if (normalizar(cat.name) !== alvoNorm) continue; // só RPV por enquanto (matching Python default)
+    if (normalizar(cat.name) !== alvoNorm) continue; // só a categoria escolhida (RPV ou Precatórios)
     debug.categoria_rpv_id = cat.id;
     const subs = await driveListFiles(
       token,
@@ -818,22 +876,154 @@ async function driveListIntermediadores(
   return { intermediadores: out, debug };
 }
 
+// Acha uma subpasta por nome tolerante a acento/encoding/caixa (normalizar + includes).
+async function driveFindChildByTolerantName(
+  token: string,
+  parentId: string,
+  needle: string,
+  mustBeFolder = true,
+): Promise<DriveFile | null> {
+  let q = `'${parentId}' in parents and trashed = false`;
+  if (mustBeFolder) q += ` and mimeType = '${FOLDER_MIME}'`;
+  const files = await driveListFiles(token, q);
+  const n = normalizar(needle);
+  return files.find(f => normalizar(f.name) === n)
+      ?? files.find(f => normalizar(f.name).includes(n))
+      ?? null;
+}
+
+// Acha a pasta "A. Análises de crédito" (irmã de "B. Processos") dentro do shared
+// drive "Credijuris - Atualizado", com fallback pra pasta normal.
+async function driveEncontrarAnalisesRoot(token: string): Promise<string> {
+  const drive = await driveFindSharedDrive(token, DRIVE_ROOT_NAME);
+  if (drive) {
+    const child = await driveFindChildByTolerantName(token, drive.id, DRIVE_ANALISES_NAME);
+    if (child) return child.id;
+    throw new Error(`Shared Drive '${DRIVE_ROOT_NAME}' achado, mas pasta '${DRIVE_ANALISES_NAME}' não existe nele.`);
+  }
+  const roots = await driveListFiles(token, `name = '${escapeDriveQuery(DRIVE_ROOT_NAME)}' and trashed = false and mimeType = '${FOLDER_MIME}'`);
+  if (!roots[0]) throw new Error(`'${DRIVE_ROOT_NAME}' não encontrado no Drive. Confirma que a conta do refresh_token tem acesso.`);
+  const child = await driveFindChildByTolerantName(token, roots[0].id, DRIVE_ANALISES_NAME);
+  if (!child) throw new Error(`Pasta '${DRIVE_ANALISES_NAME}' não existe dentro de '${DRIVE_ROOT_NAME}'.`);
+  return child.id;
+}
+
+// Lista os nomes das pastas de intermediador dentro de A. Análises de crédito / {categoria}.
+// Popula o dropdown de intermediador no front (browser não acessa o Drive direto).
+async function driveListarIntermediadoresAnalise(token: string, categoria: string): Promise<string[]> {
+  const analisesRootId = await driveEncontrarAnalisesRoot(token);
+  const catFolder = await driveFindChildByTolerantName(token, analisesRootId, categoria);
+  if (!catFolder) return [];
+  const subs = await driveListFiles(token, `'${catFolder.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
+  return subs.map(s => s.name).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// Navega A. Análises de crédito / {categoria} / {intermediador} / {pasta do cedente}
+// e lista os arquivos de análise. Pasta do cedente casa pelo NOME do cedente
+// (fallback nº processo). Se o cedente tem múltiplos processos, há subpastas
+// nomeadas por nº de processo lá dentro — desce na que casa antes de listar.
+async function driveEncontrarAnaliseArquivos(
+  token: string,
+  categoria: string,
+  intermediadorNome: string,
+  cedenteNome: string,
+  numeroProcesso: string,
+): Promise<{ folderId: string; folderName: string; arquivos: DriveFile[]; debug: Record<string, unknown> }> {
+  const analisesRootId = await driveEncontrarAnalisesRoot(token);
+
+  const catFolder = await driveFindChildByTolerantName(token, analisesRootId, categoria);
+  if (!catFolder) throw new Error(`Categoria '${categoria}' não encontrada em '${DRIVE_ANALISES_NAME}'.`);
+
+  // Match exato — o nome vem do dropdown, populado da mesma listagem do Drive.
+  const inter = await driveFindChild(token, intermediadorNome, catFolder.id, FOLDER_MIME);
+  if (!inter) {
+    const disponiveis = await driveListFiles(token, `'${catFolder.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
+    throw new Error(`Intermediador '${intermediadorNome}' não encontrado em '${DRIVE_ANALISES_NAME}/${categoria}'. Disponíveis: ${disponiveis.map(d => d.name).join(', ') || '(nenhum)'}`);
+  }
+
+  // Pasta leaf = pasta do cedente. Match pelo NOME do cedente (extraído dos docs), fallback pro processo.
+  const subs = await driveListFiles(token, `'${inter.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
+  const cedNorm = normalizar(cedenteNome);
+  const procDigits = numeroProcesso.replace(/\D/g, '');
+  let leaf: DriveFile | null = cedNorm ? subs.find(s => normalizar(s.name).includes(cedNorm)) ?? null : null;
+  if (!leaf && procDigits) leaf = subs.find(s => s.name.replace(/\D/g, '').includes(procDigits)) ?? null;
+  if (!leaf) {
+    throw new Error(`Pasta do cedente não encontrada em '${inter.name}'. Procurei cedente '${cedenteNome || '(sem nome)'}' e processo '${numeroProcesso}'. Pastas disponíveis: ${subs.map(s => s.name).join(', ') || '(nenhuma)'}`);
+  }
+
+  // Cedente multi-processo: as análises ficam em subpastas nomeadas pelo nº de cada
+  // processo. Desce na que casa; senão (single) usa a própria pasta do cedente.
+  const leafChildren = await driveListFiles(token, `'${leaf.id}' in parents and trashed = false`);
+  const procFolder = procDigits
+    ? leafChildren.find(f => f.mimeType === FOLDER_MIME && f.name.replace(/\D/g, '').includes(procDigits)) ?? null
+    : null;
+  const alvo = procFolder ?? leaf;
+  const naoPastas = procFolder
+    ? (await driveListFiles(token, `'${procFolder.id}' in parents and trashed = false`)).filter(f => f.mimeType !== FOLDER_MIME)
+    : leafChildren.filter(f => f.mimeType !== FOLDER_MIME);
+
+  // Prefere a "Análise de ..." que casa com o processo; senão (ponytail) todos os arquivos da pasta.
+  const match = naoPastas.filter(f =>
+    normalizar(f.name).includes('analisede') && (!procDigits || f.name.replace(/\D/g, '').includes(procDigits))
+  );
+  const arquivos = match.length ? match : naoPastas;
+  return {
+    folderId: alvo.id,
+    folderName: procFolder ? `${leaf.name}/${procFolder.name}` : leaf.name,
+    arquivos,
+    debug: { categoria_id: catFolder.id, intermediador_id: inter.id, leaf_id: leaf.id, proc_folder: procFolder?.name ?? null, subpastas: subs.map(s => s.name), arquivos_na_pasta: naoPastas.map(f => f.name) },
+  };
+}
+
+function ensureExt(name: string, ext: string): string {
+  return name.toLowerCase().endsWith(ext) ? name : name + ext;
+}
+
+// Baixa um arquivo do Drive. Arquivos nativos do Google (Sheets/Docs) não saem
+// com alt=media — exporta pra xlsx/docx; outros nativos viram PDF.
+async function driveBaixarArquivo(token: string, file: DriveFile): Promise<{ filename: string; bytes: Uint8Array }> {
+  const mt = file.mimeType || '';
+  let url: string;
+  let filename = file.name;
+  if (mt === GOOGLE_SHEET_MIME) {
+    url = `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=${encodeURIComponent(XLSX_MIME)}&supportsAllDrives=true`;
+    filename = ensureExt(file.name, '.xlsx');
+  } else if (mt === GOOGLE_DOC_MIME) {
+    url = `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=${encodeURIComponent(DOCX_MIME)}&supportsAllDrives=true`;
+    filename = ensureExt(file.name, '.docx');
+  } else if (mt.startsWith('application/vnd.google-apps.')) {
+    url = `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=${encodeURIComponent('application/pdf')}&supportsAllDrives=true`;
+    filename = ensureExt(file.name, '.pdf');
+  } else {
+    url = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`;
+  }
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Drive download '${file.name}' (${res.status}): ${txt.slice(0, 300)}`);
+  }
+  return { filename, bytes: new Uint8Array(await res.arrayBuffer()) };
+}
+
 async function driveGarantirEstruturaCedente(
   token: string,
   intermediadorId: string,
   nomePasta: string,
-): Promise<{ contratosId: string; analiseId: string }> {
+): Promise<{ contratosId: string; analiseId: string; cedenteDocsId: string }> {
   const cedenteId = await driveFindOrCreateFolder(token, nomePasta, intermediadorId);
   let contratosId = '';
   let analiseId = '';
+  let cedenteDocsId = '';
   for (const sub of DRIVE_SUBPASTAS) {
     const id = await driveFindOrCreateFolder(token, sub, cedenteId);
-    if (sub === DRIVE_PASTA_CONTRATOS) contratosId = id;
-    if (sub === DRIVE_PASTA_ANALISE)   analiseId = id;
+    if (sub === DRIVE_PASTA_CONTRATOS)    contratosId = id;
+    if (sub === DRIVE_PASTA_ANALISE)      analiseId = id;
+    if (sub === DRIVE_PASTA_CEDENTE_DOCS) cedenteDocsId = id;
   }
-  if (!contratosId) throw new Error(`Subpasta '${DRIVE_PASTA_CONTRATOS}' não pôde ser criada.`);
-  if (!analiseId)   throw new Error(`Subpasta '${DRIVE_PASTA_ANALISE}' não pôde ser criada.`);
-  return { contratosId, analiseId };
+  if (!contratosId)   throw new Error(`Subpasta '${DRIVE_PASTA_CONTRATOS}' não pôde ser criada.`);
+  if (!analiseId)     throw new Error(`Subpasta '${DRIVE_PASTA_ANALISE}' não pôde ser criada.`);
+  if (!cedenteDocsId) throw new Error(`Subpasta '${DRIVE_PASTA_CEDENTE_DOCS}' não pôde ser criada.`);
+  return { contratosId, analiseId, cedenteDocsId };
 }
 
 async function driveUploadBytes(
@@ -900,6 +1090,61 @@ function parseBool(v: string | null | undefined): boolean {
   return s === 'true' || s === '1' || s === 'sim' || s === 'yes' || s === 'marcado';
 }
 
+// Vocabulário dos marcadores de gênero pro template neutro: [masculino, feminino].
+// 1 template por tipo (sem versões M/F duplicadas) — só troca as flexões.
+// Precisa de outra palavra flexionada? Adiciona uma linha aqui.
+const GENERO_PALAVRAS: Record<string, [string, string]> = {
+  O_A:                     ['o', 'a'],
+  BRASILEIRO_A:            ['brasileiro', 'brasileira'],
+  INSCRITO_A:              ['inscrito', 'inscrita'],
+  PORTADOR_A:              ['portador', 'portadora'],
+  RESIDENTE_DOMICILIADO_A: ['residente e domiciliado', 'residente e domiciliada'],
+  DOMICILIADO_A:           ['domiciliado', 'domiciliada'],
+  CESSIONARIO_A:           ['cessionário', 'cessionária'],
+  NASCIDO_A:               ['nascido', 'nascida'],
+  SR_SRA:                  ['Sr.', 'Sra.'],
+};
+
+// Gera os marcadores {PREFIXO}_{MARCA} (ex.: CEDENTE_INSCRITO_A) pro gênero dado.
+// 'F' = feminino; qualquer outro valor (incl. null/undefined) = masculino, que é
+// o default gramatical. ponytail: sem gênero definido vira masculino — preencha
+// o radio (cedente) e a coluna `genero` (investidor) pra sair certo.
+function marcadoresGenero(prefixo: string, genero: string | null | undefined): Vars {
+  const fem = String(genero ?? '').trim().toUpperCase().startsWith('F');
+  const out: Vars = {};
+  for (const [marca, [masc, femi]] of Object.entries(GENERO_PALAVRAS)) {
+    out[`${prefixo}_${marca}`] = fem ? femi : masc;
+  }
+  return out;
+}
+
+// Monta a qualificação completa do investidor (cessionário) — vira o
+// placeholder {{INVESTIDOR_QUALIFICACAO}} no template. Detecta PJ pelo nº de
+// dígitos do campo cpf (14 = CNPJ); PF usa o gênero da coluna `genero`.
+// Mesmo padrão do _montarQualificacaoCessionario das petições. Não inclui o
+// nome (esse fica em {{INVESTIDOR_NOME}}).
+function montarQualificacaoInvestidor(inv: { cpf?: string | null; rg?: string | null; endereco?: string | null; genero?: string | null }): string {
+  const doc = String(inv.cpf ?? '').trim();
+  const digitos = doc.replace(/\D/g, '');
+  const endereco = String(inv.endereco ?? '').trim();
+  const rg = String(inv.rg ?? '').trim();
+  const fem = String(inv.genero ?? '').trim().toUpperCase().startsWith('F');
+  const partes: string[] = [];
+  if (digitos.length === 14) {
+    // PJ
+    partes.push('pessoa jurídica de direito privado');
+    partes.push(`inscrita no CNPJ sob o nº ${doc}`);
+    if (endereco) partes.push(`com sede em ${endereco}`);
+  } else {
+    // PF (11 dígitos ou desconhecido → trata como pessoa física)
+    partes.push(fem ? 'brasileira' : 'brasileiro');
+    partes.push(`${fem ? 'inscrita' : 'inscrito'} no CPF sob o nº ${doc}`);
+    if (rg) partes.push(`${fem ? 'portadora' : 'portador'} do RG nº ${rg}`);
+    if (endereco) partes.push(`residente e ${fem ? 'domiciliada' : 'domiciliado'} em ${endereco}`);
+  }
+  return partes.join(', ');
+}
+
 function determinarTipos(tipoExplicito: string | null | undefined, aprVars: Vars): string[] {
   // Override explícito do dropdown (admin/debug)
   if (tipoExplicito && TEMPLATES[tipoExplicito]) {
@@ -936,7 +1181,7 @@ function determinarTipos(tipoExplicito: string | null | undefined, aprVars: Vars
 
 interface InputPaths { apresentacao: string[]; cedente: string[]; escritorio: string[] }
 
-async function listInputPaths(sb: ReturnType<typeof createClient>, jobPrefix: string): Promise<InputPaths> {
+async function listInputPaths(sb: SB, jobPrefix: string): Promise<InputPaths> {
   const out: InputPaths = { apresentacao: [], cedente: [], escritorio: [] };
   for (const papel of ['apresentacao','cedente','escritorio'] as const) {
     const { data, error } = await sb.storage.from(BUCKET_INPUT).list(`${jobPrefix}/${papel}`, { limit: 100 });
@@ -950,7 +1195,7 @@ async function listInputPaths(sb: ReturnType<typeof createClient>, jobPrefix: st
   return out;
 }
 
-async function cleanupInputs(sb: ReturnType<typeof createClient>, paths: string[]): Promise<void> {
+async function cleanupInputs(sb: SB, paths: string[]): Promise<void> {
   if (paths.length === 0) return;
   try { await sb.storage.from(BUCKET_INPUT).remove(paths); } catch (_) { /* best-effort */ }
 }
@@ -964,7 +1209,7 @@ serve(async (req) => {
   if (req.method !== 'POST') return errorResponse('Method not allowed', 405);
 
   let jobRow: { id: string } | null = null;
-  let sbAdmin: ReturnType<typeof createClient> | null = null;
+  let sbAdmin: SB | null = null;
   let inputPathsAll: string[] = [];
 
   try {
@@ -974,7 +1219,7 @@ serve(async (req) => {
       return errorResponse('Não autenticado', 401);
     }
     const userJwt = authHeader.slice(7);
-    const sbUser = createClient(
+    const sbUser = createClient<any, any, any>(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: 'Bearer ' + userJwt } } },
@@ -989,12 +1234,34 @@ serve(async (req) => {
     const investidorId: string = body.investidor_id;
     const intermediadorNome: string = body.intermediador;
     const tipoExplicito: string | null = body.tipo || null;
+    const numeroProcesso: string = (body.numero_processo || '').trim();
+    const categoria: string = (body.categoria || DRIVE_CATEGORIA_PADRAO).trim();
+
+    // Ação leve: só lista os intermediadores da categoria (popular o dropdown do front).
+    // Não cria job nem gera nada — auth do JWT já validada acima.
+    if (body.acao === 'listar_intermediadores') {
+      sbAdmin = createClient<any, any, any>(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      );
+      const { data: gRows } = await sbAdmin.from('configuracoes').select('chave,valor')
+        .in('chave', ['google_oauth_client_id','google_oauth_client_secret','google_oauth_refresh_token']);
+      const g: Record<string, string> = {};
+      for (const r of (gRows || [])) g[r.chave] = r.valor;
+      const token = await refreshGoogleAccessToken(g.google_oauth_client_id, g.google_oauth_client_secret, g.google_oauth_refresh_token);
+      const intermediadores = await driveListarIntermediadoresAnalise(token, categoria);
+      return jsonResponse({ intermediadores });
+    }
+
     if (!jobId || !investidorId || !intermediadorNome) {
       return errorResponse('Campos obrigatórios: job_id, investidor_id, intermediador');
     }
+    if (!numeroProcesso) {
+      return errorResponse('Campo obrigatório: numero_processo (usado pra localizar a análise no Drive)');
+    }
 
     // 3. Service-role client (lê secrets, faz cleanup, escreve auditoria)
-    sbAdmin = createClient(
+    sbAdmin = createClient<any, any, any>(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
@@ -1037,13 +1304,11 @@ serve(async (req) => {
     if (jobErr) throw new Error('Erro criando job: ' + jobErr.message);
     jobRow = createdJob;
 
-    // 7. Lista arquivos de input no Storage
+    // 7. Lista arquivos de input no Storage (cedente/escritório).
+    //    Apresentação (análise de crédito) não é mais upload — vem do Drive no passo 9b.
     const jobPrefix = `${userId}/${jobId}`;
     const inputPaths = await listInputPaths(sbAdmin, jobPrefix);
     inputPathsAll = [...inputPaths.apresentacao, ...inputPaths.cedente, ...inputPaths.escritorio];
-    if (inputPaths.apresentacao.length === 0) {
-      return errorResponse(`Pasta '${jobPrefix}/apresentacao' está vazia no bucket ${BUCKET_INPUT}`, 400);
-    }
 
     // 8. Lê templates do bucket → coleta união de variáveis
     const templateBytes: Record<string, Uint8Array> = {};
@@ -1059,23 +1324,62 @@ serve(async (req) => {
       for (const v of vars) allTemplateVars.add(v);
     }
 
-    // 9. Extrações em paralelo
-    const apresentacaoP = extractApresentacao(sbAdmin, cfg.anthropic_api_key, inputPaths.apresentacao, Array.from(allTemplateVars));
+    // 9. Extrai cedente + escritório primeiro — o nome do cedente define qual pasta
+    //    da análise buscar no Drive.
     const cedenteP = inputPaths.cedente.length > 0
       ? extractParte(sbAdmin, cfg.anthropic_api_key, inputPaths.cedente, SCHEMA_CEDENTE)
       : Promise.resolve<Vars>({});
     const escritorioP = inputPaths.escritorio.length > 0
       ? extractParte(sbAdmin, cfg.anthropic_api_key, inputPaths.escritorio, SCHEMA_ESCRITORIO)
       : Promise.resolve<Vars>({});
-    const [apresentacao, cedente, escritorio] = await Promise.all([apresentacaoP, cedenteP, escritorioP]);
+    const [cedente, escritorio] = await Promise.all([cedenteP, escritorioP]);
 
-    // 9b. Override determinístico das 3 checkboxes a partir do XLSX (se houver).
-    // A IA tende a errar quando o input é grande (sheet2/sheet3 da análise são
-    // gigantes), então sobrescrevemos com leitura direta do XML do xlsx.
+    // 9a. Refresh do token Google — usado pra buscar a análise no Drive e, depois, pro upload.
+    const accessToken = await refreshGoogleAccessToken(
+      cfg.google_oauth_client_id,
+      cfg.google_oauth_client_secret,
+      cfg.google_oauth_refresh_token,
+    );
+
+    // 9b. Localiza a análise de crédito no Drive:
+    //     A. Análises de crédito / Requisições de Pequeno Valor / {intermediador} / {cedente - processo}
+    const cedenteNome = (cedente.CEDENTE_NOME as string) || '';
+    let analiseFolderName = '';
+    let analiseArquivos: DriveFile[];
+    try {
+      const found = await driveEncontrarAnaliseArquivos(accessToken, categoria, intermediadorNome, cedenteNome, numeroProcesso);
+      analiseArquivos = found.arquivos;
+      analiseFolderName = found.folderName;
+      console.log('[gerar-contrato] análise localizada:', JSON.stringify({ folder: found.folderName, debug: found.debug }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return errorResponse(`Não localizei a análise de crédito no Drive: ${msg}`, 404, {
+        intermediador: intermediadorNome, cedente: cedenteNome, numero_processo: numeroProcesso,
+      });
+    }
+    if (analiseArquivos.length === 0) {
+      return errorResponse(`Pasta da análise ('${analiseFolderName}') está vazia no Drive.`, 400);
+    }
+
+    // 9c. Baixa os arquivos da análise (export se forem Google Sheets/Docs nativos)
+    //     e monta o conteúdo pro Claude.
+    const analiseBaixados: Array<{ filename: string; bytes: Uint8Array }> = [];
+    const apresentacaoContent: ClaudeContentBlock[] = [];
+    for (const f of analiseArquivos) {
+      const baixado = await driveBaixarArquivo(accessToken, f);
+      analiseBaixados.push(baixado);
+      apresentacaoContent.push(...(await bytesToContentBlocks(baixado.filename, baixado.bytes)));
+    }
+
+    // 9d. Extrai a apresentação a partir do conteúdo baixado.
+    const apresentacao = await extractApresentacao(cfg.anthropic_api_key, apresentacaoContent, Array.from(allTemplateVars));
+
+    // 9e. Override determinístico das 3 checkboxes a partir do xlsx baixado (a IA erra
+    //     quando o input é grande). Sobrescreve as NEGOCIAR_*.
     const checkboxDebug: Record<string, unknown> = {
-      apresentacao_paths: inputPaths.apresentacao,
+      analise_folder: analiseFolderName,
+      analise_arquivos: analiseBaixados.map(a => a.filename),
       tentou_xlsx: false,
-      xlsx_path: null as string | null,
       detectado: null as Vars | null,
       erro: null as string | null,
       valor_ia_antes: {
@@ -1084,14 +1388,12 @@ serve(async (req) => {
         NEGOCIAR_HONORARIOS_SUCUMBENCIAIS: apresentacao.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS,
       },
     };
-    for (const path of inputPaths.apresentacao) {
-      const ext = extOf(path);
+    for (const a of analiseBaixados) {
+      const ext = extOf(a.filename);
       if (ext !== '.xlsx' && ext !== '.xls') continue;
       checkboxDebug.tentou_xlsx = true;
-      checkboxDebug.xlsx_path = path;
       try {
-        const bytes = await storageGetBytes(sbAdmin, BUCKET_INPUT, path);
-        const detectado = await detectCheckboxesFromXlsx(bytes);
+        const detectado = await detectCheckboxesFromXlsx(a.bytes);
         checkboxDebug.detectado = detectado;
         for (const [k, v] of Object.entries(detectado)) {
           if (v != null) apresentacao[k] = v;
@@ -1099,7 +1401,7 @@ serve(async (req) => {
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         checkboxDebug.erro = msg;
-        console.error('[gerar-contrato] override de checkboxes falhou', path, e);
+        console.error('[gerar-contrato] override de checkboxes falhou', a.filename, e);
       }
       break; // primeiro xlsx é suficiente
     }
@@ -1123,6 +1425,12 @@ serve(async (req) => {
     for (const k of ['CEDENTE_NOME', 'ESCRITORIO_NOME', 'ESCRITORIO_SOCIO_NOME']) {
       if (dados[k]) dados[k] = toTitleCasePT(dados[k]);
     }
+
+    // Cedente: sempre PF → marcadores de gênero no template (body.cedente_genero).
+    // Investidor: pode ser PJ → qualificação inteira gerada no código (detecta
+    // CNPJ por dígitos; PF usa o gênero da coluna `genero`).
+    Object.assign(dados, marcadoresGenero('CEDENTE', body.cedente_genero));
+    dados.INVESTIDOR_QUALIFICACAO = montarQualificacaoInvestidor(inv);
 
     // 11. Decide tipos a gerar e valida papéis necessários
     let tipos: string[];
@@ -1156,14 +1464,9 @@ serve(async (req) => {
       });
     }
 
-    // 13. Drive: refresh token + walk + create + upload
-    const accessToken = await refreshGoogleAccessToken(
-      cfg.google_oauth_client_id,
-      cfg.google_oauth_client_secret,
-      cfg.google_oauth_refresh_token,
-    );
+    // 13. Drive: walk + create + upload (token já obtido no passo 9a)
     const processosId = await driveEncontrarProcessosFolder(accessToken);
-    const { intermediadores, debug: driveDebug } = await driveListIntermediadores(accessToken, processosId);
+    const { intermediadores, debug: driveDebug } = await driveListIntermediadores(accessToken, processosId, categoria);
     const interTermo = normalizar(intermediadorNome);
     const interMatch = intermediadores.find(i => normalizar(i.name) === interTermo)
                     ?? intermediadores.find(i => normalizar(i.name).includes(interTermo));
@@ -1174,36 +1477,55 @@ serve(async (req) => {
           processos_folder_id: processosId,
           categorias_em_processos: driveDebug.categorias_em_processos,
           categoria_rpv_id: driveDebug.categoria_rpv_id,
-          categoria_procurada: DRIVE_CATEGORIA_PADRAO,
+          categoria_procurada: categoria,
         },
       });
     }
     const nomeTitular = toTitleCasePT(escritorio.ESCRITORIO_NOME || cedente.CEDENTE_NOME || inv.nome) ?? 'sem-titular';
     const processo = apresentacao.NUMERO_PROCESSO || 'sem-processo';
     const nomePastaCedente = `${nomeTitular} - ${processo}`;
-    const { contratosId: contratosFolderId, analiseId: analiseFolderId } =
+    const { contratosId: contratosFolderId, analiseId: analiseFolderId, cedenteDocsId: cedenteDocsFolderId } =
       await driveGarantirEstruturaCedente(accessToken, interMatch.id, nomePastaCedente);
 
     // 13a. Upload dos contratos gerados pra "2. Contratos assinados"
     const uploads: Array<{ tipo: string; nome: string; drive_id: string; webViewLink?: string; pendentes: string[] }> = [];
     for (const a of arquivosGerados) {
-      const r = await driveUploadDocx(accessToken, a.nome, contratosFolderId, a.bytes);
-      uploads.push({ tipo: a.tipo, nome: a.nome, drive_id: r.id, webViewLink: r.webViewLink, pendentes: a.pendentes });
+      // Não sobrescreve contrato já existente (pode estar assinado): se houver colisão de nome,
+      // sobe versão datada. Re-runs no mesmo dia regravam só a versão datada, nunca o original.
+      let nome = a.nome;
+      if (await driveFindChild(accessToken, nome, contratosFolderId)) {
+        nome = nome.replace(/\.docx$/i, '') + ` - ${dateStamp()}.docx`;
+      }
+      const r = await driveUploadDocx(accessToken, nome, contratosFolderId, a.bytes);
+      uploads.push({ tipo: a.tipo, nome, drive_id: r.id, webViewLink: r.webViewLink, pendentes: a.pendentes });
     }
 
-    // 13b. Upload dos arquivos de apresentação (análise de RPV, anexos) pra "1. Análise(s) de crédito"
-    // Mantém o nome original do arquivo, faz upload com mime detectado por extensão.
+    // 13b. Copia os arquivos da análise (baixados do Drive no passo 9c) pra
+    // "1. Análise(s) de crédito" do processo. Mantém uma cópia junto do processo.
     const analiseUploads: Array<{ nome: string; drive_id: string }> = [];
-    for (const path of inputPaths.apresentacao) {
+    for (const a of analiseBaixados) {
+      try {
+        const mime = mimeForExtension(extOf(a.filename));
+        const r = await driveUploadBytes(accessToken, a.filename, analiseFolderId, a.bytes, mime);
+        analiseUploads.push({ nome: a.filename, drive_id: r.id });
+      } catch (e) {
+        console.error('[gerar-contrato] falha upload análise', a.filename, e);
+        // Best-effort — não derruba a operação inteira por causa de 1 anexo
+      }
+    }
+
+    // 13c. Upload dos documentos do cedente (RG, comprovantes, etc.) pra "4. Documentos do cedente e advogado"
+    const cedenteUploads: Array<{ nome: string; drive_id: string }> = [];
+    for (const path of inputPaths.cedente) {
       try {
         const bytes = await storageGetBytes(sbAdmin, BUCKET_INPUT, path);
         const nomeArquivo = path.split('/').pop() || 'arquivo';
         const mime = mimeForExtension(extOf(path));
-        const r = await driveUploadBytes(accessToken, nomeArquivo, analiseFolderId, bytes, mime);
-        analiseUploads.push({ nome: nomeArquivo, drive_id: r.id });
+        const r = await driveUploadBytes(accessToken, nomeArquivo, cedenteDocsFolderId, bytes, mime);
+        cedenteUploads.push({ nome: nomeArquivo, drive_id: r.id });
       } catch (e) {
-        console.error('[gerar-contrato] falha upload análise', path, e);
-        // Best-effort — não derruba a operação inteira por causa de 1 anexo
+        console.error('[gerar-contrato] falha upload doc cedente', path, e);
+        // Best-effort — não derruba a operação por causa de 1 anexo
       }
     }
 
@@ -1236,6 +1558,7 @@ serve(async (req) => {
       drive_folder_url: folderUrl,
       analise_folder_url: analiseFolderUrl,
       analise_uploads: analiseUploads,
+      cedente_uploads: cedenteUploads,
       uploads,
       variaveis_extraidas: dados,
       pendentes: todasPendentes,

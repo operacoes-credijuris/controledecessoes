@@ -30,7 +30,13 @@ const TEMPLATES: Record<string, string> = {
   rpv_complementar: 'rpv_complementar.docx',
   registro_publico: 'registro_publico.docx',
   homologacao:      'homologacao.docx',
+  // Templates para o fluxo IA — o corpo central é gerado pelo Claude
+  ai_com_qualif:    'ai_com_qualif.docx',
+  ai_sem_qualif:    'ai_sem_qualif.docx',
 };
+
+const CLAUDE_MODEL = 'claude-opus-4-5';
+const BUCKET_INPUT_IA = 'peticoes-input-ia'; // anexos temporários do fluxo IA
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
@@ -57,7 +63,7 @@ function sanitizeFilenamePart(s: string | null | undefined): string {
   return String(s).replace(/[\/\\:*?"<>|\r\n\t]/g, '_').replace(/\s+/g, ' ').trim();
 }
 
-function nomeArquivo(tipo: string, dados: Vars): string {
+function nomeArquivo(tipo: string, dados: Vars, tituloOverride?: string | null): string {
   const cessionario = sanitizeFilenamePart(dados.NOME_CESSIONARIO) || 'Cessionario';
   const processo    = sanitizeFilenamePart(dados.NUMERO_PROCESSO) || 'sem-processo';
   const labels: Record<string, string> = {
@@ -67,8 +73,13 @@ function nomeArquivo(tipo: string, dados: Vars): string {
     rpv_complementar: 'Petição de RPV Complementar',
     registro_publico: 'Petição de Juntada de Registro Público',
     homologacao:      'Petição de Homologação de Cessão',
+    ai_com_qualif:    'Petição Personalizada (IA)',
+    ai_sem_qualif:    'Petição Personalizada (IA)',
   };
-  const labelTipo = labels[tipo] || `Petição - ${tipo}`;
+  // Se houver titulo override (vindo do Claude pros tipos IA), usa ele
+  const labelTipo = tituloOverride
+    ? sanitizeFilenamePart(tituloOverride)
+    : (labels[tipo] || `Petição - ${tipo}`);
   return `${labelTipo} - ${cessionario} - ${processo}.docx`;
 }
 
@@ -464,6 +475,266 @@ async function subirPeticaoNoDrive(
 }
 
 // ============================================================================
+// IA — Claude API + Markdown → docx
+// ============================================================================
+
+type ClaudeBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+  | { type: 'document'; source: { type: 'base64'; media_type: 'application/pdf'; data: string } };
+
+const CLAUDE_SYSTEM_PROMPT =
+  'Você é um assistente jurídico especializado em redigir petições brasileiras. ' +
+  'O usuário vai te passar uma orientação e dados de um processo. Você deve gerar ' +
+  'APENAS o CORPO da petição em Markdown (sem cabeçalho, sem rodapé, sem assinatura). ' +
+  'O cabeçalho (AO JUÍZO, processo, qualificação) e o rodapé (Nestes termos, pede ' +
+  'deferimento; assinatura) já estão no template — NÃO os reescreva. ' +
+  'Use formal Português jurídico brasileiro. Estruture com seções (I, II, III...) ' +
+  'quando fizer sentido. Use **negrito** em destaques importantes (citações, ' +
+  'números de lei, conclusões). Cada parágrafo em sua própria linha, com linha em ' +
+  'branco entre eles.\n\n' +
+  'FORMATO OBRIGATÓRIO DA RESPOSTA: na PRIMEIRA linha, escreva apenas o título curto da peça ' +
+  'no formato "TÍTULO: <até 3 palavras>". Exemplos válidos: "TÍTULO: Recurso Especial", ' +
+  '"TÍTULO: Embargos Declaratórios", "TÍTULO: Manifestação", "TÍTULO: Petição de Cumprimento", ' +
+  '"TÍTULO: Contrarrazões". Use o nome técnico da peça processual. Depois, pule uma linha ' +
+  'e comece o corpo da petição em Markdown normalmente.';
+
+function escapeXmlText(s: string): string {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Inicializa um <w:rPr> com negrito, baseado num rPr existente (preserva fonte/tamanho).
+function rPrComNegrito(rPrBase: string): string {
+  if (!rPrBase) return '<w:rPr><w:b w:val="1"/><w:bCs w:val="1"/></w:rPr>';
+  if (rPrBase.includes('<w:b ') || rPrBase.includes('<w:b/>')) return rPrBase;
+  return rPrBase.replace('<w:rPr>', '<w:rPr><w:b w:val="1"/><w:bCs w:val="1"/>');
+}
+
+// Inicializa um <w:rPr> com italico, baseado num rPr existente.
+function rPrComItalico(rPrBase: string): string {
+  if (!rPrBase) return '<w:rPr><w:i w:val="1"/><w:iCs w:val="1"/></w:rPr>';
+  if (rPrBase.includes('<w:i ') || rPrBase.includes('<w:i/>')) return rPrBase;
+  return rPrBase.replace('<w:rPr>', '<w:rPr><w:i w:val="1"/><w:iCs w:val="1"/>');
+}
+
+// Constroi um <w:r> com texto. Aplica bold/italic ao rPr conforme flags.
+function montarRun(texto: string, rPrBase: string, bold: boolean, italic = false): string {
+  let rPr = rPrBase;
+  if (bold) rPr = rPrComNegrito(rPr);
+  if (italic) rPr = rPrComItalico(rPr);
+  return `<w:r>${rPr}<w:t xml:space="preserve">${escapeXmlText(texto)}</w:t></w:r>`;
+}
+
+// Processa **negrito** e *italico* dentro de uma linha, gerando sequência de runs.
+// Ordem importa: **bold** vem antes do *italic* na regex pra não confundir.
+function processarInline(linha: string, rPrBase: string): string {
+  const out: string[] = [];
+  // Captura **bold** OU *italic* (regex única, distingue pelo grupo casado)
+  const re = /(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)/g;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(linha)) !== null) {
+    if (m.index > lastIdx) out.push(montarRun(linha.substring(lastIdx, m.index), rPrBase, false));
+    if (m[1]) {
+      // Group 1 casou: bold
+      out.push(montarRun(m[2], rPrBase, true));
+    } else {
+      // Group 3 casou: italic
+      out.push(montarRun(m[4], rPrBase, false, true));
+    }
+    lastIdx = re.lastIndex;
+  }
+  if (lastIdx < linha.length) out.push(montarRun(linha.substring(lastIdx), rPrBase, false));
+  return out.join('');
+}
+
+// Adiciona/substitui indentação à esquerda no pPr (pra blockquote).
+function pPrComIndent(pPrBase: string, leftTwips = 720): string {
+  if (!pPrBase) return `<w:pPr><w:ind w:left="${leftTwips}"/></w:pPr>`;
+  const semInd = pPrBase.replace(/<w:ind\b[^/]*\/>/g, '');
+  return semInd.replace('<w:pPr>', `<w:pPr><w:ind w:left="${leftTwips}"/>`);
+}
+
+// Converte markdown em sequência de <w:p>...</w:p>. Suporta:
+//   - linha em branco → parágrafo vazio
+//   - "# Heading" → parágrafo em negrito
+//   - "> texto" → blockquote (paragrafo indentado à esquerda)
+//   - "- item" / "* item" → parágrafo simples (sem bullet visual)
+//   - **bold** e *italic* inline
+function markdownParaParagrafos(markdown: string, pPr: string, rPrBase: string): string {
+  const linhas = markdown.split('\n');
+  const out: string[] = [];
+  for (const raw of linhas) {
+    const linha = raw.replace(/\s+$/, '');
+    if (!linha.trim()) {
+      out.push(`<w:p>${pPr}</w:p>`);
+      continue;
+    }
+    // Horizontal rule (--- ou *** ou ___) — markdown separator, ignora
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(linha.trim())) continue;
+    // Blockquote: linha começa com > (markdown citação)
+    const bq = linha.match(/^>\s*(.*)$/);
+    if (bq) {
+      const conteudo = bq[1].trim();
+      const pPrInd = pPrComIndent(pPr, 720);
+      if (!conteudo) { out.push(`<w:p>${pPrInd}</w:p>`); continue; }
+      out.push(`<w:p>${pPrInd}${processarInline(conteudo, rPrBase)}</w:p>`);
+      continue;
+    }
+    // Headings (# ou ## ou ###) → parágrafo em negrito
+    const head = linha.match(/^(#{1,3})\s+(.+)$/);
+    if (head) {
+      out.push(`<w:p>${pPr}${montarRun(head[2], rPrBase, true)}</w:p>`);
+      continue;
+    }
+    // Listas (- ou *) — tratamos como parágrafo simples sem bullet
+    const bullet = linha.match(/^[-*]\s+(.+)$/);
+    const conteudo = bullet ? bullet[1] : linha;
+    out.push(`<w:p>${pPr}${processarInline(conteudo, rPrBase)}</w:p>`);
+  }
+  return out.join('');
+}
+
+// Encontra o <w:p> que contém {{CORPO}} no XML e substitui pelos paragrafos
+// do markdown. Preserva fonte/tamanho/spacing do paragrafo original, mas
+// LIMPA: alinhamento centralizado e negrito (pra evitar herdar destaques
+// visuais do placeholder).
+function inserirCorpoNoXml(xml: string, markdown: string): string {
+  // Match não-greedy do <w:p> que contém {{CORPO}}
+  const re = /<w:p\b[^>]*>(?:(?!<w:p\b)[\s\S])*?\{\{CORPO\}\}(?:(?!<w:p\b)[\s\S])*?<\/w:p>/;
+  const m = xml.match(re);
+  if (!m) {
+    // Sem placeholder de corpo — só substitui texto
+    return xml.replace(/\{\{CORPO\}\}/g, escapeXmlText(markdown));
+  }
+  const original = m[0];
+  // Extrai pPr, limpa bold e força alinhamento JUSTIFICADO (padrão jurídico).
+  // Também substitui o espaçamento (era after=200/before=200, muito espaçado)
+  // por um mais compacto: after=0/before=0/line=276 (~1.15x).
+  let pPr = '';
+  const pPrMatch = original.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
+  if (pPrMatch) {
+    pPr = pPrMatch[0]
+      .replace(/<w:jc\b[^/]*\/>/g, '')      // remove alinhamento existente
+      .replace(/<w:b\b[^/]*\/>/g, '')       // remove bold do rPr-default do paragrafo
+      .replace(/<w:bCs\b[^/]*\/>/g, '')
+      .replace(/<w:spacing\b[^/]*\/>/g, ''); // remove spacing existente (era muito grande)
+    // Insere justified e spacing compacto
+    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:jc w:val="both"/>');
+  } else {
+    pPr = '<w:pPr><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr>';
+  }
+  // Extrai rPr de um run e limpa bold
+  let rPrBase = '';
+  const rPrMatch = original.match(/<w:rPr>(?:(?!<w:rPr)[\s\S])*?<\/w:rPr>/);
+  if (rPrMatch) {
+    rPrBase = rPrMatch[0]
+      .replace(/<w:b\b[^/]*\/>/g, '')
+      .replace(/<w:bCs\b[^/]*\/>/g, '');
+  }
+  const novosParagrafos = markdownParaParagrafos(markdown, pPr, rPrBase);
+  return xml.replace(original, novosParagrafos);
+}
+
+// Chama Claude API com prompt + contexto. Retorna o titulo (curto, até 3 palavras)
+// e o corpo em markdown. Se o Claude não seguir o formato "TÍTULO: ...", titulo
+// vem null e o body é o texto inteiro.
+async function gerarCorpoComClaude(
+  apiKey: string,
+  orientacao: string,
+  contexto: Record<string, string>,
+  anexos: ClaudeBlock[],
+): Promise<{ title: string | null; body: string }> {
+  const contextoTexto = Object.entries(contexto)
+    .filter(([_, v]) => v && v !== '(não informado)')
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join('\n');
+
+  const userContent: ClaudeBlock[] = [
+    ...anexos,
+    {
+      type: 'text',
+      text:
+        `DADOS DO PROCESSO:\n${contextoTexto}\n\n` +
+        `ORIENTAÇÃO DO USUÁRIO:\n${orientacao}\n\n` +
+        `Gere o corpo da petição em Markdown agora. Lembre: SEM cabeçalho, SEM rodapé, ` +
+        `SEM "Nestes termos, pede deferimento" — só o corpo central.`,
+    },
+  ];
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 4000,
+      system: CLAUDE_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userContent }],
+    }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Claude API (${res.status}): ${txt.slice(0, 400)}`);
+  }
+  const data = await res.json();
+  const block = data.content?.find((c: { type: string }) => c.type === 'text');
+  if (!block) throw new Error('Claude retornou sem bloco de texto');
+  const raw = String(block.text || '').trim();
+  // Tenta extrair "TÍTULO: ..." da primeira linha. Tolerante a variações:
+  // TITULO/TÍTULO, com ou sem acento, com ou sem dois-pontos, em qualquer caixa.
+  const m = raw.match(/^\s*T[ÍI]TULO\s*[:\-]\s*([^\n]+)\s*\n([\s\S]*)$/i);
+  if (m) {
+    // Limpa o titulo: tira aspas, asteriscos, pontuação final, e capa em 60 chars
+    let title = m[1].trim().replace(/^["'*]+|["'*.,;:]+$/g, '').slice(0, 60);
+    return { title: title || null, body: m[2].trim() };
+  }
+  return { title: null, body: raw };
+}
+
+// Le os anexos (PDFs/imagens/docx) do bucket temp e converte em ClaudeBlocks.
+async function lerAnexosParaClaude(
+  sbAdmin: ReturnType<typeof createClient>,
+  prefix: string,
+): Promise<{ blocks: ClaudeBlock[]; paths: string[] }> {
+  const { data: files, error } = await sbAdmin.storage.from(BUCKET_INPUT_IA).list(prefix, { limit: 20 });
+  if (error || !files || files.length === 0) return { blocks: [], paths: [] };
+  const blocks: ClaudeBlock[] = [];
+  const paths: string[] = [];
+  for (const f of files) {
+    if (!f.name || f.name === '.emptyFolderPlaceholder') continue;
+    const path = `${prefix}/${f.name}`;
+    paths.push(path);
+    try {
+      const bytes = await storageGetBytes(sbAdmin, BUCKET_INPUT_IA, path);
+      const ext = (f.name.split('.').pop() || '').toLowerCase();
+      blocks.push({ type: 'text', text: `[Anexo: ${f.name}]` });
+      if (ext === 'pdf') {
+        blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64encode(bytes) } });
+      } else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+        const mt = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+        blocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: b64encode(bytes) } });
+      } else {
+        // Outros tipos: tenta como texto
+        try { blocks.push({ type: 'text', text: new TextDecoder().decode(bytes).slice(0, 50000) }); }
+        catch (_) { blocks.push({ type: 'text', text: '(arquivo não-textual ignorado)' }); }
+      }
+    } catch (e) {
+      console.error('[gerar-peticao] erro lendo anexo', path, e);
+    }
+  }
+  return { blocks, paths };
+}
+
+async function limparAnexos(sbAdmin: ReturnType<typeof createClient>, paths: string[]): Promise<void> {
+  if (!paths.length) return;
+  try { await sbAdmin.storage.from(BUCKET_INPUT_IA).remove(paths); } catch (_) { /* best-effort */ }
+}
+
+// ============================================================================
 // HTTP Handler
 // ============================================================================
 
@@ -528,9 +799,69 @@ serve(async (req) => {
       );
     }
 
-    // 5. Preenche
-    const { bytes, pendentes } = await fillTemplate(templateBytes, dados);
-    const filename = nomeArquivo(tipo, dados);
+    // 5a. (Apenas para tipos AI) chama Claude pra gerar o corpo da petição
+    // e injeta como parágrafos {{CORPO}} antes do fillTemplate.
+    let bytes: Uint8Array;
+    let pendentes: string[];
+    let anexosUsadosPaths: string[] = [];
+    let corpoMarkdownGerado: string | null = null;
+    let orientacaoOriginal: string = '';
+    let tituloPersonalizado: string | null = null;
+    if (tipo === 'ai_com_qualif' || tipo === 'ai_sem_qualif') {
+      const orientacao = String(body.orientacao || '').trim();
+      if (!orientacao) return errorResponse('Orientação vazia. Descreva o que a petição deve fazer.', 400);
+
+      // Le secret do Anthropic
+      const { data: cfgRows } = await sbAdmin.from('configuracoes')
+        .select('chave,valor').in('chave', ['anthropic_api_key']);
+      const anthKey = (cfgRows || [])[0]?.valor;
+      if (!anthKey) return errorResponse("Secret 'anthropic_api_key' não configurado em configuracoes", 500);
+
+      // Le anexos (se houver) do bucket temp — frontend os subiu antes de chamar
+      const anexosPrefix = String(body.anexos_prefix || '');
+      let anexoBlocks: ClaudeBlock[] = [];
+      if (anexosPrefix) {
+        const { blocks, paths } = await lerAnexosParaClaude(sbAdmin, anexosPrefix);
+        anexoBlocks = blocks;
+        anexosUsadosPaths = paths;
+      }
+
+      // Monta o contexto que vai pro Claude
+      const contexto: Record<string, string> = {
+        'Número do processo':    String(dados.NUMERO_PROCESSO || ''),
+        'Juízo':                  String(dados.ENDERECAMENTO_JUIZO || ''),
+        'Cessionário':            String(dados.NOME_CESSIONARIO || ''),
+        'Qualificação do cessionário': String(dados.QUALIFICACAO_CESSIONARIO || ''),
+        'Dados bancários do cessionário': String(dados.DADOS_BANCARIOS || ''),
+        'Créditos cedidos':       String(dados.CREDITOS_CEDIDOS || ''),
+        'Observações da tarefa (Advbox)': String(body.notes_tarefa || ''),
+      };
+      const { title: tituloIA, body: corpoMarkdown } = await gerarCorpoComClaude(anthKey, orientacao, contexto, anexoBlocks);
+      corpoMarkdownGerado = corpoMarkdown;
+      orientacaoOriginal = orientacao;
+      // Se o Claude sugeriu um titulo curto, sobrescreve o label do nome do arquivo
+      if (tituloIA) tituloPersonalizado = tituloIA;
+
+      // 5b. Preenche os placeholders do header (sem o CORPO) e depois injeta o corpo
+      const { bytes: bytesParcial, pendentes: pend1 } = await fillTemplate(templateBytes, dados);
+      // Pega o XML do template parcialmente preenchido e injeta o corpo no lugar de {{CORPO}}
+      const zipParcial = await JSZip.loadAsync(bytesParcial);
+      const docFileParcial = zipParcial.file('word/document.xml');
+      if (!docFileParcial) throw new Error('Template AI inválido: word/document.xml não encontrado');
+      let xmlParcial = await docFileParcial.async('string');
+      xmlParcial = inserirCorpoNoXml(xmlParcial, corpoMarkdown);
+      zipParcial.file('word/document.xml', xmlParcial);
+      bytes = await zipParcial.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
+      pendentes = pend1.filter(p => p !== 'CORPO');
+    } else {
+      // Caminho normal — preenche tudo via fillTemplate
+      const r = await fillTemplate(templateBytes, dados);
+      bytes = r.bytes;
+      pendentes = r.pendentes;
+    }
+    // Pra tipos IA, usa o titulo sugerido pelo Claude (ex: "Recurso Especial");
+    // pros outros, usa o label padrão da tabela.
+    const filename = nomeArquivo(tipo, dados, tituloPersonalizado);
 
     // 6. (Opcional) sobe a peticao pro Google Drive. Best-effort: se falhar,
     // o download local continua normalmente — apenas reporta o status.
@@ -545,13 +876,21 @@ serve(async (req) => {
       );
     }
 
+    // 6b. Limpa anexos temporários do storage (best-effort)
+    if (anexosUsadosPaths.length) await limparAnexos(sbAdmin, anexosUsadosPaths);
+
     // 7. Retorna base64 pro browser + status do Drive
+    // Pra tipos AI, devolve também o markdown gerado e a orientação,
+    // pro frontend montar o botão "Refinar com Claude" abrindo o chat
+    // com contexto carregado.
     return jsonResponse({
       success: true,
       filename,
       docx_base64: b64encode(bytes),
       pendentes,
       drive,
+      corpo_markdown: corpoMarkdownGerado,
+      orientacao: orientacaoOriginal || undefined,
     });
 
   } catch (e) {

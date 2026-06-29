@@ -869,6 +869,11 @@
 
         <div class="gc-papel">
           <div class="gc-papel-hdr">Cedente <span class="gc-papel-sub">— pra cessão de crédito principal / intermediação</span></div>
+          <div class="gc-genero" style="display:flex;align-items:center;gap:16px;margin-bottom:8px;font-size:13px">
+            <span style="color:#9ca3af">Sexo do cedente:</span>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="gc-cedente-genero" value="M" checked> Masculino</label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="gc-cedente-genero" value="F"> Feminino</label>
+          </div>
           <label class="gc-dropzone">
             <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx" onchange="gcOnFileSelect('cedente',this)" style="display:none">
             <div class="gc-dropzone-text">+ Selecionar arquivos</div>
