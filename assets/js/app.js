@@ -6448,6 +6448,8 @@ function acInit(){
   AC.uploads = { processo: [] };
   const res = document.getElementById('ac-result'); if(res) res.innerHTML = '';
   const np = document.getElementById('ac-numero-processo'); if(np) np.value = '';
+  const ta = document.getElementById('ac-tipo-aquisicao'); if(ta) ta.value = 'auto';
+  const hp = document.getElementById('ac-honorarios-pct'); if(hp) hp.value = '';
   acLoadIntermediadores();
   acRenderFiles();
 }
@@ -6592,6 +6594,8 @@ async function acSubmit(){
   const intermediador = (document.getElementById('ac-intermediador').value || '').trim();
   const numero_processo = (document.getElementById('ac-numero-processo').value || '').trim();
   const categoria = document.querySelector('input[name="ac-categoria"]:checked')?.value || 'Requisições de Pequeno Valor';
+  const tipo_aquisicao = (document.getElementById('ac-tipo-aquisicao')?.value || 'auto');
+  const honorarios_pct = (document.getElementById('ac-honorarios-pct')?.value || '').trim();
 
   try{
     if(!sb) throw new Error('Supabase não inicializado');
@@ -6634,7 +6638,7 @@ async function acSubmit(){
     // 2. Invoca a Edge Function (lê o processo, roda a precificação, entrega no Drive)
     _acProgress('Lendo o processo e gerando a planilha… (pode levar 1–2 min)');
     const { data, error } = await sb.functions.invoke('gerar-analise-rpv', {
-      body: { job_id: AC.job_id, intermediador, numero_processo, categoria },
+      body: { job_id: AC.job_id, intermediador, numero_processo, categoria, tipo_aquisicao, honorarios_pct },
     });
     if(error){
       let detail = error.message || String(error);
