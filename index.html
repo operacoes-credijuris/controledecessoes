@@ -797,9 +797,28 @@
       </div>
     </div>
 
-    <!-- Passo 3: Processo completo (PDF único) -->
+    <!-- Passo 3: O que está sendo cedido + % de honorários -->
     <div class="gc-step">
       <div class="gc-step-num">3</div>
+      <div class="gc-step-body">
+        <div class="gc-lbl">O que está sendo cedido?</div>
+        <select id="ac-tipo-aquisicao" class="gc-select">
+          <option value="auto" selected>Detectar automaticamente (como hoje)</option>
+          <option value="principal">Apenas o crédito principal</option>
+          <option value="honorarios">Apenas os honorários</option>
+          <option value="ambos">Crédito principal e honorários</option>
+        </select>
+        <div class="gc-hint">No automático, o sistema decide pelo cálculo (CUC), como já funciona hoje.</div>
+
+        <div class="gc-lbl" style="margin-top:14px">Percentual de honorários (%) <span style="font-weight:400;opacity:.7">— opcional</span></div>
+        <input id="ac-honorarios-pct" type="number" min="0" max="100" step="0.01" class="gc-input" placeholder="ex: 30" autocomplete="off">
+        <div class="gc-hint">Deixe em branco para o sistema calcular sozinho. Se preencher, aplica sobre o valor bruto (quando há destaque) ou sobre o líquido (quando não há).</div>
+      </div>
+    </div>
+
+    <!-- Passo 4: Processo completo (PDF único) -->
+    <div class="gc-step">
+      <div class="gc-step-num">4</div>
       <div class="gc-step-body">
         <div class="gc-lbl">Processo completo <span class="gc-papel-req">obrigatório</span></div>
         <label class="gc-dropzone">
