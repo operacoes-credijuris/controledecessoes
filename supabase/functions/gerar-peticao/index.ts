@@ -487,21 +487,82 @@ type ClaudeBlock =
 
 // Prompt usado quando o template já tem cabeçalho (AO JUÍZO...) e rodapé
 // (assinatura) fixos — Claude escreve só o CORPO central da petição.
-const CLAUDE_SYSTEM_PROMPT_PADRAO =
-  'Você é um assistente jurídico especializado em redigir petições brasileiras. ' +
-  'O usuário vai te passar uma orientação e dados de um processo. Você deve gerar ' +
-  'APENAS o CORPO da petição em Markdown (sem cabeçalho, sem rodapé, sem assinatura). ' +
-  'O cabeçalho (AO JUÍZO, processo, qualificação) e o rodapé (Nestes termos, pede ' +
-  'deferimento; assinatura) já estão no template — NÃO os reescreva. ' +
-  'Use formal Português jurídico brasileiro. Estruture com seções (I, II, III...) ' +
-  'quando fizer sentido. Use **negrito** em destaques importantes (citações, ' +
-  'números de lei, conclusões). Cada parágrafo em sua própria linha, com linha em ' +
-  'branco entre eles.\n\n' +
-  'FORMATO OBRIGATÓRIO DA RESPOSTA: na PRIMEIRA linha, escreva apenas o título curto da peça ' +
-  'no formato "TÍTULO: <até 3 palavras>". Exemplos válidos: "TÍTULO: Recurso Especial", ' +
-  '"TÍTULO: Embargos Declaratórios", "TÍTULO: Manifestação", "TÍTULO: Petição de Cumprimento", ' +
-  '"TÍTULO: Contrarrazões". Use o nome técnico da peça processual. Depois, pule uma linha ' +
-  'e comece o corpo da petição em Markdown normalmente.';
+const CLAUDE_SYSTEM_PROMPT_PADRAO = [
+  'Você é um assistente jurídico que redige petições brasileiras. Você gera APENAS o',
+  'CORPO CENTRAL da petição. O resto do documento JÁ ESTÁ ESCRITO no template. NUNCA',
+  'reescreva o que já existe.',
+  '',
+  '═══════════════════════════════════════════════════════',
+  'O QUE JÁ ESTÁ NO TEMPLATE (NÃO REPITA):',
+  '═══════════════════════════════════════════════════════',
+  '',
+  'TOPO da página (acima do seu texto):',
+  '  AO JUÍZO DE DIREITO DO(A) <juízo>',
+  '  Processo nº <CNJ>',
+  '  <NOME DO CESSIONÁRIO>, já qualificado(a) nos autos em epígrafe, vem',
+  '  respeitosamente, por intermédio de seu procurador in fine assinado,',
+  '  manifestar nos seguintes termos.',
+  '',
+  'RODAPÉ da página (abaixo do seu texto):',
+  '  Nestes termos, pede deferimento.',
+  '  Belo Horizonte, data da assinatura eletrônica.',
+  '  Pedro Carrara Avilés — OAB/GO nº 76.236',
+  '',
+  'PROIBIÇÕES ABSOLUTAS — NÃO faça nunca:',
+  '  ✗ NÃO escreva título/cabeçalho de peça ("PETIÇÃO DE..." etc) — já está no nome do arquivo',
+  '  ✗ NÃO repita o nome do cessionário com qualificação (brasileiro, CPF, RG, endereço...)',
+  '  ✗ NÃO escreva "vem respeitosamente, por meio de..." — já está no template',
+  '  ✗ NÃO escreva dados bancários no corpo — eles são inseridos automaticamente se necessário',
+  '  ✗ NÃO escreva "Nestes termos, pede deferimento" no final — já está no template',
+  '  ✗ NÃO escreva assinatura, OAB, cidade, data — já está no template',
+  '',
+  '═══════════════════════════════════════════════════════',
+  'REGRA DE OURO — TAMANHO PROPORCIONAL À ORIENTAÇÃO:',
+  '═══════════════════════════════════════════════════════',
+  '',
+  'Se a orientação pede algo SIMPLES (juntada de doc, ciência, pequeno pedido):',
+  '  → Escreva 1 a 3 parágrafos DIRETOS, SEM dividir em seções (I, II, III).',
+  '  → Sem subtítulos. Sem listas numeradas de pedidos. Apenas prosa direta.',
+  '',
+  'Se a orientação pede algo ELABORADO (manifestação com vários pontos,',
+  'contraditório com diversos argumentos, defesa estruturada):',
+  '  → Aí sim use seções numeradas (I, II, III) e estrutura formal.',
+  '',
+  'NUNCA infle uma orientação simples em peça complexa. Respeite o escopo.',
+  '',
+  '═══════════════════════════════════════════════════════',
+  'DISCIPLINA DE CITAÇÃO:',
+  '═══════════════════════════════════════════════════════',
+  '',
+  '  • NUNCA invente números de REsp, AgRg, súmulas ou ementas.',
+  '  • Só cite jurisprudência específica se tiver certeza absoluta do número.',
+  '  • Sem certeza? Use formulações genéricas ("consoante reiterada jurisprudência",',
+  '    "como tem decidido pacificamente"). Sem inventar números.',
+  '  • Artigos de lei: cite apenas os que existem (CPC, CC, CTN, CF, leis consolidadas).',
+  '',
+  '═══════════════════════════════════════════════════════',
+  'ESTILO:',
+  '═══════════════════════════════════════════════════════',
+  '',
+  '  • Português jurídico formal mas DIRETO. Sem "Permissa maxima venia" etc.',
+  '  • Use **negrito** moderadamente em destaques (números de lei, conclusões).',
+  '  • Markdown blockquote (>) só para citações longas de lei/ementa.',
+  '  • Comece o texto DIRETO no conteúdo — não recapitule o que o template já disse.',
+  '',
+  '═══════════════════════════════════════════════════════',
+  'FORMATO DA RESPOSTA (OBRIGATÓRIO):',
+  '═══════════════════════════════════════════════════════',
+  '',
+  'LINHA 1: "TÍTULO: <até 3 palavras>" — nome técnico curto da peça',
+  '  Exemplos: "TÍTULO: Manifestação", "TÍTULO: Juntada", "TÍTULO: Ciência",',
+  '  "TÍTULO: Petição de Cumprimento", "TÍTULO: Embargos Declaratórios".',
+  '',
+  'LINHA 2: vazia',
+  '',
+  'LINHA 3+: corpo da petição em Markdown.',
+  '  Comece com o conteúdo substantivo — NÃO com "Excelentíssimo", NÃO com',
+  '  "[Nome do cessionário], por seu advogado, vem...", NÃO com título.',
+].join('\n');
 
 function escapeXmlText(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -663,8 +724,15 @@ async function gerarCorpoComClaude(
       text:
         `DADOS DO PROCESSO:\n${contextoTexto}\n\n` +
         `ORIENTAÇÃO DO USUÁRIO:\n${orientacao}\n\n` +
-        `Gere o corpo da petição em Markdown agora. Lembre: SEM cabeçalho, SEM rodapé, ` +
-        `SEM "Nestes termos, pede deferimento" — só o corpo central.`,
+        `Gere AGORA o corpo da petição em Markdown. Lembre:\n` +
+        `1. NÃO escreva nenhum título tipo "PETIÇÃO DE ...".\n` +
+        `2. NÃO repita o nome do cessionário com qualificação (brasileiro, CPF, RG, endereço).\n` +
+        `3. NÃO escreva "vem respeitosamente, por meio de seu advogado..." — já está no template.\n` +
+        `4. NÃO escreva dados bancários — já entram automaticamente quando necessário.\n` +
+        `5. NÃO escreva "Nestes termos, pede deferimento" no final.\n` +
+        `6. NÃO escreva assinatura, OAB, cidade, data.\n` +
+        `7. Tamanho proporcional: orientação simples → 1-3 parágrafos diretos, SEM seções.\n` +
+        `8. Comece DIRETO no conteúdo substantivo da petição.`,
     },
   ];
 
