@@ -593,7 +593,8 @@ async function extractApresentacao(
     'INVESTIDOR_NOME','INVESTIDOR_CPF','INVESTIDOR_RG','INVESTIDOR_ENDERECO',
     'INVESTIDOR_BANCO','INVESTIDOR_AGENCIA','INVESTIDOR_CONTA','INVESTIDOR_PIX',
   ]);
-  const extras = templateVars.filter(v => !conhecidos.has(v));
+  // exclui marcadores de gênero (C_/I_/S_ + I_QL) — preenchidos no código, não pela IA
+  const extras = templateVars.filter(v => !conhecidos.has(v) && !/^[CIS]_/.test(v));
   if (extras.length === 0) return fixos;
   const schemaExtras: Vars = {};
   for (const v of extras) schemaExtras[v] = `valor de ${v} encontrado no documento ou null`;
@@ -881,11 +882,8 @@ async function driveFindChildByTolerantName(
   token: string,
   parentId: string,
   needle: string,
-  mustBeFolder = true,
 ): Promise<DriveFile | null> {
-  let q = `'${parentId}' in parents and trashed = false`;
-  if (mustBeFolder) q += ` and mimeType = '${FOLDER_MIME}'`;
-  const files = await driveListFiles(token, q);
+  const files = await driveListFiles(token, `'${parentId}' in parents and trashed = false and mimeType = '${FOLDER_MIME}'`);
   const n = normalizar(needle);
   return files.find(f => normalizar(f.name) === n)
       ?? files.find(f => normalizar(f.name).includes(n))
@@ -1090,30 +1088,40 @@ function parseBool(v: string | null | undefined): boolean {
   return s === 'true' || s === '1' || s === 'sim' || s === 'yes' || s === 'marcado';
 }
 
-// Vocabulário dos marcadores de gênero pro template neutro: [masculino, feminino].
-// 1 template por tipo (sem versões M/F duplicadas) — só troca as flexões.
-// Precisa de outra palavra flexionada? Adiciona uma linha aqui.
+// Vocabulário dos marcadores de gênero (tags curtas): codigo -> [masculino, feminino].
+// Template neutro: 1 por tipo, sem versões M/F duplicadas. Tag no .docx = {{PREFIXO_CODIGO}}
+// (ex.: {{C_IN}} = cedente inscrito/inscrita). Precisa de outra palavra? Adiciona linha.
+// Ver contratos final/_MARCADORES.md.
 const GENERO_PALAVRAS: Record<string, [string, string]> = {
-  O_A:                     ['o', 'a'],
-  BRASILEIRO_A:            ['brasileiro', 'brasileira'],
-  INSCRITO_A:              ['inscrito', 'inscrita'],
-  PORTADOR_A:              ['portador', 'portadora'],
-  RESIDENTE_DOMICILIADO_A: ['residente e domiciliado', 'residente e domiciliada'],
-  DOMICILIADO_A:           ['domiciliado', 'domiciliada'],
-  CESSIONARIO_A:           ['cessionário', 'cessionária'],
-  NASCIDO_A:               ['nascido', 'nascida'],
-  SR_SRA:                  ['Sr.', 'Sra.'],
+  O:   ['o', 'a'],
+  OM:  ['O', 'A'],
+  DO:  ['do', 'da'],
+  AO:  ['ao', 'à'],
+  PL:  ['pelo', 'pela'],
+  NO:  ['no', 'na'],
+  BR:  ['brasileiro', 'brasileira'],
+  IN:  ['inscrito', 'inscrita'],
+  PO:  ['portador', 'portadora'],
+  DM:  ['domiciliado', 'domiciliada'],
+  RD:  ['residente e domiciliado', 'residente e domiciliada'],
+  NA:  ['nascido', 'nascida'],
+  SR:  ['Sr.', 'Sra.'],
+  RP:  ['representado', 'representada'],
+  CE:  ['cessionário', 'cessionária'],
+  CM:  ['CESSIONÁRIO', 'CESSIONÁRIA'],
+  SO:  ['sócio', 'sócia'],
+  SEU: ['seu', 'sua'],
 };
 
-// Gera os marcadores {PREFIXO}_{MARCA} (ex.: CEDENTE_INSCRITO_A) pro gênero dado.
-// 'F' = feminino; qualquer outro valor (incl. null/undefined) = masculino, que é
-// o default gramatical. ponytail: sem gênero definido vira masculino — preencha
-// o radio (cedente) e a coluna `genero` (investidor) pra sair certo.
+// Gera os marcadores {PREFIXO}_{CODIGO} (ex.: C_IN, I_CM, S_SO) pro gênero dado.
+// Prefixos: C=cedente, I=investidor, S=sócio do escritório.
+// 'F' = feminino; qualquer outro valor (incl. null/undefined) = masculino (default
+// gramatical) — radios vazios viram masculino.
 function marcadoresGenero(prefixo: string, genero: string | null | undefined): Vars {
   const fem = String(genero ?? '').trim().toUpperCase().startsWith('F');
   const out: Vars = {};
-  for (const [marca, [masc, femi]] of Object.entries(GENERO_PALAVRAS)) {
-    out[`${prefixo}_${marca}`] = fem ? femi : masc;
+  for (const [code, [masc, femi]] of Object.entries(GENERO_PALAVRAS)) {
+    out[`${prefixo}_${code}`] = fem ? femi : masc;
   }
   return out;
 }
@@ -1426,11 +1434,16 @@ serve(async (req) => {
       if (dados[k]) dados[k] = toTitleCasePT(dados[k]);
     }
 
-    // Cedente: sempre PF → marcadores de gênero no template (body.cedente_genero).
-    // Investidor: pode ser PJ → qualificação inteira gerada no código (detecta
-    // CNPJ por dígitos; PF usa o gênero da coluna `genero`).
-    Object.assign(dados, marcadoresGenero('CEDENTE', body.cedente_genero));
-    dados.INVESTIDOR_QUALIFICACAO = montarQualificacaoInvestidor(inv);
+    // Marcadores de gênero. Cedente (sempre PF) e sócio do escritório vêm dos radios
+    // do site. Investidor pode ser PJ → gênero efetivo é feminino se CNPJ (14 díg.) ou
+    // coluna genero='F'; além dos marcadores I_*, a qualificação inteira vai em I_QL.
+    const invFem = String(inv.cpf ?? '').replace(/\D/g, '').length === 14
+      || String(inv.genero ?? '').trim().toUpperCase().startsWith('F');
+    Object.assign(dados, marcadoresGenero('C', body.cedente_genero));
+    Object.assign(dados, marcadoresGenero('I', invFem ? 'F' : 'M'));
+    Object.assign(dados, marcadoresGenero('S', body.socio_genero));
+    // I_QL (tag nova) + INVESTIDOR_QUALIFICACAO (compat com templates antigos)
+    dados.I_QL = dados.INVESTIDOR_QUALIFICACAO = montarQualificacaoInvestidor(inv);
 
     // 11. Decide tipos a gerar e valida papéis necessários
     let tipos: string[];
