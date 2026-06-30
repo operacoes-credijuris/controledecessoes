@@ -631,10 +631,9 @@ function markdownParaParagrafos(markdown: string, pPr: string, rPrBase: string):
   const out: string[] = [];
   for (const raw of linhas) {
     const linha = raw.replace(/\s+$/, '');
-    if (!linha.trim()) {
-      out.push(`<w:p>${pPr}</w:p>`);
-      continue;
-    }
+    // Linhas em branco: NÃO criam parágrafo vazio (o espaçamento após
+    // parágrafo no pPr já cuida do "espaço entre parágrafos").
+    if (!linha.trim()) continue;
     // Horizontal rule (--- ou *** ou ___) — markdown separator, ignora
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(linha.trim())) continue;
     // Blockquote: linha começa com > (markdown citação)
@@ -685,10 +684,11 @@ function inserirCorpoNoXml(xml: string, markdown: string): string {
       .replace(/<w:bCs\b[^/]*\/>/g, '')
       .replace(/<w:spacing\b[^/]*\/>/g, '')  // remove spacing antigo (muito grande)
       .replace(/<w:ind\b[^/]*\/>/g, '');     // remove indentação existente
-    // Insere justified, spacing 1.5x (line=360) e recuo de primeira linha
-    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:spacing w:after="0" w:before="0" w:line="360" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/>');
+    // Insere justified, spacing 1.5x (line=360), espaço de 10pt após cada
+    // parágrafo (after=200), e recuo de primeira linha (1.25cm = 708 twips).
+    pPr = pPr.replace('<w:pPr>', '<w:pPr><w:spacing w:after="200" w:before="0" w:line="360" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/>');
   } else {
-    pPr = '<w:pPr><w:spacing w:after="0" w:before="0" w:line="360" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/></w:pPr>';
+    pPr = '<w:pPr><w:spacing w:after="200" w:before="0" w:line="360" w:lineRule="auto"/><w:ind w:firstLine="708"/><w:jc w:val="both"/></w:pPr>';
   }
   // Extrai rPr de um run e limpa bold
   let rPrBase = '';
