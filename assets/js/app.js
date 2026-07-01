@@ -3235,10 +3235,12 @@ async function _fetchDJEN(numeroOab,ufOab,inicio,fim){
   const url='https://comunicaapi.pje.jus.br/api/v1/comunicacao?'+params.toString();
   const doFetch=()=>fetch(url,{method:'GET',headers:{'Accept':'application/json'}});
   let resp;
-  try{ resp=await doFetch(); } catch(_){ throw new Error('network'); }
-  if(resp.status===429){
-    await new Promise(r=>setTimeout(r,60000));
+  for(let attempt=0;;attempt++){
     try{ resp=await doFetch(); } catch(_){ throw new Error('network'); }
+    // 429 (rate limit): espera longa, 1 retry. 5xx (DJEN instavel): backoff curto, ate 2 retries.
+    if(resp.status===429&&attempt<1){ await new Promise(r=>setTimeout(r,60000)); continue; }
+    if(resp.status>=500&&attempt<2){ await new Promise(r=>setTimeout(r,1500*(attempt+1))); continue; }
+    break;
   }
   if(!resp.ok) throw new Error('http:'+resp.status);
   const j=await resp.json().catch(()=>({}));
@@ -3248,10 +3250,15 @@ async function _fetchDJEN(numeroOab,ufOab,inicio,fim){
 async function _fetchAllPubs(){
   const {inicio,fim}=_djenDateRange();
   const all=[];
+  let failed=0;
+  // uma OAB com 500 nao pode zerar o painel: tolera por OAB e devolve o parcial
   for(const {numeroOab,ufOab} of _DJEN_OABS){
-    const items=await _fetchDJEN(numeroOab,ufOab,inicio,fim);
-    all.push(...items);
+    try{
+      const items=await _fetchDJEN(numeroOab,ufOab,inicio,fim);
+      all.push(...items);
+    }catch(_){ failed++; }
   }
+  if(failed===_DJEN_OABS.length) throw new Error('djen-down'); // todas falharam -> erro real
   const seen=new Set();
   const uniq=[];
   for(const it of all){
@@ -3261,7 +3268,7 @@ async function _fetchAllPubs(){
     seen.add(id);
     uniq.push(it);
   }
-  return uniq;
+  return {items:uniq,failed};
 }
 
 function _processosCadastrados(){
@@ -3286,16 +3293,18 @@ async function _renderPubs(){
   if(!pb)return;
 
   const now=Date.now();
-  let items;
+  let items,partial=0;
   if(_pubsCache.data&&(now-_pubsCache.ts<_PUB_CACHE_MS)){
     items=_pubsCache.data;
+    partial=_pubsCache.partial||0;
   } else {
     pb.innerHTML='<div class="pub-loading"><span class="pub-spinner"></span>Buscando publicações no DJEN…</div>';
     if(cntDD)cntDD.textContent='';
     if(cntCurEl&&dashActivityType==='publicacoes')cntCurEl.textContent='';
     try{
-      items=await _fetchAllPubs();
-      _pubsCache={data:items,ts:Date.now()};
+      const res=await _fetchAllPubs();
+      items=res.items; partial=res.failed;
+      _pubsCache={data:items,ts:Date.now(),partial};
     } catch(e){
       pb.innerHTML='<div class="pub-error">Erro ao consultar o DJEN. Tente novamente em instantes.</div>';
       if(cntDD)cntDD.textContent='';
@@ -3314,11 +3323,14 @@ async function _renderPubs(){
   if(cntDD)cntDD.textContent=String(matched.length||0);
   if(cntCurEl&&dashActivityType==='publicacoes')cntCurEl.textContent=matched.length?String(matched.length):'';
 
+  // ponytail: style inline p/ nao mexer no app.css por causa de 1 banner
+  const warnHtml=partial?'<div class="pub-warn" style="margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#3a2f16;color:#f0c674;font-size:12px;">⚠️ DJEN instável agora — '+partial+' de '+_DJEN_OABS.length+' consultas falharam. Resultados podem estar incompletos; recarregue em instantes.</div>':'';
+
   if(!matched.length){
-    pb.innerHTML='<div class="db-empty">Nenhuma publicação encontrada nos últimos 30 dias para os processos cadastrados.</div>';
+    pb.innerHTML=warnHtml+'<div class="db-empty">Nenhuma publicação encontrada nos últimos 30 dias para os processos cadastrados.</div>';
     return;
   }
-  pb.innerHTML=matched.map(it=>{
+  pb.innerHTML=warnHtml+matched.map(it=>{
     const n=_normProcNum(it.numero_processo||it.numeroprocessocommascara||'');
     const ctx=procs.get(n);
     const numMasc=it.numeroprocessocommascara||it.numero_processo||'';
