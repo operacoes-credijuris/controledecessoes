@@ -771,6 +771,7 @@
   </div>
 
   <div class="gc-form">
+    <!-- Passo 1: Categoria + Intermediador -->
     <div class="gc-step">
       <div class="gc-step-num">1</div>
       <div class="gc-step-body">
@@ -787,6 +788,7 @@
       </div>
     </div>
 
+    <!-- Passo 2: Número do processo -->
     <div class="gc-step">
       <div class="gc-step-num">2</div>
       <div class="gc-step-body">
@@ -795,8 +797,28 @@
       </div>
     </div>
 
+    <!-- Passo 3: O que está sendo cedido + % de honorários -->
     <div class="gc-step">
       <div class="gc-step-num">3</div>
+      <div class="gc-step-body">
+        <div class="gc-lbl">O que está sendo cedido?</div>
+        <select id="ac-tipo-aquisicao" class="gc-select">
+          <option value="auto" selected>Detectar automaticamente (como hoje)</option>
+          <option value="principal">Apenas o crédito principal</option>
+          <option value="honorarios">Apenas os honorários</option>
+          <option value="ambos">Crédito principal e honorários</option>
+        </select>
+        <div class="gc-hint">No automático, o sistema decide pelo cálculo (CUC), como já funciona hoje.</div>
+
+        <div class="gc-lbl" style="margin-top:14px">Percentual de honorários (%) <span style="font-weight:400;opacity:.7">— opcional</span></div>
+        <input id="ac-honorarios-pct" type="number" min="0" max="100" step="0.01" class="gc-input" placeholder="ex: 30" autocomplete="off">
+        <div class="gc-hint">Deixe em branco para o sistema calcular sozinho. Se preencher, aplica sobre o valor bruto (quando há destaque) ou sobre o líquido (quando não há).</div>
+      </div>
+    </div>
+
+    <!-- Passo 4: Processo completo (PDF único) -->
+    <div class="gc-step">
+      <div class="gc-step-num">4</div>
       <div class="gc-step-body">
         <div class="gc-lbl">Processo completo <span class="gc-papel-req">obrigatório</span></div>
         <label class="gc-dropzone">
@@ -845,9 +867,16 @@
     <div class="gc-step">
       <div class="gc-step-num">2</div>
       <div class="gc-step-body">
-        <div class="gc-lbl">Intermediador (nome da pasta no Drive)</div>
-        <input id="gc-intermediador" type="text" class="gc-input" placeholder="ex: Cred Service" oninput="gcRenderFiles()" autocomplete="off">
-        <div class="gc-hint">Match aproximado — se errar o nome, a resposta lista as opções disponíveis. (Filtra só pasta "Requisições de Pequeno Valor".)</div>
+        <div class="gc-lbl">Categoria</div>
+        <div style="display:flex;gap:20px;margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="gc-categoria" value="Requisições de Pequeno Valor" checked onchange="gcLoadIntermediadores()"> Requisições de Pequeno Valor</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="gc-categoria" value="Precatórios" onchange="gcLoadIntermediadores()"> Precatórios</label>
+        </div>
+        <div class="gc-lbl">Intermediador</div>
+        <select id="gc-intermediador" class="gc-select" onchange="gcRenderFiles()">
+          <option value="">— carregando… —</option>
+        </select>
+        <div class="gc-hint">Puxado do Drive pra categoria escolhida acima.</div>
       </div>
     </div>
 
@@ -858,13 +887,9 @@
         <div class="gc-lbl">Documentos</div>
 
         <div class="gc-papel">
-          <div class="gc-papel-hdr">Apresentação do crédito <span class="gc-papel-req">obrigatório</span></div>
-          <label class="gc-dropzone">
-            <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx" onchange="gcOnFileSelect('apresentacao',this)" style="display:none">
-            <div class="gc-dropzone-text">+ Selecionar arquivos</div>
-            <div class="gc-dropzone-sub">PDF, imagem, DOCX ou XLSX</div>
-          </label>
-          <div id="gc-files-apresentacao" class="gc-files"></div>
+          <div class="gc-papel-hdr">Número do processo <span class="gc-papel-req">obrigatório</span></div>
+          <input id="gc-numero-processo" type="text" class="gc-input" placeholder="ex: 0001234-56.2024.8.26.0100" oninput="gcRenderFiles()" autocomplete="off">
+          <div class="gc-hint">A análise de crédito é puxada automaticamente do Drive em <em>A. Análises de crédito → {categoria} → {intermediador} → {cedente}</em>. O nome do cedente sai dos documentos do cedente abaixo.</div>
         </div>
 
         <div class="gc-papel">
@@ -1229,7 +1254,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
   onerror="(function(){var e=document.getElementById('lc-err');if(e){e.textContent='Falha ao carregar Supabase. Verifique sua conexão.';e.style.display='block';}})()"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="assets/js/app.js?v=20260630"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="assets/js/app.js?v=20260701"></script>
 
 <!-- COLUMN FILTER PANEL -->
 <div id="col-filter-panel">

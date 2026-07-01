@@ -882,8 +882,11 @@ async function driveFindChildByTolerantName(
   token: string,
   parentId: string,
   needle: string,
+  mustBeFolder = true,
 ): Promise<DriveFile | null> {
-  const files = await driveListFiles(token, `'${parentId}' in parents and trashed = false and mimeType = '${FOLDER_MIME}'`);
+  let q = `'${parentId}' in parents and trashed = false`;
+  if (mustBeFolder) q += ` and mimeType = '${FOLDER_MIME}'`;
+  const files = await driveListFiles(token, q);
   const n = normalizar(needle);
   return files.find(f => normalizar(f.name) === n)
       ?? files.find(f => normalizar(f.name).includes(n))

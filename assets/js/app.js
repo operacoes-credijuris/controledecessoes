@@ -458,6 +458,12 @@ function _normNome(s){return(s||'').toLowerCase().normalize('NFD').replace(/[̀-
 function _invFindByNome(nome){const q=_normNome(nome);return _crtInvestidoresData.find(i=>_normNome(i.nome)===q)||_crtInvestidoresData.find(i=>{const n=_normNome(i.nome);return n.startsWith(q)||q.startsWith(n);});}
 function _invCadastroIncompleto(nome){const inv=_invFindByNome(nome);if(!inv)return true;return['cpf','rg','endereco','banco','agencia','conta','pix'].filter(c=>inv[c]&&String(inv[c]).trim()).length<5;}
 
+// Estado da tela de Análises de Crédito — declarado ANTES do _initSidebar p/ evitar erro de inicialização ao restaurar a aba
+const AC = {
+  job_id: null,
+  uploads: { processo: [] },
+};
+
 // SIDEBAR
 (function _initSidebar(){
   const saved=localStorage.getItem('cj-sidebar-state'); const collapsed=saved?saved!=='expanded':false;
@@ -553,6 +559,7 @@ function _sbShowCredito(){
   document.getElementById('pane-credito').style.display='flex';
   document.getElementById('sb-item-credito').classList.add('active');
   localStorage.setItem('cj-sidebar-active','credito');
+  acInit();
 }
 
 function _sbShowConfig(){
@@ -1484,7 +1491,7 @@ function sbNav(item){
 const GC={
   job_id:null,
   investidores:[],
-  uploads:{apresentacao:[],cedente:[],escritorio:[]},
+  uploads:{cedente:[],escritorio:[]},
 };
 
 function _sbShowContratos(){
@@ -1499,10 +1506,12 @@ function _sbShowContratos(){
 
 async function gcInit(){
   GC.job_id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
-  GC.uploads={apresentacao:[],cedente:[],escritorio:[]};
+  GC.uploads={cedente:[],escritorio:[]};
   const res=document.getElementById('gc-result');if(res)res.innerHTML='';
+  const np=document.getElementById('gc-numero-processo');if(np)np.value='';
   await gcLoadInvestidores();
   gcRenderInvestidores();
+  gcLoadIntermediadores();
   gcRenderFiles();
 }
 
@@ -1529,8 +1538,29 @@ function gcRenderInvestidores(){
     GC.investidores.map(i=>`<option value="${esc(i.id)}">${esc(i.nome)}${i.cpf?` (${esc(i.cpf)})`:''}</option>`).join('');
 }
 
+async function gcLoadIntermediadores(){
+  const sel=document.getElementById('gc-intermediador');
+  if(!sel)return;
+  const categoria=document.querySelector('input[name="gc-categoria"]:checked')?.value||'Requisições de Pequeno Valor';
+  sel.innerHTML='<option value="">— carregando… —</option>';
+  gcRenderFiles();
+  try{
+    if(!sb)throw new Error('Supabase não inicializado');
+    const{data,error}=await sb.functions.invoke('gerar-contrato',{body:{acao:'listar_intermediadores',categoria}});
+    if(error)throw error;
+    const lista=(data&&data.intermediadores)||[];
+    sel.innerHTML=lista.length===0
+      ? '<option value="">(nenhum intermediador em '+esc(categoria)+')</option>'
+      : '<option value="">— selecione —</option>'+lista.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  }catch(e){
+    console.error('[GC] loadIntermediadores',e);
+    sel.innerHTML='<option value="">(erro ao carregar — recarrega a página)</option>';
+  }
+  gcRenderFiles();
+}
+
 function gcRenderFiles(){
-  for(const papel of ['apresentacao','cedente','escritorio']){
+  for(const papel of ['cedente','escritorio']){
     const list=document.getElementById('gc-files-'+papel);
     if(!list)continue;
     const arr=GC.uploads[papel];
@@ -1550,8 +1580,8 @@ function gcRenderFiles(){
   if(!btn)return;
   const inv=document.getElementById('gc-investidor')?.value||'';
   const inter=(document.getElementById('gc-intermediador')?.value||'').trim();
-  const hasApresentacao=GC.uploads.apresentacao.length>0;
-  btn.disabled=!(inv&&inter&&hasApresentacao);
+  const proc=(document.getElementById('gc-numero-processo')?.value||'').trim();
+  btn.disabled=!(inv&&inter&&proc);
 }
 
 function gcOnFileSelect(papel,input){
@@ -1620,6 +1650,8 @@ async function gcSubmit(){
   const tipo=document.getElementById('gc-tipo').value||null;
   const cedente_genero=(document.querySelector('input[name="gc-cedente-genero"]:checked')||{}).value||'M';
   const socio_genero=(document.querySelector('input[name="gc-socio-genero"]:checked')||{}).value||'M';
+  const numero_processo=(document.getElementById('gc-numero-processo').value||'').trim();
+  const categoria=document.querySelector('input[name="gc-categoria"]:checked')?.value||'Requisições de Pequeno Valor';
 
   try{
     if(!sb)throw new Error('Supabase não inicializado');
@@ -1628,9 +1660,9 @@ async function gcSubmit(){
     if(!userId)throw new Error('Sessão expirada — faça login de novo');
 
     // 1. Upload de arquivos
-    const total=GC.uploads.apresentacao.length+GC.uploads.cedente.length+GC.uploads.escritorio.length;
+    const total=GC.uploads.cedente.length+GC.uploads.escritorio.length;
     let done=0;
-    for(const papel of ['apresentacao','cedente','escritorio']){
+    for(const papel of ['cedente','escritorio']){
       for(const file of GC.uploads[papel]){
         done++;
         _gcProgress(`Enviando arquivos… (${done}/${total}) ${file.name}`);
@@ -1647,7 +1679,7 @@ async function gcSubmit(){
     // 2. Invoca a Edge Function
     _gcProgress('Extraindo dados e gerando contratos… (pode levar 30–90s)');
     const{data,error}=await sb.functions.invoke('gerar-contrato',{
-      body:{job_id:GC.job_id,investidor_id,intermediador,tipo,cedente_genero,socio_genero},
+      body:{job_id:GC.job_id,investidor_id,intermediador,tipo,cedente_genero,socio_genero,numero_processo,categoria},
     });
     if(error){
       // Tenta extrair mensagem detalhada do response body
@@ -1675,7 +1707,8 @@ async function gcSubmit(){
 
     // Reset state pra próxima geração
     GC.job_id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
-    GC.uploads={apresentacao:[],cedente:[],escritorio:[]};
+    GC.uploads={cedente:[],escritorio:[]};
+    document.getElementById('gc-numero-processo').value='';
     gcRenderFiles();
   }catch(e){
     console.error('[GC] submit',e);
@@ -6651,33 +6684,15 @@ async function _cfgAdvboxRefreshSettings(){
 }
 
 /* ======================================================
-   INIT
-====================================================== */
-_initApp();
-
-function _sbShowCredito(){
-  _sbHideAll();
-  _execWasActive = false;
-  const pane = document.getElementById('pane-credito');
-  if(pane) pane.style.display = 'flex';
-  document.getElementById('sb-item-credito')?.classList.add('active');
-  localStorage.setItem('cj-sidebar-active','credito');
-  acInit();
-}
-
-/* ======================================================
    ANÁLISES DE CRÉDITO — pane
 ====================================================== */
-const AC = {
-  job_id: null,
-  uploads: { processo: [] },
-};
-
 function acInit(){
   AC.job_id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+'-'+Math.random().toString(36).slice(2));
   AC.uploads = { processo: [] };
   const res = document.getElementById('ac-result'); if(res) res.innerHTML = '';
   const np = document.getElementById('ac-numero-processo'); if(np) np.value = '';
+  const ta = document.getElementById('ac-tipo-aquisicao'); if(ta) ta.value = 'auto';
+  const hp = document.getElementById('ac-honorarios-pct'); if(hp) hp.value = '';
   acLoadIntermediadores();
   acRenderFiles();
 }
@@ -6754,11 +6769,28 @@ function _acShowOk(data){
   const r = document.getElementById('ac-result');
   if(!r) return;
   const cedente = data.cedente ? ` — cedente <strong>${esc(data.cedente)}</strong>` : '';
+  const temAviso = !!data.aviso || data.atingiu_alvo === false;
+  const tituloClasse = temAviso ? 'gc-result-title' : 'gc-result-title ok';
+  const tituloTxt = temAviso ? '⚠ Planilha gerada — confira os avisos' : '✓ Planilha gerada';
+  const resumo = (data.desagio || data.rentabilidade_mensal || data.cessao) ? `
+      <div class="gc-result-msg" style="margin-top:6px">
+        Deságio: <strong>${esc(data.desagio || '—')}</strong> ·
+        Rentabilidade: <strong>${esc(data.rentabilidade_mensal || '—')}</strong>/mês ·
+        Cessão: <strong>${esc(data.cessao || '—')}</strong>
+      </div>` : '';
+  const avisoBox = data.aviso ? `
+      <div style="margin-top:10px;padding:10px 12px;border:1px solid #e0a800;background:#fff8e1;color:#7a5b00;border-radius:8px;font-size:13px;line-height:1.45">
+        <strong>⚠ Atenção:</strong> ${esc(data.aviso)}
+      </div>` : '';
+  const btnPasta = data.drive_folder_url ? `<a href="${esc(data.drive_folder_url)}" target="_blank" rel="noopener" class="btn btn-gold btn-sm">Abrir pasta no Drive ↗</a>` : '';
+  const btnArquivo = data.drive_file_url ? ` <a href="${esc(data.drive_file_url)}" target="_blank" rel="noopener" class="btn btn-blue btn-sm">Abrir planilha ↗</a>` : '';
   r.innerHTML = `
     <div class="gc-result-ok">
-      <div class="gc-result-title ok">✓ Planilha gerada${cedente}</div>
+      <div class="${tituloClasse}">${tituloTxt}${cedente}</div>
       <div class="gc-result-msg">Enviada pra pasta <em>${esc(DRIVE_PASTA_ANALISE_LABEL)}</em> no Drive.</div>
-      ${data.drive_folder_url ? `<a href="${esc(data.drive_folder_url)}" target="_blank" rel="noopener" class="btn btn-gold btn-sm">Abrir pasta no Drive ↗</a>` : ''}
+      ${resumo}
+      ${avisoBox}
+      <div style="margin-top:10px">${btnPasta}${btnArquivo}</div>
     </div>`;
 }
 
@@ -6772,6 +6804,30 @@ function _acShowErr(msg){
     </div>`;
 }
 
+// Lê o texto de um PDF DENTRO do navegador (sem limite de páginas e sem estourar a CPU do servidor)
+let _pdfjsWorkerSet = false;
+function _ensurePdfjsWorker(){
+  if(_pdfjsWorkerSet) return;
+  if(window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions){
+    try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(_){}
+    _pdfjsWorkerSet = true;
+  }
+}
+async function acExtrairTextoPdf(file){
+  if(!window.pdfjsLib) throw new Error('o leitor de PDF (pdf.js) não carregou — recarregue a página');
+  _ensurePdfjsWorker();
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const partes = [];
+  for(let i = 1; i <= pdf.numPages; i++){
+    const page = await pdf.getPage(i);
+    const tc = await page.getTextContent();
+    partes.push(tc.items.map(it => (it && it.str) ? it.str : '').join(' '));
+  }
+  try{ await pdf.destroy(); }catch(_){}
+  return partes.join('\n');
+}
+
 async function acSubmit(){
   const btn = document.getElementById('ac-submit');
   if(!btn || btn.disabled) return;
@@ -6781,6 +6837,8 @@ async function acSubmit(){
   const intermediador = (document.getElementById('ac-intermediador').value || '').trim();
   const numero_processo = (document.getElementById('ac-numero-processo').value || '').trim();
   const categoria = document.querySelector('input[name="ac-categoria"]:checked')?.value || 'Requisições de Pequeno Valor';
+  const tipo_aquisicao = (document.getElementById('ac-tipo-aquisicao')?.value || 'auto');
+  const honorarios_pct = (document.getElementById('ac-honorarios-pct')?.value || '').trim();
 
   try{
     if(!sb) throw new Error('Supabase não inicializado');
@@ -6788,22 +6846,42 @@ async function acSubmit(){
     const userId = userData?.user?.id;
     if(!userId) throw new Error('Sessão expirada — faça login de novo');
 
+    // 1. Para cada arquivo: PDF é LIDO AQUI no navegador e enviado como TEXTO (.txt) — sem limite de páginas
+    //    e sem estourar a CPU do servidor (plano gratuito). Outros arquivos vão como estão.
     const total = AC.uploads.processo.length;
     let done = 0;
     for(const file of AC.uploads.processo){
       done++;
-      _acProgress(`Enviando arquivos… (${done}/${total}) ${file.name}`);
-      const safeName = file.name
+      const ehPdf = /\.pdf$/i.test(file.name);
+      const baseSafe = file.name
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^\w.\-()]/g, '_');
-      const path = `${userId}/${AC.job_id}/processo/${safeName}`;
-      const { error } = await sb.storage.from('analises-input').upload(path, file, { upsert: true });
+
+      let blobParaEnviar = file;
+      let nomeFinal = baseSafe;
+
+      if(ehPdf){
+        _acProgress(`Lendo o PDF no navegador… (${done}/${total}) ${file.name}`);
+        let texto = '';
+        try{ texto = await acExtrairTextoPdf(file); }
+        catch(e){ console.error('[AC] pdf->texto', e); throw new Error(`Não consegui ler o PDF ${file.name} no navegador: ${e.message || e}`); }
+        if(!texto || !texto.trim()){
+          throw new Error(`O PDF ${file.name} não tem texto selecionável (parece escaneado). Envie um PDF com texto.`);
+        }
+        blobParaEnviar = new Blob([texto], { type: 'text/plain' });
+        nomeFinal = baseSafe.replace(/\.pdf$/i, '') + '.txt';
+      }
+
+      _acProgress(`Enviando… (${done}/${total}) ${nomeFinal}`);
+      const path = `${userId}/${AC.job_id}/processo/${nomeFinal}`;
+      const { error } = await sb.storage.from('analises-input').upload(path, blobParaEnviar, { upsert: true });
       if(error) throw new Error(`Upload de ${file.name} falhou: ${error.message}`);
     }
 
+    // 2. Invoca a Edge Function (lê o processo, roda a precificação, entrega no Drive)
     _acProgress('Lendo o processo e gerando a planilha… (pode levar 1–2 min)');
     const { data, error } = await sb.functions.invoke('gerar-analise-rpv', {
-      body: { job_id: AC.job_id, intermediador, numero_processo, categoria },
+      body: { job_id: AC.job_id, intermediador, numero_processo, categoria, tipo_aquisicao, honorarios_pct },
     });
     if(error){
       let detail = error.message || String(error);
@@ -6820,6 +6898,7 @@ async function acSubmit(){
     _acHideProgress();
     _acShowOk(data);
 
+    // Reset pra próxima análise
     AC.job_id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+'-'+Math.random().toString(36).slice(2));
     AC.uploads = { processo: [] };
     acRenderFiles();
@@ -6830,3 +6909,8 @@ async function acSubmit(){
     btn.disabled = false;
   }
 }
+
+/* ======================================================
+   INIT
+====================================================== */
+_initApp();
