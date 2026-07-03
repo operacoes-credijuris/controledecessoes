@@ -2721,5 +2721,5 @@ tbody tr:hover{background:#1d222a}
   border-radius:14px;
   box-shadow:0 28px 80px rgba(0,0,0,.52),0 0 0 1px rgba(255,255,255,.04);
 }
-.crt-proc-link{ color:#4a9eff; cursor:pointer; text-decoration:none }
+.crt-proc-link{ color:inherit; cursor:pointer; text-decoration:none }
 .crt-proc-link:hover{ text-decoration:underline }
