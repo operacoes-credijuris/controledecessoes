@@ -2545,7 +2545,6 @@ function render(mod){
   syncSortUI(mod);
   syncFilterBtnsUI(mod);
 }
-
 /* ======================================================
    RENDER CESSÕES
 ====================================================== */
@@ -2553,7 +2552,10 @@ function cessoesRow(r,allData,isChild){
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
   const isExpanded=expandedByMod.cessoes.has(r.id);
-  const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
+  const procCell=(r.numeroProcesso
+  ? `<a class="crt-proc-link" data-proc="${esc(r.numeroProcesso)}" data-ced="${esc(r.cedente||'')}" title="Abrir a pasta no Drive" onclick="abrirPastaDrive(this)">${esc(r.numeroProcesso)}</a>`
+  : esc(r.numeroProcesso)
+)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('cessoes','${r.id}')" title="${childRecs.length} vínculo(s)"><span style="display:inline-block;transition:transform .2s;transform:${isExpanded?'rotate(90deg)':'rotate(0deg)'}">›</span></button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'cessoes','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -3713,7 +3715,23 @@ const _CPY_SVG=`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" styl
 function cpyBtn(num){return`<button class="cpy-btn" data-num="${esc(num)}" onclick="cpyNum(event)">${_CPY_SVG}</button>`;}
 const _NAV_SVG=`<svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="display:inline;vertical-align:middle"><path d="M2.5 8.5L8.5 2.5M5 2.5H8.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 function navBtn(mod,id){return`<button class="al-nav-btn" onclick="goToProcess('${mod}','${id}')" title="Ir para o processo">${_NAV_SVG}</button>`;}
-
+const _pastaDriveCache = {};
+async function abrirPastaDrive(el){
+  const proc = el.dataset.proc || '';
+  const ced  = el.dataset.ced  || '';
+  const fallback = 'https://drive.google.com/drive/search?q=' + encodeURIComponent(ced || proc);
+  const win = window.open('about:blank', '_blank');
+  if (_pastaDriveCache[proc]) { if (win) win.location = _pastaDriveCache[proc]; return; }
+  try {
+    const { data, error } = await sb.functions.invoke('resolver-pasta', { body: { numeroProcesso: proc, cedente: ced } });
+    if (error) throw error;
+    const url = (data && data.url) ? data.url : fallback;
+    if (data && data.url) _pastaDriveCache[proc] = data.url;
+    if (win) win.location = url; else window.location = url;
+  } catch (e) {
+    if (win) win.location = fallback; else window.location = fallback;
+  }
+}
 /* Botao "Gerar peticao" — aparece no card de Pendencias Fatais quando o
    _task (nome da tarefa do Advbox) ou _notes (observacoes da tarefa) bate
    com alguma regra abaixo. Cada tipo declara seus campos de input (modal
