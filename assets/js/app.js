@@ -2605,7 +2605,10 @@ function rpvRow(r,allData,isChild){
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
   const isExpanded=expandedByMod.rpv.has(r.id);
-  const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
+  const procCell=(r.numeroProcesso
+  ? `<a class="crt-proc-link" data-proc="${esc(r.numeroProcesso)}" data-ced="${esc(r.cedente||'')}" title="Abrir a pasta no Drive" onclick="abrirPastaDrive(this)">${esc(r.numeroProcesso)}</a>`
+  : esc(r.numeroProcesso)
+)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('rpv','${r.id}')" title="${childRecs.length} vínculo(s)"><span style="display:inline-block;transition:transform .2s;transform:${isExpanded?'rotate(90deg)':'rotate(0deg)'}">›</span></button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'rpv','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -2810,7 +2813,10 @@ function reqRow(r,allData,isChild){
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
   const isExpanded=expandedByMod.requerimentos.has(r.id);
-  const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
+  const procCell=(r.numeroProcesso
+  ? `<a class="crt-proc-link" data-proc="${esc(r.numeroProcesso)}" data-ced="${esc(r.cedente||'')}" title="Abrir a pasta no Drive" onclick="abrirPastaDrive(this)">${esc(r.numeroProcesso)}</a>`
+  : esc(r.numeroProcesso)
+)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('requerimentos','${r.id}')" title="${childRecs.length} vínculo(s)"><span style="display:inline-block;transition:transform .2s;transform:${isExpanded?'rotate(90deg)':'rotate(0deg)'}">›</span></button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'requerimentos','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   const trCls=(isChild?rowCls(r)+' child-row':rowCls(r))+(highlightIds.has(r.id)?' row-highlight':'');
@@ -2855,7 +2861,10 @@ function encRow(r,allData,isChild){
   const childIds=r.vinculosFilhos||[];
   const childRecs=isChild?[]:childIds.map(cid=>allData.find(c=>c.id===cid)).filter(Boolean);
   const isExpanded=expandedByMod.encerrados.has(r.id);
-  const procCell=esc(r.numeroProcesso)+cpyBtn(r.numeroProcesso||'');
+  const procCell=(r.numeroProcesso
+  ? `<a class="crt-proc-link" data-proc="${esc(r.numeroProcesso)}" data-ced="${esc(r.cedente||'')}" title="Abrir a pasta no Drive" onclick="abrirPastaDrive(this)">${esc(r.numeroProcesso)}</a>`
+  : esc(r.numeroProcesso)
+)+cpyBtn(r.numeroProcesso||'');
   const expandBtn=!isChild&&childRecs.length>0?`<button class="btn-expand" onclick="toggleExpand('encerrados','${r.id}')" title="${childRecs.length} vínculo(s)"><span style="display:inline-block;transition:transform .2s;transform:${isExpanded?'rotate(90deg)':'rotate(0deg)'}">›</span></button>`:'';
   const actsBtns=`<button class="btn-dots" onclick="openActMenu(event,'encerrados','${r.id}',${isChild})" title="Ações">⋯</button>${expandBtn}`;
   // Encerrados não aplica rowCls (prazoFatal não é exibido/editável nessa aba)
