@@ -3790,9 +3790,9 @@ const _PETICAO_TIPO_MAP=[
     tipo:'registro_publico', label:'Petição de Juntada de Registro Público',
     fields:[],
   },
-  // RPV complementar: tarefa "peticao simples" + notes contendo "rpv complementar"
+  // RPV complementar: tarefa "peticao simples" OU "elaborar peticao inicial com modelo" + notes contendo "rpv complementar"
   {
-    matchTask:/peti[cç][aã]o\s*simples/i, matchNotes:/rpv\s*complementar/i,
+    matchTask:/peti[cç][aã]o\s*simples|elaborar\s*peti[cç][aã]o\s*inicial\s*com\s*modelo/i, matchNotes:/rpv\s*complementar/i,
     tipo:'rpv_complementar', label:'Petição de RPV Complementar',
     fields:[
       {key:'TIPO_DECISAO',                label:'Tipo de decisão',                  type:'select', options:['sentença','decisão']},
