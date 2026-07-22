@@ -6525,6 +6525,36 @@ const DRIVE_PASTA_ANALISE_LABEL = 'A. Análises de crédito';
 function _acShowOk(data){
   const r = document.getElementById('ac-result');
   if(!r) return;
+
+  // Portão 1 — crédito REPROVADO na qualificação (não há planilha/precificação)
+  if (data.reprovado) {
+    const motivos = Array.isArray(data.motivos) ? data.motivos : [];
+    const listaMotivos = motivos.length
+      ? '<ul style="margin:8px 0 0;padding-left:20px">' + motivos.map(m => `<li style="margin-bottom:6px">${esc(m)}</li>`).join('') + '</ul>'
+      : '<div style="margin-top:6px">Não foi possível aprovar o crédito na qualificação.</div>';
+    const q = data.qualificacao || {};
+    const linhas = [];
+    if (q.numero_processo && q.numero_processo !== 'NÃO LOCALIZADO') linhas.push(`Processo: ${esc(String(q.numero_processo))}`);
+    if (q.titular_nome && q.titular_nome !== 'NÃO LOCALIZADO') linhas.push(`Credor: ${esc(String(q.titular_nome))}`);
+    if (q.ente_devedor && q.ente_devedor !== 'NÃO LOCALIZADO') linhas.push(`Ente: ${esc(String(q.ente_devedor))}`);
+    if (q.valor_credito != null && q.valor_credito !== 'NÃO LOCALIZADO') linhas.push(`Valor: ${esc(String(q.valor_credito))}`);
+    const detalhe = linhas.length ? `<div style="margin-top:10px;font-size:12px;color:#666">${linhas.join('<br>')}</div>` : '';
+    const avisosArr = Array.isArray(data.avisos) ? data.avisos : [];
+    const avisosBox = avisosArr.length ? `
+      <div style="margin-top:10px;padding:8px 10px;border:1px solid #e0a800;background:#fff8e1;color:#7a5b00;border-radius:8px;font-size:12px;line-height:1.45">
+        ${avisosArr.map(a=>esc(a)).join('<br>')}
+      </div>` : '';
+    r.innerHTML = `
+      <div class="gc-result-err">
+        <div class="gc-result-title err">✕ Crédito reprovado na qualificação</div>
+        <div class="gc-result-msg">Este crédito não passou no Portão 1, então a tabela jurídica e a precificação <strong>não</strong> foram geradas. Motivo(s):</div>
+        ${listaMotivos}
+        ${detalhe}
+        ${avisosBox}
+      </div>`;
+    return;
+  }
+
   const cedente = data.cedente ? ` — cedente <strong>${esc(data.cedente)}</strong>` : '';
   const temAviso = !!data.aviso || data.atingiu_alvo === false;
   const tituloClasse = temAviso ? 'gc-result-title' : 'gc-result-title ok';
