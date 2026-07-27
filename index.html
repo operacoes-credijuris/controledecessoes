@@ -767,7 +767,7 @@
   <div class="gc-hdr">
     <div class="gc-hdr-kicker">Operacional</div>
     <div class="gc-hdr-title">Análises de Crédito</div>
-    <div class="gc-hdr-sub">Suba o PDF com o processo completo (incluindo a CUC). A precificação lê tudo, monta a planilha e entrega direto na pasta certa do Drive.</div>
+    <div class="gc-hdr-sub">Digite o número do processo — a Judit puxa os autos, o sistema qualifica, faz a due diligência e monta a planilha direto na pasta do Drive.</div>
   </div>
 
   <div class="gc-form">
@@ -816,8 +816,8 @@
       </div>
     </div>
 
-    <!-- Passo 4: Processo completo (PDF único) -->
-    <div class="gc-step">
+    <!-- Passo 4: Processo completo (PDF único) — OCULTO: agora a Judit puxa o processo -->
+    <div class="gc-step" style="display:none">
       <div class="gc-step-num">4</div>
       <div class="gc-step-body">
         <div class="gc-lbl">Processo completo <span class="gc-papel-req">obrigatório</span></div>
@@ -830,9 +830,11 @@
       </div>
     </div>
 
-    <div class="gc-actions">
-      <button id="ac-submit" class="btn btn-gold" onclick="acSubmit()" disabled>Analisar e gerar planilha</button>
+    <div class="gc-actions" style="flex-wrap:wrap;gap:8px">
+      <button id="ac-submit" class="btn btn-gold" onclick="acSubmit()" style="display:none" disabled>Analisar e gerar planilha</button>
+      <button id="ac-submit-judit" class="btn btn-gold" onclick="acSubmitJudit()">Analisar e gerar planilha</button>
     </div>
+    <div class="gc-dropzone-sub" style="margin-top:6px;line-height:1.45">Digite o número do processo (Passo 2) e clique em <strong>Analisar</strong> — a Judit puxa o processo, qualifica e faz a due diligência dos processos do credor. Obs.: se o cálculo estiver em segredo de justiça, os valores exatos podem não vir; nesse caso o relatório sinaliza claramente (nunca inventa número).</div>
 
     <div id="ac-progress" class="gc-progress" style="display:none">
       <div class="spin"></div>
@@ -1255,7 +1257,7 @@
   onerror="(function(){var e=document.getElementById('lc-err');if(e){e.textContent='Falha ao carregar Supabase. Verifique sua conexão.';e.style.display='block';}})()"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="assets/js/app.js?v=20260721"></script>
+<script src="assets/js/app.js?v=20260722a"></script>
 
 <!-- COLUMN FILTER PANEL -->
 <div id="col-filter-panel">
