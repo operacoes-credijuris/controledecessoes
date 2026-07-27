@@ -6967,6 +6967,66 @@ async function acSubmit(){
   }
 }
 
+// ---- Buscar na Judit (pelo número) e analisar — sem precisar subir PDF ----
+async function acSubmitJudit(){
+  const btn = document.getElementById('ac-submit-judit');
+  const r = document.getElementById('ac-result'); if(r) r.innerHTML = '';
+
+  const intermediador = (document.getElementById('ac-intermediador').value || '').trim();
+  const numero_processo = (document.getElementById('ac-numero-processo').value || '').trim();
+  const categoria = document.querySelector('input[name="ac-categoria"]:checked')?.value || 'Requisições de Pequeno Valor';
+  const tipo_aquisicao = (document.getElementById('ac-tipo-aquisicao')?.value || 'auto');
+  const honorarios_pct = (document.getElementById('ac-honorarios-pct')?.value || '').trim();
+
+  if(!intermediador){ _acShowErr('Selecione o intermediador (Passo 1).'); return; }
+  if(!numero_processo){ _acShowErr('Digite o número do processo para buscar na Judit (Passo 2).'); return; }
+
+  if(btn) btn.disabled = true;
+  try{
+    if(!sb) throw new Error('Supabase não inicializado');
+    const { data: userData } = await sb.auth.getUser();
+    if(!userData?.user?.id) throw new Error('Sessão expirada — faça login de novo');
+
+    // 1. Judit: busca o processo por número, monta o texto e grava no storage (devolve o job_id)
+    _acProgress('Buscando o processo na Judit… (a Judit vai ao tribunal — pode levar 1–2 min)');
+    const rj = await sb.functions.invoke('buscar-judit', { body: { numero: numero_processo } });
+    if(rj.error){
+      let detail = rj.error.message || String(rj.error);
+      try{ if(rj.error.context && typeof rj.error.context.json === 'function'){ const j = await rj.error.context.json(); if(j?.erro) detail = j.erro; } }catch(_){}
+      throw new Error(detail);
+    }
+    const dj = rj.data || {};
+    if(dj.erro) throw new Error(dj.erro);
+    if(dj.nao_encontrado){ _acHideProgress(); _acShowErr('A Judit não encontrou este processo. Confira o número digitado.'); if(btn) btn.disabled=false; return; }
+    if(!dj.pronto || !dj.job_id){
+      _acHideProgress();
+      _acShowErr('⏳ A Judit ainda está baixando os autos deste processo (isso leva alguns minutos). Aguarde ~2 minutos e clique em "Buscar na Judit" de novo — na segunda vez costuma vir rápido.');
+      if(btn) btn.disabled=false; return;
+    }
+
+    // 2. Análise: MESMA função de sempre, agora com o job_id que a Judit preparou
+    _acProgress('Processo encontrado! Qualificando, analisando e gerando a planilha… (pode levar 1–2 min)');
+    const { data, error } = await sb.functions.invoke('gerar-analise-rpv', {
+      body: { job_id: dj.job_id, intermediador, numero_processo, categoria, tipo_aquisicao, honorarios_pct },
+    });
+    if(error){
+      let detail = error.message || String(error);
+      try{ if(error.context && typeof error.context.json === 'function'){ const j = await error.context.json(); if(j?.error) detail = j.error; } }catch(_){}
+      throw new Error(detail);
+    }
+    if(data?.error) throw new Error(data.error);
+
+    _acHideProgress();
+    _acShowOk(data);
+  }catch(e){
+    _acHideProgress();
+    console.error('[AC] submit judit', e);
+    _acShowErr(e.message || String(e));
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
 /* ======================================================
    INIT
 ====================================================== */
