@@ -6968,6 +6968,40 @@ async function acSubmit(){
 }
 
 // ---- Buscar na Judit (pelo número) e analisar — sem precisar subir PDF ----
+// Title Case igual ao da gerar-analise-rpv (pra a pasta do cedente bater exatamente)
+function _tituloNome(s){
+  const conect = new Set(['de','da','do','das','dos','e','di','du','del','la','le','van','von']);
+  return String(s||'').trim().toLowerCase().split(/\s+/).filter(Boolean)
+    .map((w,i)=> (i>0 && conect.has(w)) ? w : (w.charAt(0).toUpperCase()+w.slice(1))).join(' ');
+}
+// Mostra a recusa da due diligence (2º portão): risco ao crédito principal encontrado
+function _acShowDDReprovado(dd){
+  const r = document.getElementById('ac-result'); if(!r) return;
+  const comRisco = (dd.processos||[]).filter(p => p.qualificacao && p.qualificacao.risco_ao_credito_principal && p.qualificacao.risco_ao_credito_principal.tem_risco === 'SIM');
+  const itens = comRisco.map(p => {
+    const rr = p.qualificacao.risco_ao_credito_principal;
+    return '<li style="margin-bottom:6px"><b>'+p.numero+'</b> — '+(rr.tipo||'risco')+': '+String(rr.justificativa||'').slice(0,320)+'</li>';
+  }).join('');
+  const link = dd.drive_folder_url || dd.drive_report_url;
+  r.innerHTML = '<div style="border:2px solid #c0392b;background:#fdecea;border-radius:10px;padding:16px;color:#7b241c">'
+    + '<div style="font-size:1.12em;font-weight:700;margin-bottom:8px">⛔ Crédito reprovado na due diligence dos processos do credor</div>'
+    + '<div style="margin-bottom:10px">A varredura dos processos do credor encontrou <b>risco ao crédito principal</b>. Por isso, a planilha <b>NÃO</b> foi gerada.</div>'
+    + '<div style="margin-bottom:6px"><b>Processo(s) com risco:</b></div>'
+    + '<ul style="margin:0 0 10px 18px">'+(itens || '<li>(veja o relatório completo)</li>')+'</ul>'
+    + (link ? '<div>📄 <a href="'+link+'" target="_blank" rel="noopener" style="color:#7b241c;font-weight:600">Abrir o relatório de due diligence no Drive</a></div>' : '')
+    + '<div style="margin-top:10px;font-size:.9em;color:#922b21">Revisão humana obrigatória. Se a equipe jurídica avaliar que não há risco real, prossiga manualmente.</div>'
+    + '</div>';
+}
+// Acrescenta o link do relatório de due diligence embaixo da planilha (quando passou)
+function _acAppendDDLink(dd){
+  const r = document.getElementById('ac-result'); if(!r) return;
+  const link = dd.drive_folder_url || dd.drive_report_url; if(!link) return;
+  const div = document.createElement('div');
+  div.style.cssText = 'margin-top:12px;border:1px solid #cfe2f3;background:#f0f7fd;border-radius:8px;padding:12px;color:#1b4f72';
+  div.innerHTML = '✅ Due diligence dos processos do credor concluída — nenhum risco ao crédito principal. 📄 <a href="'+link+'" target="_blank" rel="noopener" style="color:#1b4f72;font-weight:600">Abrir o relatório na subpasta "Processos do Credor"</a>';
+  r.appendChild(div);
+}
+
 async function acSubmitJudit(){
   const btn = document.getElementById('ac-submit-judit');
   const r = document.getElementById('ac-result'); if(r) r.innerHTML = '';
@@ -7004,8 +7038,27 @@ async function acSubmitJudit(){
       if(btn) btn.disabled=false; return;
     }
 
+    // 1.5. Due diligence dos processos do credor (2º PORTÃO)
+    let ddInfo = null;
+    if(dj.cpf_credor){
+      _acProgress('Fazendo a due diligência dos processos do credor… (analisa cada processo do credor — pode levar alguns minutos)');
+      const rdd = await sb.functions.invoke('dd-credor', {
+        body: { cpf: dj.cpf_credor, principal: numero_processo, intermediador, categoria, cedente: _tituloNome(dj.nome_credor || ''), max: 8 },
+      });
+      if(rdd.error){
+        let detail = rdd.error.message || String(rdd.error);
+        try{ if(rdd.error.context && typeof rdd.error.context.json === 'function'){ const j = await rdd.error.context.json(); if(j?.erro) detail = j.erro; } }catch(_){}
+        throw new Error('Due diligence falhou: ' + detail);
+      }
+      const dd = rdd.data || {};
+      if(dd.erro) throw new Error('Due diligence: ' + dd.erro);
+      ddInfo = dd;
+      // se algum processo do credor tem risco AO CRÉDITO PRINCIPAL, PARA (não gera planilha)
+      if(dd.algum_reprovado){ _acHideProgress(); _acShowDDReprovado(dd); if(btn) btn.disabled=false; return; }
+    }
+
     // 2. Análise: MESMA função de sempre, agora com o job_id que a Judit preparou
-    _acProgress('Processo encontrado! Qualificando, analisando e gerando a planilha… (pode levar 1–2 min)');
+    _acProgress('Due diligence OK! Qualificando, analisando e gerando a planilha… (pode levar 1–2 min)');
     const { data, error } = await sb.functions.invoke('gerar-analise-rpv', {
       body: { job_id: dj.job_id, intermediador, numero_processo, categoria, tipo_aquisicao, honorarios_pct },
     });
@@ -7018,6 +7071,7 @@ async function acSubmitJudit(){
 
     _acHideProgress();
     _acShowOk(data);
+    if(ddInfo && (ddInfo.drive_folder_url || ddInfo.drive_report_url)) _acAppendDDLink(ddInfo);
   }catch(e){
     _acHideProgress();
     console.error('[AC] submit judit', e);
