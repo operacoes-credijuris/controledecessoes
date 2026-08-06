@@ -55,6 +55,13 @@ Mudanças grandes no `index.ts` e `index.html` para a nova arquitetura de **chec
    
    **Cuidado:** subir somente os `.docx`, ignorar os `.bak`. Recomendado também deletar o `cessao_honorarios.docx` antigo do bucket.
 
+   > ⚠️ **OBSOLETO (2026-08-06).** Este passo já foi executado e o bucket avançou além
+   > dessa pasta local. Os arquivos em `credijuris-contratos\templates\` estão **mais
+   > velhos** que os do bucket (testemunhas antigas e um `intermediacao.docx` sem
+   > marcadores de gênero). **Não subir essa pasta** — seria um downgrade. A fonte de
+   > verdade é o bucket `contratos-templates`; o script que gera os templates fica em
+   > `supabase/seeds/contratos-templates/`. Ver adendo no fim deste arquivo.
+
 2. **Redeployar a Edge Function** com o `index.ts` atualizado. Como o usuário não tem Node.js instalado, o caminho é via Studio web:
    ```cmd
    type "C:\Users\Windows 10\Desktop\novo projeto\controledecessoes-main\supabase\functions\gerar-contrato\index.ts" | clip
@@ -190,14 +197,11 @@ credijuris-contratos/              ← origem da lógica, ainda funciona via CLI
 
 ## Próximo passo
 
-### 1. Subir os 5 templates atualizados para o bucket
+### 1. ~~Subir os 5 templates atualizados para o bucket~~ — feito
 
-Supabase Studio → **Storage** → bucket `contratos-templates` → **Upload file** com os 5 `.docx` de:
-```
-C:\Users\Windows 10\Desktop\novo projeto\credijuris-contratos\templates\
-```
-
-Não subir nenhum `.bak`. Opcionalmente, apagar o `cessao_honorarios.docx` antigo do bucket.
+> ⚠️ **OBSOLETO (2026-08-06).** Já executado. Não repetir a partir de
+> `credijuris-contratos\templates\`: aquela pasta ficou para trás do bucket.
+> Ver adendo no fim deste arquivo.
 
 ### 2. Redeployar a Edge Function
 
@@ -314,3 +318,84 @@ Em **Urgências → Pendências → Fatais**, cada card cuja tarefa do Advbox se
 - Em `assets/js/app.js`, ampliar `_PETICAO_TIPO_MAP` com `{ match: /regex/, tipo: 'slug', label: 'Nome' }`.
 - Em `supabase/functions/gerar-peticao/index.ts`, ampliar o objeto `TEMPLATES`.
 - Subir o novo `.docx` ao bucket com placeholders `{{ASSIM}}`.
+
+---
+
+## Adendo 2026-08-06 — Templates de contrato versionados + layout novo
+
+### O que mudou
+
+Os templates do fluxo `gerar-contrato` passaram a ser **versionados no repo**, em
+`supabase/seeds/contratos-templates/`, com o mesmo esquema da pasta
+`peticoes-templates/` (`_modelo_original_<tipo>.docx` → `_build_template.py` → `<tipo>.docx`).
+Antes eles só existiam no bucket e numa pasta solta fora do repo.
+
+Dois modelos foram reescritos pelo jurídico no layout novo da Credijuris e convertidos:
+
+- **`procuracao.docx`** — substitui a procuração anterior.
+- **`intermediacao.docx`** — substitui o *"Contrato de prestação de serviços de
+  intermediação"*. O modelo novo se chama *"Contrato de originação, intermediação e
+  gestão de ativo"* e é bem maior: remuneração em 3 camadas e Remuneração de Performance
+  escalonada por faixa de TIR.
+
+Os 3 templates de cessão (`cessao_credito`, `cessao_honorarios_contratuais`,
+`cessao_honorarios_sucumbenciais`) **continuam no layout antigo** — cada operação gera
+2 documentos no visual novo e 3 no antigo até que o jurídico entregue os modelos deles.
+O `cessao_credito.docx` ganhou só uma correção pontual: a razão social estava grafada
+`CREDJURIS` (sem o `I`) no bloco de assinatura. Ele também precisa subir pro bucket.
+
+### Ordem do deploy
+
+```
+1. SQL Editor      → migration 0003
+2. Edge Functions  → colar index.ts → Deploy → conferir Logs
+3. Rodar           → python supabase/seeds/contratos-templates/_build_template.py
+4. Storage         → subir procuracao.docx, intermediacao.docx e cessao_credito.docx
+```
+
+Inverter 2 e 4 faz os contratos gerados nesse intervalo saírem com placeholder literal.
+
+### Onde está a fonte de verdade
+
+**No bucket `contratos-templates`.** A pasta `credijuris-contratos\templates\`, fora do
+repo, **está desatualizada** e não deve mais ser usada: testemunhas antigas e um
+`intermediacao.docx` sem os marcadores de gênero.
+
+Os `.docx` **não são versionados** — o repo é público e servido por GitHub Pages, e todos
+os templates trazem CPF e endereço residencial de pessoas físicas. Estão no `.gitignore`,
+junto com o `_dados_locais.py` (nome e CPF das testemunhas, consumido pelo script).
+Versionado fica só o que reproduz os templates: `_build_template.py`, o `README.md` da
+pasta e o `_dados_locais_template.py`. Para trabalhar neles, baixe os `.docx` do bucket
+para essa pasta com os nomes documentados no README.
+
+### Mudanças no `index.ts` — exigem redeploy
+
+1. **3 variáveis novas em `SCHEMA_APRESENTACAO_FIXOS`:** `JUIZO_TRIBUNAL`,
+   `CLASSE_ATIVO` (com as 5 opções válidas listadas na descrição, pra IA não inventar
+   variação) e `CAPITAL_INVESTIDO`.
+2. **`detectValorTotalOperacaoFromXlsx()`** — lê o "Valor total da operação" direto do
+   XML da planilha, sem IA, no mesmo molde do `detectCheckboxesFromXlsx()`. O rótulo é
+   igual nas duas análises mas a geometria muda: no RPV o valor fica à direita
+   (`X4`→`Y4`, ou `X41`→`Y41` no modelo azul); no precatório fica abaixo
+   (`B5`→`B6`/`B8`/`B10`/`B12`, um cenário por linha, só um != 0). A regra testa a
+   célula à direita + 12 abaixo e pega o primeiro numérico != 0. Casa o rótulo com
+   `startsWith`, não `includes`: o RPV tem um "Ganho de capital projetado … (… - valor
+   total da operação)" que contém a frase e tem outro número ao lado.
+3. **`qualificacao_complemento`** injetado em `montarQualificacaoInvestidor()` —
+   ver migration `0003`. Em PF entra depois da nacionalidade, em PJ no fim.
+4. **`LO: ['lo','la']`** em `GENERO_PALAVRAS`, para o `representá-{{I_LO}}` da Cláusula 2
+   da procuração. O `conduzi-lo` da mesma frase se refere ao *processo* e continua
+   masculino de propósito.
+5. **`nomeContratoArquivo('intermediacao')`** agora gera *"Contrato de Originação,
+   Intermediação e Gestão de Ativo - …"*, alinhado ao título do modelo novo.
+
+Sem o redeploy, as 3 variáveis novas caem no passo genérico de "campos extras" e podem
+voltar `null`, deixando o placeholder literal no `.docx` gerado.
+
+### Pendências
+
+1. **Modelos novos dos 3 templates de cessão**, quando o jurídico entregar.
+2. **Preencher `qualificacao_complemento`** dos investidores já cadastrados (só via SQL —
+   não existe tela de CRUD de investidores).
+
+Detalhes e mapa completo de variáveis: `supabase/seeds/contratos-templates/README.md`.
