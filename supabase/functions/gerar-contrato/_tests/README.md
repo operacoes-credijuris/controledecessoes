@@ -5,6 +5,7 @@ Dois testes, sem framework, sem `npm install` no repo. Precisam só de Node e co
 
 ```cmd
 node supabase/functions/gerar-contrato/_tests/test-tipos.mjs
+node supabase/functions/gerar-contrato/_tests/test-valores.mjs
 node supabase/functions/gerar-contrato/_tests/test-quadro.mjs
 ```
 
@@ -20,6 +21,19 @@ sem acrescentar nada), precatório (só intermediação + procuração, nunca ce
 (sai do quadro da análise) e a compatibilidade com o dropdown de tipo único.
 
 Não precisa de nada externo.
+
+## `test-valores.mjs` — "Valor total da operação" → `CAPITAL_INVESTIDO`
+
+Esse número vai impresso na Cláusula 10.1 do contrato de originação/intermediação/gestão,
+então pegar a célula errada é erro caro e silencioso. As duas análises guardam o valor em
+geometrias diferentes: no RPV à direita do rótulo, no precatório em linhas de cenário abaixo
+(*"1) Negociando só o principal"*, só o cenário negociado preenchido).
+
+Monta planilhas mínimas nas duas geometrias e verifica também a armadilha do *"Ganho de
+capital projetado (… - valor total da operação)"*, que contém a frase do rótulo mas tem
+outro número ao lado — é por isso que o casamento é `startsWith` e não `includes`.
+
+Os números são reais, da análise de precatório da Tatiana Hiiga. Não precisa de nada externo.
 
 ## `test-quadro.mjs` — leitura do quadro da análise
 
