@@ -144,7 +144,9 @@ const SCHEMA_APRESENTACAO_FIXOS: Vars = {
   DATA_EXTENSO: 'data de hoje por extenso ex: 07 de maio de 2025',
   // Campos do quadro "Dados da operação" do contrato de intermediação (modelo novo).
   JUIZO_TRIBUNAL: 'juízo e tribunal do processo, no formato "<vara/juizado> - <tribunal>", ex: "1ª Vara Cível de Goiânia - TJGO" ou "3º Juizado Especial Federal de Belo Horizonte - TRF6". Se só houver um dos dois, retorne o que houver. Se não encontrar, null',
-  CLASSE_ATIVO: 'classe do ativo cedido. Responda EXATAMENTE uma destas cinco opções, sem variações: "Precatório", "Honorário em precatório", "RPV", "Honorário em RPV combinado", "Honorário em RPV isolado". Use "RPV" para crédito principal de requisição de pequeno valor; "Honorário em RPV combinado" quando os honorários são cedidos junto com o principal; "Honorário em RPV isolado" quando só os honorários são cedidos. Se não conseguir determinar, null',
+  // Fallback: o valor normalmente usado vem de classeAtivo(), derivado da categoria e do
+  // que está sendo cedido. A IA só prevalece quando não dá pra determinar nenhum dos dois.
+  CLASSE_ATIVO: 'classe do ativo cedido. Responda EXATAMENTE uma destas cinco opções, sem variações: "Precatório", "Honorário em precatório", "RPV", "Honorário em RPV combinado", "Honorário em RPV isolado". Use "RPV" para crédito principal de requisição de pequeno valor; "Honorário em RPV combinado" quando os honorários são cedidos junto com o principal; "Honorário em RPV isolado" quando só os honorários são cedidos. NÃO use o campo "Qual o tipo de crédito?" da análise, que traz a natureza do crédito (ex: "Vencimentos/Proventos") e não a classe do ativo. Se não conseguir determinar, null',
   // Sobrescrito deterministicamente por detectValorTotalOperacaoFromXlsx() quando a
   // planilha traz o quadro — a IA fica só como fallback.
   CAPITAL_INVESTIDO: 'valor da célula rotulada "Valor total da operação" (quanto o investidor pagará), em R$ X.XXX,XX. Em análise de precatório o quadro lista 4 cenários e só um está preenchido — pegue o não-zerado. Se não encontrar, null',
@@ -352,6 +354,15 @@ const OPCOES_CREDITOS_NEGOCIADOS: Array<{ chave: string; rotulo: string; princip
   { chave: 'apenasoshonorarios',          rotulo: 'Apenas os honorários',           principal: false, honorarios: true  },
 ];
 
+// Cenários de negociação da análise de PRECATÓRIO. Ela não tem o quadro do RPV: em vez
+// disso, o bloco de valores traz uma faixa de linhas por cenário e só a negociada tem
+// números. É o único sinal de "principal e/ou honorários" numa operação de precatório.
+const CENARIOS_NEGOCIACAO: Array<{ chave: string; rotulo: string; principal: boolean; honorarios: boolean }> = [
+  { chave: 'negociandoprincipalehonorarios', rotulo: 'principal e honorários', principal: true,  honorarios: true  },
+  { chave: 'negociandosohonorarios',         rotulo: 'só honorários',          principal: false, honorarios: true  },
+  { chave: 'negociandosooprincipal',         rotulo: 'só o principal',         principal: true,  honorarios: false },
+];
+
 // Rótulos do modelo anterior, que usava 3 checkboxes booleanas em linhas separadas.
 const ROTULOS_CHECKBOX_LEGADO: Array<{ needle: string; campo: string }> = [
   { needle: 'creditoprincipal',        campo: 'NEGOCIAR_CREDITO_PRINCIPAL' },
@@ -402,6 +413,89 @@ function parseSheetCells(sx: string, ss: string[]): XlsxCell[][] {
     if (cells.length > 0) rows.push(cells);
   }
   return rows;
+}
+
+// Número da linha a partir da referência da célula: "C41" → 41.
+function linhaDaRef(ref: string): number {
+  return parseInt(ref.replace(/^[A-Z]+/, ''), 10) || 0;
+}
+
+// Célula com número de verdade (não texto que parece número, não booleano).
+function celulaNumerica(c: XlsxCell): number | null {
+  if (c.type === 'inlineStr' || c.type === 's' || c.type === 'b' || c.type === 'str') return null;
+  if (c.text.trim() === '') return null;
+  const n = parseFloat(c.text);
+  return isNaN(n) ? null : n;
+}
+
+// Descobre o cenário negociado na análise de PRECATÓRIO: acha os rótulos de cenário e
+// devolve o único que tem números na sua faixa de linhas. Alimenta o CLASSE_ATIVO.
+//
+// Devolve null quando não acha nenhum, ou quando MAIS DE UM tem números — nesse caso a
+// planilha está ambígua e é melhor deixar o valor da IA do que escolher por conta própria,
+// porque isso vai impresso no contrato.
+async function detectCenarioNegociadoFromXlsx(
+  bytes: Uint8Array,
+): Promise<{ principal: boolean; honorarios: boolean; rotulo: string } | null> {
+  const zip = await JSZip.loadAsync(bytes);
+  const ss = await readSharedStrings(zip);
+  const sheets = Object.keys(zip.files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort();
+
+  for (const name of sheets) {
+    const sx = await zip.file(name)?.async('string') || '';
+    const rows = parseSheetCells(sx, ss);
+
+    // Rótulos de cenário, com a linha onde cada um começa.
+    const marcos: Array<{ linha: number; cenario: typeof CENARIOS_NEGOCIACAO[number] }> = [];
+    for (const row of rows) {
+      for (const c of row) {
+        const n = normalizar(c.text);
+        const cenario = CENARIOS_NEGOCIACAO.find(x => n.includes(x.chave));
+        if (cenario && !marcos.some(m => m.cenario === cenario)) {
+          marcos.push({ linha: linhaDaRef(c.ref), cenario });
+        }
+      }
+    }
+    if (marcos.length === 0) continue;
+    marcos.sort((a, b) => a.linha - b.linha);
+
+    // Faixa de cada cenário: da linha dele até a do próximo (ou +12 no último).
+    const preenchidos = marcos.filter((m, i) => {
+      const fim = i + 1 < marcos.length ? marcos[i + 1].linha : m.linha + VTO_LINHAS_ABAIXO;
+      return rows.some(row => row.some(c => {
+        const l = linhaDaRef(c.ref);
+        if (l <= m.linha || l >= fim) return false;
+        const v = celulaNumerica(c);
+        return v !== null && v !== 0;
+      }));
+    });
+
+    if (preenchidos.length !== 1) {
+      console.warn('[gerar-contrato] cenário de negociação indefinido em', name,
+        JSON.stringify({ achados: marcos.map(m => m.cenario.rotulo), preenchidos: preenchidos.map(m => m.cenario.rotulo) }));
+      return null;
+    }
+    const { cenario } = preenchidos[0];
+    return { principal: cenario.principal, honorarios: cenario.honorarios, rotulo: cenario.rotulo };
+  }
+  return null;
+}
+
+// Classe do ativo cedido, uma das cinco que o contrato aceita. Era pedida à IA, que tinha
+// como distrair o campo "Qual o tipo de crédito?" da análise ("Vencimentos/Proventos…"),
+// que não é nenhuma das cinco. Aqui sai de categoria + o que está sendo cedido.
+//
+// Precatório não tem opção "combinado": principal + honorários cai em "Honorário em
+// precatório" (decisão do operador, 2026-08-11).
+function classeAtivo(categoria: string | null | undefined, principal: boolean, honorarios: boolean): string | null {
+  if (ehPrecatorio(categoria)) {
+    if (honorarios) return 'Honorário em precatório';
+    return principal ? 'Precatório' : null;
+  }
+  if (principal && honorarios) return 'Honorário em RPV combinado';
+  if (honorarios) return 'Honorário em RPV isolado';
+  if (principal) return 'RPV';
+  return null;
 }
 
 // Lê o quadro "Vai ser negociado aqui quais créditos?" DIRETO do XML da análise.
@@ -1762,6 +1856,30 @@ serve(async (req) => {
       // O JSON de debug fica no console.log do passo 9e, fora da tela do operador.
       throw erroCreditos ?? (e instanceof Error ? e : new Error(String(e)));
     }
+    // 11a. CLASSE_ATIVO determinístico, sobrescrevendo o palpite da IA.
+    //      O que está sendo cedido sai dos próprios tipos quando há cessão — cobre RPV
+    //      automático e escolha manual de uma vez. Precatório automático não gera cessão
+    //      avulsa, então aí o sinal vem do cenário preenchido na análise.
+    const cedePrincipal  = tipos.includes('cessao_credito');
+    const cedeHonorarios = tipos.some(t => t.startsWith('cessao_honorarios'));
+    let cenario: { principal: boolean; honorarios: boolean; rotulo: string } | null =
+      (cedePrincipal || cedeHonorarios)
+        ? { principal: cedePrincipal, honorarios: cedeHonorarios, rotulo: 'contratos escolhidos' }
+        : null;
+    if (!cenario && xlsxAnalise) {
+      try {
+        cenario = await detectCenarioNegociadoFromXlsx(xlsxAnalise.bytes);
+      } catch (e) {
+        console.error('[gerar-contrato] leitura do cenário negociado falhou', e);
+      }
+    }
+    const classe = cenario ? classeAtivo(categoria, cenario.principal, cenario.honorarios) : null;
+    console.log('[gerar-contrato] classe do ativo:', JSON.stringify({
+      cenario: cenario?.rotulo ?? null, derivada: classe, da_ia: dados.CLASSE_ATIVO,
+    }));
+    // Só sobrescreve quando conseguiu determinar; senão o valor da IA permanece.
+    if (classe) dados.CLASSE_ATIVO = classe;
+
     const papeisNecessarios = new Set<string>();
     for (const t of tipos) for (const p of REQUIRED_PAPEIS[t]) papeisNecessarios.add(p);
     papeisNecessarios.delete('apresentacao');

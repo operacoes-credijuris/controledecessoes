@@ -258,6 +258,28 @@ Por isso o quadro **só é lido quando o conjunto de contratos depende dele** �
 precatório (a categoria já define os 2 documentos) nem quando o operador escolheu na mão.
 Ler ali daria erro em toda geração de precatório.
 
+### `CLASSE_ATIVO` é derivado, não perguntado
+
+O contrato aceita só cinco valores: `Precatório`, `Honorário em precatório`, `RPV`,
+`Honorário em RPV combinado`, `Honorário em RPV isolado`. Era a IA que escolhia, com o risco
+de copiar o campo *"Qual o tipo de crédito?"* da análise — que traz a **natureza** do crédito
+(no caso da Tatiana, *"Vencimentos/Proventos (Diferenças salariais…)"*) e não a classe do
+ativo. Agora `classeAtivo(categoria, principal, honorarios)` decide:
+
+| | só principal | principal e honorários | só honorários |
+|---|---|---|---|
+| **RPV** | `RPV` | `Honorário em RPV combinado` | `Honorário em RPV isolado` |
+| **Precatórios** | `Precatório` | `Honorário em precatório` | `Honorário em precatório` |
+
+Precatório não tem opção "combinado" entre as cinco, então principal + honorários cai em
+`Honorário em precatório`.
+
+O sinal de "o que está sendo cedido" vem dos próprios `tipos` quando há cessão — cobre RPV
+automático e escolha manual de uma vez. Precatório automático não gera cessão avulsa, então
+aí vem de `detectCenarioNegociadoFromXlsx()`, que acha qual faixa de cenário da análise tem
+números. Se dois cenários estiverem preenchidos, a planilha está ambígua e o valor da IA é
+mantido — palpite de código em documento jurídico é pior que palpite de IA declarado.
+
 ### Como o quadro da análise é lido
 
 O modelo da análise de RPV mudou em 2026-08: as 3 checkboxes viraram **um dropdown** em

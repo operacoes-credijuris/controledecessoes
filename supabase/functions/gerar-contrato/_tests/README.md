@@ -22,7 +22,9 @@ sem acrescentar nada), precatório (só intermediação + procuração, nunca ce
 
 Não precisa de nada externo.
 
-## `test-valores.mjs` — "Valor total da operação" → `CAPITAL_INVESTIDO`
+## `test-valores.mjs` — valores e classe do ativo lidos da análise
+
+### "Valor total da operação" → `CAPITAL_INVESTIDO`
 
 Esse número vai impresso na Cláusula 10.1 do contrato de originação/intermediação/gestão,
 então pegar a célula errada é erro caro e silencioso. As duas análises guardam o valor em
@@ -34,6 +36,15 @@ capital projetado (… - valor total da operação)"*, que contém a frase do r�
 outro número ao lado — é por isso que o casamento é `startsWith` e não `includes`.
 
 Os números são reais, da análise de precatório da Tatiana Hiiga. Não precisa de nada externo.
+
+### Cenário negociado → `CLASSE_ATIVO`
+
+`detectCenarioNegociadoFromXlsx()` acha qual faixa de cenário da análise de precatório tem
+números (*"1) Negociando só o principal"* / *"2) principal e honorários"* / *"3) só
+honorários"*) e `classeAtivo()` traduz categoria + o que está sendo cedido numa das cinco
+classes que o contrato aceita. Cobre também os casos que devolvem `null` de propósito:
+nenhum cenário preenchido, **dois** preenchidos (planilha ambígua não vira palpite) e valor
+zero, que não conta como preenchido.
 
 ## `test-quadro.mjs` — leitura do quadro da análise
 

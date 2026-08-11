@@ -8,15 +8,26 @@
 import { corta, cortaLinha, montar, dep, eq, ok, fim } from './_harness.mjs';
 
 const JSZip = (await dep('jszip')).default;
-const { detectValorTotalOperacaoFromXlsx } = await montar('valores', [
+const { detectValorTotalOperacaoFromXlsx, detectCenarioNegociadoFromXlsx, classeAtivo } = await montar('valores', [
   `import JSZip from 'jszip';`,
+  `type Vars = Record<string, string | null>;`,
   corta('function normalizar('),
+  corta('function colLetterFromRef('),
   corta('async function readSharedStrings('),
+  corta('function decodeXmlEntities('),
+  corta('const CENARIOS_NEGOCIACAO', '\n];\n'),
+  cortaLinha(/^interface XlsxCell .*$/m),
+  corta('function parseSheetCells('),
+  corta('function linhaDaRef('),
+  corta('function celulaNumerica('),
+  corta('function ehPrecatorio('),
+  corta('async function detectCenarioNegociadoFromXlsx('),
+  corta('function classeAtivo('),
   corta('function formatBRL('),
   corta('function nextCol('),
   cortaLinha(/^const VTO_LINHAS_ABAIXO = .*$/m),
   corta('async function detectValorTotalOperacaoFromXlsx('),
-  `export { detectValorTotalOperacaoFromXlsx };`,
+  `export { detectValorTotalOperacaoFromXlsx, detectCenarioNegociadoFromXlsx, classeAtivo };`,
 ]);
 
 // Monta um .xlsx mínimo com as células dadas: { A1: 'texto', B2: 1234.5 }.
@@ -108,5 +119,51 @@ console.log('\n=== formato de saída ===');
 eq('milhar com ponto e centavos com vírgula',
   await detectValorTotalOperacaoFromXlsx(await planilha({ X4: ROTULO, Y4: 1234567.5 })),
   'R$ 1.234.567,50');
+
+// ---------------------------------------------------------------------------
+// Cenário negociado → CLASSE_ATIVO
+// ---------------------------------------------------------------------------
+
+const CEN = {
+  p:  '1) Negociando só o principal:',
+  ph: '2) Negociando principal e honorários (S):',
+  h:  '3) Negociando só honorários (S):',
+};
+// Três cenários declarados; `linhaComNumero` diz em qual faixa entram os números.
+async function comCenario(linhaComNumero) {
+  const c = { C5: ROTULO, A6: CEN.p, A8: CEN.ph, A10: CEN.h };
+  if (linhaComNumero) { c[`B${linhaComNumero}`] = 108672.77; c[`C${linhaComNumero}`] = 61694.31; }
+  return await planilha(c);
+}
+
+console.log('\n=== cenário negociado (análise de precatório) ===');
+eq('cenário 1 preenchido → só o principal',
+  (await detectCenarioNegociadoFromXlsx(await comCenario(7)))?.rotulo, 'só o principal');
+eq('cenário 2 preenchido → principal e honorários',
+  (await detectCenarioNegociadoFromXlsx(await comCenario(9)))?.rotulo, 'principal e honorários');
+eq('cenário 3 preenchido → só honorários',
+  (await detectCenarioNegociadoFromXlsx(await comCenario(11)))?.rotulo, 'só honorários');
+ok('nenhum preenchido → null (a IA assume)',
+  (await detectCenarioNegociadoFromXlsx(await comCenario(null))) === null);
+ok('dois preenchidos → null, planilha ambígua não vira palpite',
+  (await detectCenarioNegociadoFromXlsx(await planilha({
+    C5: ROTULO, A6: CEN.p, B7: 1, A8: CEN.ph, B9: 2, A10: CEN.h,
+  }))) === null);
+ok('análise sem cenários → null',
+  (await detectCenarioNegociadoFromXlsx(await planilha({ A1: 'Processo', A3: 'Vai ser negociado aqui quais créditos?' }))) === null);
+ok('zero não conta como preenchido',
+  (await detectCenarioNegociadoFromXlsx(await planilha({ C5: ROTULO, A6: CEN.p, B7: 0, A8: CEN.ph, A10: CEN.h }))) === null);
+
+console.log('\n=== classeAtivo(categoria, principal, honorários) ===');
+const RPV = 'Requisições de Pequeno Valor';
+const PREC = 'Precatórios';
+eq('precatório, só principal',           classeAtivo(PREC, true,  false), 'Precatório');
+eq('precatório, só honorários',          classeAtivo(PREC, false, true),  'Honorário em precatório');
+eq('precatório, principal e honorários', classeAtivo(PREC, true,  true),  'Honorário em precatório');
+eq('RPV, só principal',                  classeAtivo(RPV,  true,  false), 'RPV');
+eq('RPV, principal e honorários',        classeAtivo(RPV,  true,  true),  'Honorário em RPV combinado');
+eq('RPV, só honorários',                 classeAtivo(RPV,  false, true),  'Honorário em RPV isolado');
+eq('sem sinal nenhum → null',            classeAtivo(RPV,  false, false), null);
+eq('categoria sem acento',               classeAtivo('precatorios', true, false), 'Precatório');
 
 fim();
