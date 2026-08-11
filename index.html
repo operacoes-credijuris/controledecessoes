@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
-<link rel="stylesheet" href="assets/css/app.css?v=20260630">
+<link rel="stylesheet" href="assets/css/app.css?v=20260811">
 </head>
 <body>
 
@@ -926,20 +926,23 @@
       </div>
     </div>
 
-    <!-- Passo 4: Tipo -->
+    <!-- Passo 4: Quais contratos (automático pela análise/categoria, ou escolha manual) -->
     <div class="gc-step">
       <div class="gc-step-num">4</div>
       <div class="gc-step-body">
-        <div class="gc-lbl">Tipo (opcional)</div>
-        <select id="gc-tipo" class="gc-select">
-          <option value="">Auto — usa as checkboxes da análise de RPV</option>
-          <option value="cessao_credito">Só cessão de crédito principal</option>
-          <option value="cessao_honorarios_contratuais">Só cessão de honorários contratuais</option>
-          <option value="cessao_honorarios_sucumbenciais">Só cessão de honorários sucumbenciais</option>
-          <option value="intermediacao">Só intermediação</option>
-          <option value="procuracao">Só procuração</option>
-        </select>
-        <div class="gc-hint">No modo auto, o sistema lê o quadro <em>"Vai ser negociado aqui quais créditos?"</em> da análise de RPV e gera os contratos correspondentes às checkboxes marcadas (mais intermediação + procuração).</div>
+        <div class="gc-lbl">Quais contratos gerar</div>
+        <label class="gc-tipo-auto">
+          <input type="checkbox" id="gc-tipo-auto" checked onchange="gcToggleTipoAuto()">
+          <span>Automático — decide pela análise e pela categoria</span>
+        </label>
+        <div id="gc-tipos-box" class="gc-tipos">
+          <label class="gc-tipo-item"><input type="checkbox" class="gc-tipo-chk" onchange="gcOnTipoChange()" value="cessao_credito" disabled>Cessão de crédito principal</label>
+          <label class="gc-tipo-item"><input type="checkbox" class="gc-tipo-chk" onchange="gcOnTipoChange()" value="cessao_honorarios_contratuais" disabled>Cessão de honorários contratuais</label>
+          <label class="gc-tipo-item"><input type="checkbox" class="gc-tipo-chk" onchange="gcOnTipoChange()" value="cessao_honorarios_sucumbenciais" disabled>Cessão de honorários sucumbenciais</label>
+          <label class="gc-tipo-item"><input type="checkbox" class="gc-tipo-chk" onchange="gcOnTipoChange()" value="intermediacao" disabled>Contrato de originação, intermediação e gestão de ativo</label>
+          <label class="gc-tipo-item"><input type="checkbox" class="gc-tipo-chk" onchange="gcOnTipoChange()" value="procuracao" disabled>Procuração</label>
+        </div>
+        <div class="gc-hint" id="gc-tipo-hint"></div>
       </div>
     </div>
 
@@ -1257,7 +1260,7 @@
   onerror="(function(){var e=document.getElementById('lc-err');if(e){e.textContent='Falha ao carregar Supabase. Verifique sua conexão.';e.style.display='block';}})()"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="assets/js/app.js?v=20260723a"></script>
+<script src="assets/js/app.js?v=20260811"></script>
 
 <!-- COLUMN FILTER PANEL -->
 <div id="col-filter-panel">
@@ -1325,6 +1328,25 @@
       <div class="fg">
         <label class="flbl">Endereço</label>
         <input id="inv-f-endereco" class="finp" type="text" placeholder="Rua, nº, bairro, cidade - UF, CEP">
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-end">
+        <div class="fg" style="flex:0 0 auto">
+          <label class="flbl">Trata como</label>
+          <div style="display:flex;gap:14px;padding:9px 0;font-size:13px">
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="inv-f-genero" value="M" checked> Masculino</label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="inv-f-genero" value="F"> Feminino</label>
+          </div>
+        </div>
+        <div class="fg" style="flex:1">
+          <label class="flbl">Complemento da qualificação</label>
+          <input id="inv-f-qualif" class="finp" type="text" placeholder="solteiro, engenheiro civil">
+        </div>
+      </div>
+      <div style="font-size:11px;color:#6b7280;line-height:1.5;margin-top:-8px">
+        Entra na qualificação do contrato. <strong>Pessoa física:</strong> estado civil e profissão, sem vírgula nas pontas —
+        <em>"solteiro, engenheiro civil"</em> sai como "Fulano, brasileiro, solteiro, engenheiro civil, inscrito no CPF…".
+        <strong>Pessoa jurídica:</strong> a frase do representante legal, que entra no fim —
+        <em>"neste ato representada por João da Silva, sócio-administrador"</em>. Pode ficar vazio.
       </div>
       <div class="fg">
         <label class="flbl">Banco</label>

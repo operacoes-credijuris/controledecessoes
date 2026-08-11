@@ -1409,6 +1409,12 @@ function _invOpenModal(idOrNull){
   f('inv-f-agencia',inv?.agencia||'');
   f('inv-f-conta',inv?.conta||'');
   f('inv-f-pix',inv?.pix||'');
+  f('inv-f-qualif',inv?.qualificacao_complemento||'');
+  // genero e qualificacao_complemento existem no banco desde as migrations 0002/0003 e
+  // são consumidas por montarQualificacaoInvestidor() na edge function, mas até agora
+  // só dava pra preencher por SQL.
+  const g=(inv?.genero||'M').toUpperCase().startsWith('F')?'F':'M';
+  document.querySelectorAll('input[name="inv-f-genero"]').forEach(r=>{r.checked=(r.value===g);});
   const err=document.getElementById('inv-mdl-err');if(err){err.style.display='none';err.textContent='';}
   const btn=document.getElementById('inv-mdl-save');if(btn){btn.disabled=false;btn.textContent='Salvar';}
   openModal('inv-ov');
@@ -1426,7 +1432,8 @@ async function _invSave(){
   const btn=document.getElementById('inv-mdl-save');
   if(btn){btn.disabled=true;btn.textContent='Salvando…';}
   const id=val('inv-f-id');
-  const payload={nome,cpf:val('inv-f-cpf'),rg:val('inv-f-rg'),endereco:val('inv-f-endereco'),banco:val('inv-f-banco'),agencia:val('inv-f-agencia'),conta:val('inv-f-conta'),pix:val('inv-f-pix')};
+  const genero=document.querySelector('input[name="inv-f-genero"]:checked')?.value||'M';
+  const payload={nome,cpf:val('inv-f-cpf'),rg:val('inv-f-rg'),endereco:val('inv-f-endereco'),banco:val('inv-f-banco'),agencia:val('inv-f-agencia'),conta:val('inv-f-conta'),pix:val('inv-f-pix'),genero,qualificacao_complemento:val('inv-f-qualif')};
   const{error}=id
     ?await sb.from('investidores').update(payload).eq('id',id)
     :await sb.from('investidores').insert(payload);
@@ -1509,9 +1516,11 @@ async function gcInit(){
   GC.uploads={cedente:[],escritorio:[]};
   const res=document.getElementById('gc-result');if(res)res.innerHTML='';
   const np=document.getElementById('gc-numero-processo');if(np)np.value='';
+  const auto=document.getElementById('gc-tipo-auto');if(auto)auto.checked=true;
   await gcLoadInvestidores();
   gcRenderInvestidores();
   gcLoadIntermediadores();
+  gcAtualizarTipos(false);
   gcRenderFiles();
 }
 
@@ -1541,8 +1550,10 @@ function gcRenderInvestidores(){
 async function gcLoadIntermediadores(){
   const sel=document.getElementById('gc-intermediador');
   if(!sel)return;
-  const categoria=document.querySelector('input[name="gc-categoria"]:checked')?.value||'Requisições de Pequeno Valor';
+  const categoria=_gcCategoria();
   sel.innerHTML='<option value="">— carregando… —</option>';
+  // Categoria muda o conjunto de contratos: precatório não tem cessão avulsa.
+  gcAtualizarTipos(true);
   gcRenderFiles();
   try{
     if(!sb)throw new Error('Supabase não inicializado');
@@ -1556,6 +1567,70 @@ async function gcLoadIntermediadores(){
     console.error('[GC] loadIntermediadores',e);
     sel.innerHTML='<option value="">(erro ao carregar — recarrega a página)</option>';
   }
+  gcRenderFiles();
+}
+
+function _gcCategoria(){
+  return document.querySelector('input[name="gc-categoria"]:checked')?.value||'Requisições de Pequeno Valor';
+}
+
+// Espelha tiposPadraoDaCategoria() da edge function: precatório sai com o contrato de
+// originação/intermediação/gestão + procuração, sem cessão avulsa; RPV parte da cessão
+// de crédito principal. É só o ponto de partida — o operador edita.
+function _gcTiposPadrao(categoria){
+  return /precat/i.test(categoria||'')
+    ? ['intermediacao','procuracao']
+    : ['cessao_credito','intermediacao','procuracao'];
+}
+
+// Contratos marcados na tela. null = modo automático (a função decide).
+function gcTiposSelecionados(){
+  if(document.getElementById('gc-tipo-auto')?.checked!==false)return null;
+  return Array.from(document.querySelectorAll('.gc-tipo-chk:checked')).map(c=>c.value);
+}
+
+// Sincroniza a lista de contratos com o modo escolhido.
+// marcarPadrao=true → repõe os padrões da categoria (ao entrar no manual ou trocar categoria).
+function gcAtualizarTipos(marcarPadrao){
+  const auto=document.getElementById('gc-tipo-auto')?.checked!==false;
+  const box=document.getElementById('gc-tipos-box');
+  const chks=Array.from(document.querySelectorAll('.gc-tipo-chk'));
+  if(box)box.classList.toggle('off',auto);
+  chks.forEach(c=>{c.disabled=auto;});
+  const precatorio=/precat/i.test(_gcCategoria());
+  if(auto){
+    // Prévia honesta: em precatório o conjunto é fixo; em RPV quem decide é a análise,
+    // então não marca nada pra não dar a impressão de que já está definido.
+    const padrao=precatorio?_gcTiposPadrao(_gcCategoria()):[];
+    chks.forEach(c=>{c.checked=padrao.includes(c.value);});
+  }else if(marcarPadrao){
+    const padrao=_gcTiposPadrao(_gcCategoria());
+    chks.forEach(c=>{c.checked=padrao.includes(c.value);});
+  }
+  const hint=document.getElementById('gc-tipo-hint');
+  if(hint){
+    const marcados=chks.filter(c=>c.checked).length;
+    const honorarios=chks.some(c=>c.checked&&/honorarios/.test(c.value));
+    if(auto&&precatorio){
+      hint.textContent='Precatório: sai o contrato de originação, intermediação e gestão de ativo mais a procuração. Sem cessão avulsa.';
+    }else if(auto){
+      hint.innerHTML='RPV: o sistema lê o quadro <em>"Vai ser negociado aqui quais créditos?"</em> da análise e gera as cessões correspondentes, mais intermediação e procuração. Se a planilha estiver ilegível, a geração para e avisa — aí desmarque o automático e escolha na mão.';
+    }else if(marcados===0){
+      hint.textContent='Marque ao menos um contrato.';
+    }else{
+      hint.textContent='Sai exatamente o que está marcado ('+marcados+'), sem acrescentar nada.'
+        +(honorarios?' Cessão de honorários exige os documentos do escritório.':'');
+    }
+  }
+}
+
+function gcToggleTipoAuto(){
+  gcAtualizarTipos(true);
+  gcRenderFiles();
+}
+
+function gcOnTipoChange(){
+  gcAtualizarTipos(false);
   gcRenderFiles();
 }
 
@@ -1581,7 +1656,9 @@ function gcRenderFiles(){
   const inv=document.getElementById('gc-investidor')?.value||'';
   const inter=(document.getElementById('gc-intermediador')?.value||'').trim();
   const proc=(document.getElementById('gc-numero-processo')?.value||'').trim();
-  btn.disabled=!(inv&&inter&&proc);
+  // No modo manual, nenhum contrato marcado = nada pra gerar.
+  const tipos=gcTiposSelecionados();
+  btn.disabled=!(inv&&inter&&proc)||(tipos!==null&&tipos.length===0);
 }
 
 function gcOnFileSelect(papel,input){
@@ -1647,11 +1724,12 @@ async function gcSubmit(){
 
   const investidor_id=document.getElementById('gc-investidor').value;
   const intermediador=(document.getElementById('gc-intermediador').value||'').trim();
-  const tipo=document.getElementById('gc-tipo').value||null;
+  // tipos = escolha manual (vale exatamente o que está marcado). null = automático.
+  const tipos=gcTiposSelecionados();
   const cedente_genero=(document.querySelector('input[name="gc-cedente-genero"]:checked')||{}).value||'M';
   const socio_genero=(document.querySelector('input[name="gc-socio-genero"]:checked')||{}).value||'M';
   const numero_processo=(document.getElementById('gc-numero-processo').value||'').trim();
-  const categoria=document.querySelector('input[name="gc-categoria"]:checked')?.value||'Requisições de Pequeno Valor';
+  const categoria=_gcCategoria();
 
   try{
     if(!sb)throw new Error('Supabase não inicializado');
@@ -1679,7 +1757,7 @@ async function gcSubmit(){
     // 2. Invoca a Edge Function
     _gcProgress('Extraindo dados e gerando contratos… (pode levar 30–90s)');
     const{data,error}=await sb.functions.invoke('gerar-contrato',{
-      body:{job_id:GC.job_id,investidor_id,intermediador,tipo,cedente_genero,socio_genero,numero_processo,categoria},
+      body:{job_id:GC.job_id,investidor_id,intermediador,tipos,cedente_genero,socio_genero,numero_processo,categoria},
     });
     if(error){
       // Tenta extrair mensagem detalhada do response body

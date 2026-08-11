@@ -2562,6 +2562,13 @@ tbody tr:hover{background:#1d222a}
 .gc-input::placeholder{color:#4b5563}
 .gc-select option{background:#151820}
 .gc-hint{font-size:11px;color:#6b7280;margin-top:2px;line-height:1.5}
+/* Escolha dos contratos: "Automático" desliga a lista, desmarcar habilita a escolha manual */
+.gc-tipo-auto{display:flex;align-items:center;gap:7px;font-size:13px;color:#e2e8f0;cursor:pointer;user-select:none}
+.gc-tipos{display:flex;flex-direction:column;gap:2px;background:#111317;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 12px;margin-top:4px}
+.gc-tipos.off{opacity:.45}
+.gc-tipo-item{display:flex;align-items:center;gap:7px;font-size:13px;color:#cbd5e1;padding:3px 0;cursor:pointer;user-select:none}
+.gc-tipos.off .gc-tipo-item{cursor:not-allowed}
+.gc-tipo-item input{cursor:inherit}
 .gc-papel{background:#111317;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px;margin-bottom:10px}
 .gc-papel:last-child{margin-bottom:0}
 .gc-papel-hdr{font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:10px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
