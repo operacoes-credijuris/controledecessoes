@@ -137,11 +137,10 @@ const SCHEMA_APRESENTACAO_FIXOS: Vars = {
   PERCENTUAL_HONORARIOS: 'percentual de honorários ex: 30% ou null',
   VALOR_HONORARIOS: 'valor dos honorários em R$ X.XXX,XX ou null',
   VALOR_CESSAO: 'valor a ser pago ao cedente em R$ X.XXX,XX',
-  // Quadro "Vai ser negociado aqui quais créditos?" — 3 checkboxes Google Sheets
-  // (cada uma vira valor booleano "1"=marcada / "0"=desmarcada / "TRUE"/"FALSE" no XLSX)
-  NEGOCIAR_CREDITO_PRINCIPAL: 'string "true" se a checkbox ao lado do rótulo "Crédito principal" estiver MARCADA (valor 1, TRUE) na planilha; "false" se estiver DESMARCADA (valor 0, FALSE)',
-  NEGOCIAR_HONORARIOS_CONTRATUAIS: 'string "true" se a checkbox ao lado de "Honorários contratuais" estiver MARCADA (1/TRUE); "false" se DESMARCADA (0/FALSE)',
-  NEGOCIAR_HONORARIOS_SUCUMBENCIAIS: 'string "true" se a checkbox ao lado de "Honorários sucumbenciais" estiver MARCADA (1/TRUE); "false" se DESMARCADA (0/FALSE)',
+  // As NEGOCIAR_* (quadro "Vai ser negociado aqui quais créditos?") NÃO são pedidas à
+  // IA de propósito: vêm de detectCreditosNegociadosFromXlsx(), que lê a resposta
+  // direto do XML da planilha. Elas decidem quais contratos são gerados, e um chute
+  // errado aqui produz o conjunto errado de documentos jurídicos.
   DATA_EXTENSO: 'data de hoje por extenso ex: 07 de maio de 2025',
   // Campos do quadro "Dados da operação" do contrato de intermediação (modelo novo).
   JUIZO_TRIBUNAL: 'juízo e tribunal do processo, no formato "<vara/juizado> - <tribunal>", ex: "1ª Vara Cível de Goiânia - TJGO" ou "3º Juizado Especial Federal de Belo Horizonte - TRF6". Se só houver um dos dois, retorne o que houver. Se não encontrar, null',
@@ -325,100 +324,184 @@ async function readSharedStrings(zip: JSZip): Promise<string[]> {
   return ss;
 }
 
-// Lê as 3 marcações do quadro "Vai ser negociado aqui quais créditos?" DIRETO do
-// XML, sem depender da IA. Para cada row do worksheet, procura a célula com
-// label ("Crédito principal:", "Honorários contratuais:", "Honorários
-// sucumbenciais:") e lê a célula de valor (geralmente coluna D) → retorna
-// 'true'/'false' string.
-//
-// Suporta dois formatos de marcação:
-//   1. Texto: "x" / "X" / "✓" / qualquer texto não-vazio na célula = MARCADA
-//   2. Checkbox booleana (formato antigo do Google Sheets): t="b" com v=1 = MARCADA
-//
-// Existe porque a IA não é confiável para isso (sheet2/sheet3 grandes confundem
-// o contexto). Esta função sobrescreve o que a IA respondeu pras NEGOCIAR_*.
-async function detectCheckboxesFromXlsx(bytes: Uint8Array): Promise<Vars> {
-  const result: Vars = {};
-  try {
-    const zip = await JSZip.loadAsync(bytes);
-    const ss = await readSharedStrings(zip);
+// Decodifica entidades XML. JSZip devolve o XML cru, então "cr&#233;dito" chega
+// literal — e normalizar() transformaria isso em "cr233dito", que não casa com
+// nenhum rótulo. Foi um dos motivos da leitura do quadro falhar em silêncio.
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
 
-    // Acha índices dos labels nos shared strings
-    const findSsIdx = (needle: string): number => {
-      const n = normalizar(needle);
-      return ss.findIndex(s => normalizar(s).includes(n));
-    };
-    const idxPrincipal      = findSsIdx('credito principal');
-    const idxContratuais    = findSsIdx('honorarios contratuais');
-    const idxSucumbenciais  = findSsIdx('honorarios sucumbenciais');
+// Rótulo do quadro de créditos negociados, no cabeçalho da análise (A3 na sheet1
+// do modelo de 2026-08). Comparado com normalizar(), sem acento nem pontuação.
+const ROTULO_CREDITOS_NEGOCIADOS = 'vaisernegociadoaquiquaiscreditos';
 
-    type Cell = { col: string; type: string; raw: string };
+// Respostas do dropdown do quadro (dataValidation em C3) → quais cessões.
+// O quadro fala em "honorários" sem separar contratuais de sucumbenciais, então as
+// duas cessões saem juntas (decisão do operador, 2026-08-11). Quando isso não
+// servir, o operador marca na mão os contratos na tela.
+const OPCOES_CREDITOS_NEGOCIADOS: Array<{ chave: string; rotulo: string; principal: boolean; honorarios: boolean }> = [
+  { chave: 'apenasocreditoprincipal',     rotulo: 'Apenas o crédito principal',     principal: true,  honorarios: false },
+  { chave: 'creditoprincipalehonorarios', rotulo: 'Crédito principal e honorários', principal: true,  honorarios: true  },
+  { chave: 'apenasoshonorarios',          rotulo: 'Apenas os honorários',           principal: false, honorarios: true  },
+];
 
-    // Determina se uma cell tem "marca" (qualquer texto não-vazio ≠ 0/false/-, ou bool 1)
-    const cellMarcada = (c: Cell | undefined): boolean => {
-      if (!c) return false;
-      if (c.type === 'b') return c.raw === '1';
-      let txt = '';
-      if (c.type === 's') txt = ss[parseInt(c.raw, 10)] || '';
-      else                txt = c.raw;
-      const norm = txt.trim().toLowerCase();
-      if (norm === '' || norm === '0' || norm === 'false' || norm === 'nao' || norm === 'não' || norm === '-') return false;
-      return true;
-    };
+// Rótulos do modelo anterior, que usava 3 checkboxes booleanas em linhas separadas.
+const ROTULOS_CHECKBOX_LEGADO: Array<{ needle: string; campo: string }> = [
+  { needle: 'creditoprincipal',        campo: 'NEGOCIAR_CREDITO_PRINCIPAL' },
+  { needle: 'honorarioscontratuais',   campo: 'NEGOCIAR_HONORARIOS_CONTRATUAIS' },
+  { needle: 'honorariossucumbenciais', campo: 'NEGOCIAR_HONORARIOS_SUCUMBENCIAIS' },
+];
 
-    for (const name of Object.keys(zip.files)) {
-      if (!name.match(/^xl\/worksheets\/sheet\d+\.xml$/)) continue;
-      const sx = await zip.file(name)?.async('string') || '';
-      const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
-      let rm: RegExpExecArray | null;
-      while ((rm = rowRe.exec(sx)) !== null) {
-        // Coleta TODAS as cells da row (em ordem) — indexadas por coluna
-        const cells: Cell[] = [];
-        const cellsByCol: Record<string, Cell> = {};
-        const cRe = /<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
-        let cm: RegExpExecArray | null;
-        while ((cm = cRe.exec(rm[1])) !== null) {
-          const attrs = (cm[1] ?? cm[2]) || '';
-          const inner = cm[3] ?? '';
-          const refMatch = attrs.match(/\br="([A-Z]+)\d+"/);
-          const col = refMatch ? refMatch[1] : '';
-          const typeMatch = attrs.match(/\bt="([^"]+)"/);
-          const type = typeMatch ? typeMatch[1] : '';
-          const vMatch = inner.match(/<v>([^<]*)<\/v>/);
-          const isMatch = inner.match(/<is>[\s\S]*?<t[^>]*>([^<]*)<\/t>/);
-          let raw = '';
-          if (isMatch) raw = isMatch[1];
-          else if (vMatch) raw = vMatch[1];
-          else continue; // célula sem valor — pula
-          const c: Cell = { col, type, raw };
-          cells.push(c);
-          if (col) cellsByCol[col] = c;
-        }
-        if (cells.length === 0) continue;
+interface XlsxCell { ref: string; col: string; type: string; text: string; raw: string }
 
-        // Identifica se essa row tem algum dos 3 labels
-        let labelTarget: keyof Vars | null = null;
-        let labelIdxInRow = -1;
-        for (let i = 0; i < cells.length; i++) {
-          const c = cells[i];
-          if (c.type !== 's') continue;
-          const ssIdx = parseInt(c.raw, 10);
-          if      (ssIdx === idxPrincipal)      { labelTarget = 'NEGOCIAR_CREDITO_PRINCIPAL';      labelIdxInRow = i; break; }
-          else if (ssIdx === idxContratuais)    { labelTarget = 'NEGOCIAR_HONORARIOS_CONTRATUAIS'; labelIdxInRow = i; break; }
-          else if (ssIdx === idxSucumbenciais)  { labelTarget = 'NEGOCIAR_HONORARIOS_SUCUMBENCIAIS'; labelIdxInRow = i; break; }
-        }
-        if (!labelTarget) continue;
+// Compara colunas do Excel: "AA" > "Z" > "D". Comprimento primeiro, depois alfabética.
+function colDepois(a: string, b: string): boolean {
+  if (a.length !== b.length) return a.length > b.length;
+  return a > b;
+}
 
-        // Acha a célula de valor: 1) coluna D preferencialmente, 2) primeira cell após o label
-        const valorCell = cellsByCol['D'] ?? cells[labelIdxInRow + 1];
-        result[labelTarget] = cellMarcada(valorCell) ? 'true' : 'false';
+// Parseia um worksheet em linhas de células com o texto já resolvido. Cobre os três
+// jeitos de guardar texto num xlsx:
+//   t="s"         → índice em sharedStrings.xml
+//   t="inlineStr" → <is><t>…</t></is> na própria célula. É o que o modelo novo da
+//                   análise usa: ele não tem sharedStrings.xml nenhum.
+//   t="str"/vazio → valor em <v> (fórmula ou número)
+function parseSheetCells(sx: string, ss: string[]): XlsxCell[][] {
+  const rows: XlsxCell[][] = [];
+  const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
+  let rm: RegExpExecArray | null;
+  while ((rm = rowRe.exec(sx)) !== null) {
+    const cells: XlsxCell[] = [];
+    const cRe = /<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
+    let cm: RegExpExecArray | null;
+    while ((cm = cRe.exec(rm[1])) !== null) {
+      const attrs = (cm[1] ?? cm[2]) || '';
+      const inner = cm[3] ?? '';
+      const ref = (attrs.match(/\br="([A-Z]+\d+)"/) || [])[1] || '';
+      const type = (attrs.match(/\bt="([^"]+)"/) || [])[1] || '';
+      const raw = (inner.match(/<v>([\s\S]*?)<\/v>/) || [])[1] ?? '';
+      const isBlock = (inner.match(/<is>([\s\S]*?)<\/is>/) || [])[1] || '';
+      let text: string;
+      if (isBlock) {
+        // rich text: vários <t> no mesmo <is> — concatena
+        text = (isBlock.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || []).map(t => t.replace(/<[^>]+>/g, '')).join('');
+      } else if (type === 's') {
+        text = ss[parseInt(raw, 10)] ?? '';
+      } else {
+        text = raw;
       }
+      cells.push({ ref, col: colLetterFromRef(ref), type, text: decodeXmlEntities(text), raw });
     }
-  } catch (e) {
-    // Best-effort — se falhar, deixa a IA mandar. Não derruba a pipeline.
-    console.error('[gerar-contrato] detectCheckboxesFromXlsx falhou:', e);
+    if (cells.length > 0) rows.push(cells);
   }
-  return result;
+  return rows;
+}
+
+// Lê o quadro "Vai ser negociado aqui quais créditos?" DIRETO do XML da análise.
+//
+// Substitui a detecção de checkboxes anterior, que ficou cega quando o modelo da
+// análise mudou (2026-08): o quadro virou um dropdown de 3 opções em C3, a planilha
+// deixou de ter sharedStrings.xml e não sobrou nenhuma célula booleana. A versão
+// antiga varria TODAS as abas procurando os textos "Crédito Principal" e
+// "Honorários Contratuais", que também são rótulos das tabelas de precificação
+// (modelo verde / modelo azul) — lia célula de preço como se fosse marcação e
+// devolvia honorários = marcado, exigindo documento do escritório sem necessidade.
+//
+// Agora: só a aba que contém o quadro é lida, e a resposta é o texto à direita do
+// rótulo. Lança erro quando não consegue ler — a IA não é mais consultada pra isso,
+// porque um chute errado aqui gera o conjunto errado de contratos. Se a planilha
+// estiver ilegível, o operador escolhe os contratos na tela.
+async function detectCreditosNegociadosFromXlsx(
+  bytes: Uint8Array,
+): Promise<{ vars: Vars; debug: Record<string, unknown> }> {
+  const zip = await JSZip.loadAsync(bytes);
+  const ss = await readSharedStrings(zip);
+  const sheets = Object.keys(zip.files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort();
+  const debug: Record<string, unknown> = { abas: sheets.length, shared_strings: ss.length };
+
+  for (const name of sheets) {
+    const sx = await zip.file(name)?.async('string') || '';
+    const rows = parseSheetCells(sx, ss);
+
+    let rotulo: XlsxCell | null = null;
+    let linha: XlsxCell[] | null = null;
+    for (const row of rows) {
+      const hit = row.find(c => normalizar(c.text).startsWith(ROTULO_CREDITOS_NEGOCIADOS));
+      if (hit) { rotulo = hit; linha = row; break; }
+    }
+    if (!rotulo || !linha) continue;
+    debug.aba = name;
+    debug.celula_rotulo = rotulo.ref;
+
+    // Modelo 2026-08: dropdown na mesma linha, à direita do rótulo.
+    const resposta = linha.find(c => c !== rotulo && colDepois(c.col, rotulo!.col) && c.text.trim() !== '');
+    if (resposta) {
+      debug.celula_resposta = resposta.ref;
+      debug.resposta = resposta.text.trim();
+      const n = normalizar(resposta.text);
+      const opcao = OPCOES_CREDITOS_NEGOCIADOS.find(o => n.includes(o.chave));
+      if (!opcao) {
+        throw new Error(
+          `Não entendi a resposta do quadro "Vai ser negociado aqui quais créditos?" ` +
+          `(célula ${resposta.ref} = "${resposta.text.trim()}"). Esperado uma das opções: ` +
+          OPCOES_CREDITOS_NEGOCIADOS.map(o => `"${o.rotulo}"`).join(', ') + '. ' +
+          'Corrija a análise ou marque os contratos na mão na tela.',
+        );
+      }
+      debug.via = 'dropdown';
+      debug.opcao = opcao.rotulo;
+      return {
+        vars: {
+          NEGOCIAR_CREDITO_PRINCIPAL:        opcao.principal  ? 'true' : 'false',
+          NEGOCIAR_HONORARIOS_CONTRATUAIS:   opcao.honorarios ? 'true' : 'false',
+          NEGOCIAR_HONORARIOS_SUCUMBENCIAIS: opcao.honorarios ? 'true' : 'false',
+        },
+        debug,
+      };
+    }
+
+    // Modelo anterior: 3 checkboxes booleanas, uma por linha, na mesma aba do quadro.
+    const legado: Vars = {};
+    for (const row of rows) {
+      const alvo = ROTULOS_CHECKBOX_LEGADO.find(r => row.some(c => normalizar(c.text).startsWith(r.needle)));
+      if (!alvo) continue;
+      const idx = row.findIndex(c => normalizar(c.text).startsWith(alvo.needle));
+      const valor = row.find(c => c.col === 'D') ?? row[idx + 1];
+      let marcada = false;
+      if (valor) {
+        if (valor.type === 'b') marcada = valor.raw === '1';
+        else {
+          const t = valor.text.trim().toLowerCase();
+          marcada = t !== '' && t !== '0' && t !== 'false' && t !== 'nao' && t !== 'não' && t !== '-';
+        }
+      }
+      legado[alvo.campo] = marcada ? 'true' : 'false';
+    }
+    if (Object.keys(legado).length > 0) {
+      debug.via = 'checkbox-legado';
+      debug.resposta = legado;
+      return { vars: legado, debug };
+    }
+
+    throw new Error(
+      `O quadro "Vai ser negociado aqui quais créditos?" está em ${rotulo.ref} da análise, ` +
+      'mas sem resposta preenchida. Preencha o dropdown ao lado do rótulo ' +
+      'ou marque os contratos na mão na tela.',
+    );
+  }
+
+  throw new Error(
+    'Não achei o quadro "Vai ser negociado aqui quais créditos?" na análise ' +
+    `(${sheets.length} aba(s) lidas). Confirma que a planilha é o modelo atual — ` +
+    'ou marque os contratos na mão na tela.',
+  );
 }
 
 // Formata número cru do xlsx (63240.13) no padrão dos contratos (R$ 63.240,13).
@@ -1043,6 +1126,7 @@ async function driveEncontrarAnaliseArquivos(
   categoria: string,
   intermediadorNome: string,
   cedenteNome: string,
+  escritorioNome: string,
   numeroProcesso: string,
 ): Promise<{ folderId: string; folderName: string; arquivos: DriveFile[]; debug: Record<string, unknown> }> {
   const analisesRootId = await driveEncontrarAnalisesRoot(token);
@@ -1057,14 +1141,48 @@ async function driveEncontrarAnaliseArquivos(
     throw new Error(`Intermediador '${intermediadorNome}' não encontrado em '${DRIVE_ANALISES_NAME}/${categoria}'. Disponíveis: ${disponiveis.map(d => d.name).join(', ') || '(nenhum)'}`);
   }
 
-  // Pasta leaf = pasta do cedente. Match pelo NOME do cedente (extraído dos docs), fallback pro processo.
+  // Pasta leaf = pasta da análise dentro do intermediador. O nome dela não segue uma
+  // regra única: costuma ser o do cedente, mas quando o que se negocia são honorários
+  // ela vem com o nome do escritório (ex.: 'Klemm & CIA Ltda.' para a cedente Tatiana).
+  // Por isso a busca tenta, em ordem, do mais específico ao palpite.
   const subs = await driveListFiles(token, `'${inter.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
-  const cedNorm = normalizar(cedenteNome);
   const procDigits = numeroProcesso.replace(/\D/g, '');
-  let leaf: DriveFile | null = cedNorm ? subs.find(s => normalizar(s.name).includes(cedNorm)) ?? null : null;
-  if (!leaf && procDigits) leaf = subs.find(s => s.name.replace(/\D/g, '').includes(procDigits)) ?? null;
+  const porNome = (nome: string): DriveFile | null => {
+    const n = normalizar(nome || '');
+    if (!n) return null;
+    return subs.find(s => normalizar(s.name) === n) ?? subs.find(s => normalizar(s.name).includes(n)) ?? null;
+  };
+
+  let leaf: DriveFile | null = null;
+  let via = '';
+  if ((leaf = porNome(cedenteNome)))         via = 'nome do cedente';
+  else if ((leaf = porNome(escritorioNome))) via = 'nome do escritório';
+  else if (procDigits && (leaf = subs.find(s => s.name.replace(/\D/g, '').includes(procDigits)) ?? null)) {
+    via = 'nº do processo no nome da pasta';
+  } else if (procDigits) {
+    // Desce 1 nível: a pasta pode ser do cedente/escritório com uma subpasta por processo.
+    // O nº do processo é a chave única da operação, então é o critério mais confiável.
+    for (const s of subs) {
+      const filhos = await driveListFiles(token, `'${s.id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`);
+      if (filhos.some(f => f.name.replace(/\D/g, '').includes(procDigits))) {
+        leaf = s;
+        via = 'nº do processo numa subpasta';
+        break;
+      }
+    }
+  }
+  if (!leaf && subs.length === 1) {
+    // Intermediador com uma única pasta: é um palpite, mas registrado no debug.
+    leaf = subs[0];
+    via = 'única pasta do intermediador (palpite)';
+  }
   if (!leaf) {
-    throw new Error(`Pasta do cedente não encontrada em '${inter.name}'. Procurei cedente '${cedenteNome || '(sem nome)'}' e processo '${numeroProcesso}'. Pastas disponíveis: ${subs.map(s => s.name).join(', ') || '(nenhuma)'}`);
+    throw new Error(
+      `Pasta da análise não encontrada em '${inter.name}'. Procurei por cedente ` +
+      `'${cedenteNome || '(sem nome)'}', escritório '${escritorioNome || '(sem nome)'}' e ` +
+      `processo '${numeroProcesso}' (inclusive em subpastas). Pastas disponíveis: ` +
+      `${subs.map(s => s.name).join(', ') || '(nenhuma)'}`,
+    );
   }
 
   // Cedente multi-processo: as análises ficam em subpastas nomeadas pelo nº de cada
@@ -1087,7 +1205,7 @@ async function driveEncontrarAnaliseArquivos(
     folderId: alvo.id,
     folderName: procFolder ? `${leaf.name}/${procFolder.name}` : leaf.name,
     arquivos,
-    debug: { categoria_id: catFolder.id, intermediador_id: inter.id, leaf_id: leaf.id, proc_folder: procFolder?.name ?? null, subpastas: subs.map(s => s.name), arquivos_na_pasta: naoPastas.map(f => f.name) },
+    debug: { categoria_id: catFolder.id, intermediador_id: inter.id, leaf_id: leaf.id, leaf_nome: leaf.name, leaf_casou_por: via, proc_folder: procFolder?.name ?? null, subpastas: subs.map(s => s.name), arquivos_na_pasta: naoPastas.map(f => f.name) },
   };
 }
 
@@ -1286,37 +1404,65 @@ function montarQualificacaoInvestidor(inv: { cpf?: string | null; rg?: string | 
   return partes.join(', ');
 }
 
-function determinarTipos(tipoExplicito: string | null | undefined, aprVars: Vars): string[] {
-  // Override explícito do dropdown (admin/debug)
+// Precatório não usa os mesmos contratos que RPV: sai só o contrato de originação/
+// intermediação/gestão de ativo (que já contempla a cessão onerosa no próprio corpo)
+// mais a procuração. Nenhuma cessão avulsa. Regra do jurídico, 2026-08.
+function ehPrecatorio(categoria: string | null | undefined): boolean {
+  return normalizar(String(categoria ?? '')).includes('precatorio');
+}
+
+// Quais contratos o sistema propõe para uma categoria. É o que o site pré-marca
+// quando o operador entra no modo manual sem ter uma análise legível.
+function tiposPadraoDaCategoria(categoria: string | null | undefined): string[] {
+  return ehPrecatorio(categoria)
+    ? ['intermediacao', 'procuracao']
+    : ['cessao_credito', 'intermediacao', 'procuracao'];
+}
+
+// Decide o conjunto de contratos a gerar, em ordem de precedência:
+//   1. tiposExplicitos — o operador marcou na tela. Vale exatamente o que ele marcou,
+//      sem acrescentar nada. Se ele quer só a procuração, sai só a procuração.
+//   2. tipoExplicito   — dropdown de tipo único (compatibilidade com a versão antiga
+//      do front, que forçava intermediação + procuração junto de qualquer cessão).
+//   3. categoria precatório → contrato de intermediação + procuração.
+//   4. resposta do quadro da análise (RPV).
+function determinarTipos(
+  tipoExplicito: string | null | undefined,
+  tiposExplicitos: string[] | null | undefined,
+  aprVars: Vars,
+  categoria: string | null | undefined,
+): string[] {
+  if (tiposExplicitos && tiposExplicitos.length > 0) {
+    const invalidos = tiposExplicitos.filter(t => !TEMPLATES[t]);
+    if (invalidos.length > 0) {
+      throw new Error(`Tipo de contrato desconhecido: ${invalidos.join(', ')}. Válidos: ${Object.keys(TEMPLATES).join(', ')}.`);
+    }
+    // Preserva a ordem canônica de TEMPLATES, não a ordem em que vieram os checkboxes.
+    return Object.keys(TEMPLATES).filter(t => tiposExplicitos.includes(t));
+  }
+
   if (tipoExplicito && TEMPLATES[tipoExplicito]) {
     const out = [tipoExplicito];
-    // Intermediação e procuração acompanham qualquer cessão
     if (tipoExplicito.startsWith('cessao_')) out.push('intermediacao', 'procuracao');
     return out;
   }
 
-  // Auto: lê as 3 checkboxes do quadro "Vai ser negociado aqui quais créditos?"
-  const principal       = parseBool(aprVars.NEGOCIAR_CREDITO_PRINCIPAL);
-  const honContratuais  = parseBool(aprVars.NEGOCIAR_HONORARIOS_CONTRATUAIS);
-  const honSucumbenciais= parseBool(aprVars.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS);
+  if (ehPrecatorio(categoria)) return tiposPadraoDaCategoria(categoria);
 
+  // RPV: usa a resposta do quadro "Vai ser negociado aqui quais créditos?", lida
+  // deterministicamente do XML da planilha por detectCreditosNegociadosFromXlsx().
   const cessoes: string[] = [];
-  if (principal)        cessoes.push('cessao_credito');
-  if (honContratuais)   cessoes.push('cessao_honorarios_contratuais');
-  if (honSucumbenciais) cessoes.push('cessao_honorarios_sucumbenciais');
+  if (parseBool(aprVars.NEGOCIAR_CREDITO_PRINCIPAL))        cessoes.push('cessao_credito');
+  if (parseBool(aprVars.NEGOCIAR_HONORARIOS_CONTRATUAIS))   cessoes.push('cessao_honorarios_contratuais');
+  if (parseBool(aprVars.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS)) cessoes.push('cessao_honorarios_sucumbenciais');
 
   if (cessoes.length === 0) {
     throw new Error(
-      'Nenhuma checkbox marcada no quadro "Vai ser negociado aqui quais créditos?" ' +
-      'da análise de RPV. Marque ao menos uma: Crédito principal, Honorários contratuais ' +
-      'ou Honorários sucumbenciais. ' +
-      `[debug — valores extraídos pela IA: NEGOCIAR_CREDITO_PRINCIPAL="${aprVars.NEGOCIAR_CREDITO_PRINCIPAL}", ` +
-      `NEGOCIAR_HONORARIOS_CONTRATUAIS="${aprVars.NEGOCIAR_HONORARIOS_CONTRATUAIS}", ` +
-      `NEGOCIAR_HONORARIOS_SUCUMBENCIAIS="${aprVars.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS}"]`,
+      'O quadro "Vai ser negociado aqui quais créditos?" da análise não indicou nenhum ' +
+      'crédito a negociar. Preencha o dropdown na análise ou marque os contratos na mão na tela.',
     );
   }
 
-  // Intermediação e procuração sempre acompanham as cessões
   return [...cessoes, 'intermediacao', 'procuracao'];
 }
 
@@ -1375,6 +1521,11 @@ serve(async (req) => {
     const investidorId: string = body.investidor_id;
     const intermediadorNome: string = body.intermediador;
     const tipoExplicito: string | null = body.tipo || null;
+    // Escolha manual dos contratos, marcada pelo operador na tela. Vale exatamente o
+    // que vier aqui — nada é acrescentado. Ausente/vazio = modo automático.
+    const tiposExplicitos: string[] | null = Array.isArray(body.tipos) && body.tipos.length > 0
+      ? body.tipos.map((t: unknown) => String(t))
+      : null;
     const numeroProcesso: string = (body.numero_processo || '').trim();
     const categoria: string = (body.categoria || DRIVE_CATEGORIA_PADRAO).trim();
 
@@ -1483,19 +1634,20 @@ serve(async (req) => {
     );
 
     // 9b. Localiza a análise de crédito no Drive:
-    //     A. Análises de crédito / Requisições de Pequeno Valor / {intermediador} / {cedente - processo}
+    //     A. Análises de crédito / {categoria} / {intermediador} / {cedente ou escritório - processo}
     const cedenteNome = (cedente.CEDENTE_NOME as string) || '';
+    const escritorioNome = (escritorio.ESCRITORIO_NOME as string) || '';
     let analiseFolderName = '';
     let analiseArquivos: DriveFile[];
     try {
-      const found = await driveEncontrarAnaliseArquivos(accessToken, categoria, intermediadorNome, cedenteNome, numeroProcesso);
+      const found = await driveEncontrarAnaliseArquivos(accessToken, categoria, intermediadorNome, cedenteNome, escritorioNome, numeroProcesso);
       analiseArquivos = found.arquivos;
       analiseFolderName = found.folderName;
       console.log('[gerar-contrato] análise localizada:', JSON.stringify({ folder: found.folderName, debug: found.debug }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return errorResponse(`Não localizei a análise de crédito no Drive: ${msg}`, 404, {
-        intermediador: intermediadorNome, cedente: cedenteNome, numero_processo: numeroProcesso,
+        intermediador: intermediadorNome, cedente: cedenteNome, escritorio: escritorioNome, numero_processo: numeroProcesso,
       });
     }
     if (analiseArquivos.length === 0) {
@@ -1515,44 +1667,50 @@ serve(async (req) => {
     // 9d. Extrai a apresentação a partir do conteúdo baixado.
     const apresentacao = await extractApresentacao(cfg.anthropic_api_key, apresentacaoContent, Array.from(allTemplateVars));
 
-    // 9e. Override determinístico das 3 checkboxes a partir do xlsx baixado (a IA erra
-    //     quando o input é grande). Sobrescreve as NEGOCIAR_*.
-    const checkboxDebug: Record<string, unknown> = {
+    // 9e. Leituras determinísticas da planilha da análise. Dois blocos independentes,
+    //     um try cada — antes eles compartilhavam o mesmo try, e uma falha na leitura
+    //     do quadro cancelava silenciosamente a leitura do valor da operação.
+    //
+    //     • quadro de créditos negociados → decide quais contratos gerar. Falha alto:
+    //       a IA não é consultada, porque chute errado aqui gera o conjunto errado de
+    //       contratos (foi o que pediu documento de escritório sem cessão de honorários).
+    //       O erro só chega ao operador se o conjunto de contratos depender dele.
+    //     • "Valor total da operação" → CAPITAL_INVESTIDO. Best-effort, IA como fallback.
+    const analiseDebug: Record<string, unknown> = {
       analise_folder: analiseFolderName,
       analise_arquivos: analiseBaixados.map(a => a.filename),
-      tentou_xlsx: false,
-      detectado: null as Vars | null,
-      erro: null as string | null,
-      valor_ia_antes: {
-        NEGOCIAR_CREDITO_PRINCIPAL: apresentacao.NEGOCIAR_CREDITO_PRINCIPAL,
-        NEGOCIAR_HONORARIOS_CONTRATUAIS: apresentacao.NEGOCIAR_HONORARIOS_CONTRATUAIS,
-        NEGOCIAR_HONORARIOS_SUCUMBENCIAIS: apresentacao.NEGOCIAR_HONORARIOS_SUCUMBENCIAIS,
-      },
+      xlsx_lido: null as string | null,
     };
-    for (const a of analiseBaixados) {
-      const ext = extOf(a.filename);
-      if (ext !== '.xlsx' && ext !== '.xls') continue;
-      checkboxDebug.tentou_xlsx = true;
+    let erroCreditos: Error | null = null;
+    const xlsxAnalise = analiseBaixados.find(a => extOf(a.filename) === '.xlsx' || extOf(a.filename) === '.xls');
+    if (xlsxAnalise) {
+      analiseDebug.xlsx_lido = xlsxAnalise.filename;
       try {
-        const detectado = await detectCheckboxesFromXlsx(a.bytes);
-        checkboxDebug.detectado = detectado;
-        for (const [k, v] of Object.entries(detectado)) {
-          if (v != null) apresentacao[k] = v;
-        }
-        // Mesmo tratamento pro "Valor total da operação" (= Capital Investido):
-        // leitura determinística ganha da IA quando encontra o quadro.
-        const vto = await detectValorTotalOperacaoFromXlsx(a.bytes);
-        checkboxDebug.capital_investido_ia = apresentacao.CAPITAL_INVESTIDO;
-        checkboxDebug.capital_investido_xlsx = vto;
+        const { vars, debug } = await detectCreditosNegociadosFromXlsx(xlsxAnalise.bytes);
+        analiseDebug.creditos = debug;
+        Object.assign(apresentacao, vars);
+      } catch (e) {
+        erroCreditos = e instanceof Error ? e : new Error(String(e));
+        analiseDebug.creditos_erro = erroCreditos.message;
+        console.error('[gerar-contrato] leitura do quadro de créditos falhou', xlsxAnalise.filename, e);
+      }
+      try {
+        const vto = await detectValorTotalOperacaoFromXlsx(xlsxAnalise.bytes);
+        analiseDebug.capital_investido_ia = apresentacao.CAPITAL_INVESTIDO;
+        analiseDebug.capital_investido_xlsx = vto;
         if (vto) apresentacao.CAPITAL_INVESTIDO = vto;
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        checkboxDebug.erro = msg;
-        console.error('[gerar-contrato] override de checkboxes falhou', a.filename, e);
+        analiseDebug.capital_investido_erro = e instanceof Error ? e.message : String(e);
+        console.error('[gerar-contrato] leitura do valor total da operação falhou', e);
       }
-      break; // primeiro xlsx é suficiente
+    } else {
+      erroCreditos = new Error(
+        'A pasta da análise no Drive não tem planilha (.xlsx) — sem ela não dá pra ler o ' +
+        'quadro "Vai ser negociado aqui quais créditos?". Marque os contratos na mão na tela.',
+      );
+      analiseDebug.creditos_erro = erroCreditos.message;
     }
-    console.log('[gerar-contrato] checkbox override debug:', JSON.stringify(checkboxDebug));
+    console.log('[gerar-contrato] leitura da análise:', JSON.stringify(analiseDebug));
 
     // 10. Junta variáveis (precedência: apresentação > cedente/escritório > investidor)
     const dados: Vars = {
@@ -1587,10 +1745,12 @@ serve(async (req) => {
     // 11. Decide tipos a gerar e valida papéis necessários
     let tipos: string[];
     try {
-      tipos = determinarTipos(tipoExplicito, apresentacao);
+      tipos = determinarTipos(tipoExplicito, tiposExplicitos, apresentacao, categoria);
     } catch (e) {
-      const baseMsg = e instanceof Error ? e.message : String(e);
-      throw new Error(`${baseMsg} | OVERRIDE-DEBUG: ${JSON.stringify(checkboxDebug)}`);
+      // Quando o operador não escolheu na mão, a causa real de "não sei quais contratos
+      // gerar" quase sempre é a planilha ilegível — essa mensagem é a acionável.
+      // O JSON de debug fica no console.log do passo 9e, fora da tela do operador.
+      throw erroCreditos ?? (e instanceof Error ? e : new Error(String(e)));
     }
     const papeisNecessarios = new Set<string>();
     for (const t of tipos) for (const p of REQUIRED_PAPEIS[t]) papeisNecessarios.add(p);
@@ -1617,27 +1777,37 @@ serve(async (req) => {
     }
 
     // 13. Drive: walk + create + upload (token já obtido no passo 9a)
+    //
+    // As duas árvores do Drive não andam juntas: o dropdown de intermediador é populado
+    // de 'A. Análises de crédito/{categoria}', mas o upload acontece em
+    // 'B. Processos/{categoria}'. Um intermediador que já tem análise mas ainda não tem
+    // processo existia só na primeira — e a geração morria aqui, com 404, DEPOIS de já
+    // ter gasto as chamadas de Claude. Agora a pasta é criada, mesma semântica de
+    // mkdir -p que já valia pra pasta do cedente e as 7 subpastas dela, logo abaixo.
     const processosId = await driveEncontrarProcessosFolder(accessToken);
     const { intermediadores, debug: driveDebug } = await driveListIntermediadores(accessToken, processosId, categoria);
     const interTermo = normalizar(intermediadorNome);
-    const interMatch = intermediadores.find(i => normalizar(i.name) === interTermo)
-                    ?? intermediadores.find(i => normalizar(i.name).includes(interTermo));
-    if (!interMatch) {
-      return errorResponse(`Intermediador '${intermediadorNome}' não encontrado no Drive`, 404, {
-        intermediadores_disponiveis: intermediadores.map(i => i.name),
-        debug: {
-          processos_folder_id: processosId,
-          categorias_em_processos: driveDebug.categorias_em_processos,
-          categoria_rpv_id: driveDebug.categoria_rpv_id,
-          categoria_procurada: categoria,
-        },
-      });
+    let interId = (intermediadores.find(i => normalizar(i.name) === interTermo)
+                ?? intermediadores.find(i => normalizar(i.name).includes(interTermo)))?.id ?? null;
+    let intermediadorCriado = false;
+    if (!interId) {
+      // A pasta da categoria é obrigatória: criar categoria seria inventar estrutura.
+      if (!driveDebug.categoria_rpv_id) {
+        return errorResponse(
+          `Categoria '${categoria}' não encontrada em '${DRIVE_PROCESSOS_NAME}' — sem ela não sei onde criar a pasta do intermediador.`,
+          404,
+          { categorias_em_processos: driveDebug.categorias_em_processos, processos_folder_id: processosId },
+        );
+      }
+      interId = await driveCreateFolder(accessToken, intermediadorNome, driveDebug.categoria_rpv_id);
+      intermediadorCriado = true;
+      console.log('[gerar-contrato] pasta de intermediador criada em B. Processos:', intermediadorNome, interId);
     }
     const nomeTitular = toTitleCasePT(escritorio.ESCRITORIO_NOME || cedente.CEDENTE_NOME || inv.nome) ?? 'sem-titular';
     const processo = apresentacao.NUMERO_PROCESSO || 'sem-processo';
     const nomePastaCedente = `${nomeTitular} - ${processo}`;
     const { contratosId: contratosFolderId, analiseId: analiseFolderId, cedenteDocsId: cedenteDocsFolderId } =
-      await driveGarantirEstruturaCedente(accessToken, interMatch.id, nomePastaCedente);
+      await driveGarantirEstruturaCedente(accessToken, interId, nomePastaCedente);
 
     // 13a. Upload dos contratos gerados pra "2. Contratos assinados"
     const uploads: Array<{ tipo: string; nome: string; drive_id: string; webViewLink?: string; pendentes: string[] }> = [];
@@ -1711,6 +1881,9 @@ serve(async (req) => {
       analise_folder_url: analiseFolderUrl,
       analise_uploads: analiseUploads,
       cedente_uploads: cedenteUploads,
+      // Sinaliza que a pasta do intermediador não existia em B. Processos e foi criada,
+      // pra o operador conferir se não é erro de digitação numa pasta nova e vazia.
+      intermediador_criado: intermediadorCriado ? intermediadorNome : null,
       uploads,
       variaveis_extraidas: dados,
       pendentes: todasPendentes,
