@@ -244,11 +244,26 @@ O contrato de intermediação é o *"Contrato de originação, intermediação e
 que já contempla a cessão onerosa no próprio corpo — é por isso que precatório não tem cessão
 avulsa.
 
+### As duas análises não têm a mesma estrutura
+
+Conferido em 2026-08-11 contra uma análise real de cada tipo:
+
+| | Análise de **RPV** | Análise de **Precatório** |
+|---|---|---|
+| Quais créditos são negociados | quadro *"Vai ser negociado aqui quais créditos?"*, dropdown em `sheet1!C3` | **não existe.** A análise é por crédito: *"se mais de um crédito estiver sendo negociado (inclusive honorários), realizar uma análise jurídica para cada um deles, em abas separadas"* |
+| Valores | rótulo à esquerda, valor à direita (`X4`→`Y4`, ou `X41`→`Y41` no modelo azul) | rótulo é cabeçalho de coluna, valores nas linhas de cenário abaixo (*"1) Negociando só o principal:"*, um por linha, só um preenchido) |
+| Cabeçalho | `Processo`, `Intermediador`, `cedente e CPF`, `escritório e CPF/CNPJ`, `Tribunal` | idem, mais `Qual o tipo de crédito?` e `Natureza do crédito` |
+
+Por isso o quadro **só é lido quando o conjunto de contratos depende dele** — nunca em
+precatório (a categoria já define os 2 documentos) nem quando o operador escolheu na mão.
+Ler ali daria erro em toda geração de precatório.
+
 ### Como o quadro da análise é lido
 
-O modelo da análise mudou em 2026-08: as 3 checkboxes viraram **um dropdown** em `sheet1!C3`
-com `Apenas o crédito principal` / `Crédito principal e honorários` / `Apenas os honorários`.
-"Honorários" não separa contratuais de sucumbenciais, então as duas cessões saem juntas.
+O modelo da análise de RPV mudou em 2026-08: as 3 checkboxes viraram **um dropdown** em
+`sheet1!C3` com `Apenas o crédito principal` / `Crédito principal e honorários` /
+`Apenas os honorários`. "Honorários" não separa contratuais de sucumbenciais, então as duas
+cessões saem juntas.
 
 `detectCreditosNegociadosFromXlsx()`:
 

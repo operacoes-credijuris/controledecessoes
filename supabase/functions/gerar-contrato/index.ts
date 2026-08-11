@@ -1681,18 +1681,28 @@ serve(async (req) => {
       analise_arquivos: analiseBaixados.map(a => a.filename),
       xlsx_lido: null as string | null,
     };
+    //
+    //     O quadro só é lido quando o conjunto de contratos depende dele. A análise de
+    //     PRECATÓRIO não tem esse quadro — ela é por crédito ("se mais de um crédito estiver
+    //     sendo negociado, realizar uma análise para cada um, em abas separadas"), e a
+    //     categoria já define os 2 documentos. Tentar ler ali daria erro em toda geração de
+    //     precatório. Mesma coisa quando o operador escolheu os contratos na mão.
     let erroCreditos: Error | null = null;
+    const precisaDoQuadro = !tiposExplicitos && !tipoExplicito && !ehPrecatorio(categoria);
     const xlsxAnalise = analiseBaixados.find(a => extOf(a.filename) === '.xlsx' || extOf(a.filename) === '.xls');
+    analiseDebug.leu_quadro = precisaDoQuadro;
     if (xlsxAnalise) {
       analiseDebug.xlsx_lido = xlsxAnalise.filename;
-      try {
-        const { vars, debug } = await detectCreditosNegociadosFromXlsx(xlsxAnalise.bytes);
-        analiseDebug.creditos = debug;
-        Object.assign(apresentacao, vars);
-      } catch (e) {
-        erroCreditos = e instanceof Error ? e : new Error(String(e));
-        analiseDebug.creditos_erro = erroCreditos.message;
-        console.error('[gerar-contrato] leitura do quadro de créditos falhou', xlsxAnalise.filename, e);
+      if (precisaDoQuadro) {
+        try {
+          const { vars, debug } = await detectCreditosNegociadosFromXlsx(xlsxAnalise.bytes);
+          analiseDebug.creditos = debug;
+          Object.assign(apresentacao, vars);
+        } catch (e) {
+          erroCreditos = e instanceof Error ? e : new Error(String(e));
+          analiseDebug.creditos_erro = erroCreditos.message;
+          console.error('[gerar-contrato] leitura do quadro de créditos falhou', xlsxAnalise.filename, e);
+        }
       }
       try {
         const vto = await detectValorTotalOperacaoFromXlsx(xlsxAnalise.bytes);
@@ -1703,7 +1713,7 @@ serve(async (req) => {
         analiseDebug.capital_investido_erro = e instanceof Error ? e.message : String(e);
         console.error('[gerar-contrato] leitura do valor total da operação falhou', e);
       }
-    } else {
+    } else if (precisaDoQuadro) {
       erroCreditos = new Error(
         'A pasta da análise no Drive não tem planilha (.xlsx) — sem ela não dá pra ler o ' +
         'quadro "Vai ser negociado aqui quais créditos?". Marque os contratos na mão na tela.',
