@@ -12,9 +12,9 @@
 
 ## O que o sistema é hoje
 
-Site estático em GitHub Pages (`index.html` + `assets/css/app.css` + `assets/js/app.js`,
-6.6k linhas) com backend em Supabase Edge Functions (Deno/TypeScript). Sem build step,
-sem Node local — deploy do front é `git push`, deploy de função é colar no Studio.
+Site estático em GitHub Pages (`index.html` 1.4k linhas + `assets/css/app.css` 2.7k +
+`assets/js/app.js` 7.2k) com backend em Supabase Edge Functions (Deno/TypeScript). Sem build
+step — deploy do front é `git push`, deploy de função é colar no Studio.
 
 **Módulos:**
 
@@ -32,10 +32,10 @@ sem Node local — deploy do front é `git push`, deploy de função é colar no
 
 | Função | Fonte no repo? | Chamada em |
 |---|---|---|
-| `gerar-contrato` | ✅ `supabase/functions/gerar-contrato/index.ts` (1456 linhas) | `app.js:1549,1682` |
-| `gerar-peticao` | ✅ `supabase/functions/gerar-peticao/index.ts` (945 linhas) | 2 pontos |
-| `resumir-movimentacoes` | ✅ | 2 pontos |
-| `advbox-proxy` | ✅ (via URL `functions/v1/`) | 3 pontos |
+| `gerar-contrato` | ✅ `supabase/functions/gerar-contrato/index.ts` (1904 linhas) | `app.js` |
+| `gerar-peticao` | ✅ `supabase/functions/gerar-peticao/index.ts` (1027 linhas) | 2 pontos |
+| `resumir-movimentacoes` | ✅ (271 linhas) | 2 pontos |
+| `advbox-proxy` | ✅ (141 linhas, via URL `functions/v1/`) | 3 pontos |
 | `gerar-analise-rpv` | ❌ **nenhuma versão, em nenhuma branch** | `app.js:6735,6940,7062` |
 | `buscar-judit` | ❌ **idem** | `app.js` |
 | `dd-credor` | ❌ **idem** | `app.js` |
@@ -71,7 +71,7 @@ mais cara de ignorar.
 
 Estava pronta desde 2026-08-06 e **já rodando em produção**, sem nunca ter sido mergeada: a
 `main` é que estava atrás. Conferido comparando o código colado do Studio com o da branch —
-idênticos, 1583 linhas. Os 4 passos do deploy dela (migration `0003`, redeploy, build dos
+**hash idêntico** (1730 linhas). Os 4 passos do deploy dela (migration `0003`, redeploy, build dos
 templates, upload no bucket) já tinham rodado: os `.docx` baixados do bucket trazem
 `JUIZO_TRIBUNAL`, `CLASSE_ATIVO`, `CAPITAL_INVESTIDO` e `I_LO`, que só existem nos templates
 gerados por aquele `_build_template.py`.
@@ -300,9 +300,13 @@ com `Apenas o crédito principal` / `Crédito principal e honorários` / `Apenas
    policies permissivas. Endurecer é item aberto.
 5. **GitHub Pages e Jekyll:** `.nojekyll` + cache-busting no `?v=` do `app.js` são o que
    destrava o deploy (`7e02492`). Ao mexer no `app.js`, bumpar a versão no `index.html`.
-6. **PowerShell 5.1 lê UTF-8 como ANSI** no `Get-Content`. Os arquivos do repo estão em
-   UTF-8; se aparecer mojibake no terminal, é o terminal, não o arquivo. E `Set-Content
-   -Encoding utf8` **escreve BOM** — não use pra reescrever `index.html`/`.ts`.
+6. **PowerShell 5.1 mente sobre arquivos.** `Get-Content` lê UTF-8 como ANSI (mojibake no
+   terminal é o terminal, não o arquivo); `Set-Content -Encoding utf8` **escreve BOM** — não
+   use pra reescrever `index.html`/`.ts`, e BOM no começo do `index.ts` quebra o boot da
+   função; e `Get-Content | Measure-Object -Line` **não conta linhas em branco**, então
+   reporta ~160 linhas menos que o editor no `gerar-contrato/index.ts`. Para contar de
+   verdade: `([regex]::Matches([IO.File]::ReadAllText($p),"\n")).Count + 1`. Para comparar
+   dois arquivos, use `Get-FileHash` ou `git diff --no-index`, nunca contagem de linhas.
 7. **A análise vem de uma árvore do Drive, o upload vai pra outra.** O dropdown de
    intermediador lê `A. Análises de crédito/{categoria}`, mas os contratos sobem em
    `B. Processos/{categoria}`. As duas não andam juntas — por isso a pasta do intermediador é

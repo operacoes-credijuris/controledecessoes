@@ -528,7 +528,7 @@ const VTO_LINHAS_ABAIXO = 12;
 
 // Lê o "Valor total da operação" (= Capital Investido da Cláusula 10.1 do contrato
 // de intermediação) DIRETO do XML, sem depender da IA. Mesma motivação do
-// detectCheckboxesFromXlsx: a IA erra em planilha grande.
+// detectCreditosNegociadosFromXlsx: a IA erra em planilha grande.
 //
 // O rótulo é o mesmo nas duas análises, mas a geometria muda:
 //   • RPV        → rótulo em X4 ("Valor total da operação **sem considerar…"),
