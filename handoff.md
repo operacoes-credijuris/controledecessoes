@@ -1,13 +1,12 @@
 # Handoff — Controle de Cessões Credijuris
 
-> **Revisado em 2026-08-11** por auditoria do código na `main` (`6b4ca6e`). A versão anterior
-> deste arquivo era de 2026-05-21 e estava ~3 meses e ~200 commits atrás da realidade:
-> descrevia como "pendente" coisas que já foram entregues e não mencionava dois módulos
-> inteiros que entraram depois. O que segue foi conferido contra o código, não contra memória.
+> **Revisado em 2026-08-11** por auditoria do código. A versão anterior deste arquivo era de
+> 2026-05-21 e estava ~3 meses e ~200 commits atrás da realidade: descrevia como "pendente"
+> coisas já entregues e não mencionava dois módulos inteiros que entraram depois.
 >
-> **O que NÃO consegui verificar daqui:** nada do lado Supabase (conteúdo dos buckets, qual
-> versão de cada Edge Function está deployada, quais migrations rodaram, se os secrets foram
-> rotacionados). Esses itens estão na seção [Checklist do Studio](#checklist-do-studio-só-dá-pra-conferir-logado).
+> **Ainda não deployado nesta data:** a branch `fix/contratos-precatorio` (leitura do quadro
+> da análise, precatório separado de RPV, escolha manual dos contratos, campos do investidor).
+> Ver [O que falta deployar](#o-que-falta-deployar).
 
 ---
 
@@ -68,39 +67,14 @@ sem backup. Também não dá para revisar, versionar ou reproduzir localmente.
 `supabase/functions/<nome>/index.ts` → commitar. É a pendência mais barata de resolver e a
 mais cara de ignorar.
 
-### 2. 🔴 Branch `feat/templates-layout-novo` pronta e não mergeada
+### 2. ✅ Branch `feat/templates-layout-novo` — mergeada em 2026-08-11 (`84ac498`)
 
-Último commit do projeto (`25cc123`, 2026-08-06 — mais recente que a `main`, que parou em
-2026-07-31). Traz:
-
-- `supabase/migrations/0003_investidores_qualificacao.sql` — adiciona `investidores.qualificacao_complemento`
-- `supabase/functions/gerar-contrato/index.ts` (+140 linhas) — 3 variáveis novas
-  (`JUIZO_TRIBUNAL`, `CLASSE_ATIVO`, `CAPITAL_INVESTIDO`), `detectValorTotalOperacaoFromXlsx()`,
-  `qualificacao_complemento` na qualificação, `LO: ['lo','la']` em `GENERO_PALAVRAS`,
-  `nomeContratoArquivo('intermediacao')` com o título novo
-- `supabase/seeds/contratos-templates/` — `_build_template.py`, `README.md`,
-  `_dados_locais_template.py` (os `.docx` ficam gitignored de propósito, ver
-  [Decisões](#decisões-arquiteturais))
-
-Procuração e intermediação foram reescritas pelo jurídico no layout novo; a intermediação
-virou *"Contrato de originação, intermediação e gestão de ativo"*, com remuneração em 3
-camadas e performance escalonada por faixa de TIR.
-
-**A ordem do deploy importa** (inverter faz sair `.docx` com placeholder literal):
-
-```
-1. SQL Editor      → migration 0003
-2. Edge Functions  → colar index.ts → Deploy → conferir Logs
-3. Local           → python supabase/seeds/contratos-templates/_build_template.py
-4. Storage         → subir procuracao.docx, intermediacao.docx, cessao_credito.docx
-```
-
-Enquanto isso não for feito e mergeado, `main` e produção divergem do que o jurídico
-entregou. **Verificar no Studio se algum desses 4 passos já rodou antes de repetir.**
-
-> ⚠️ Essa branch também alterou o `handoff.md` (adendo de 2026-08-06). Este arquivo aqui foi
-> reescrito na `main`, então o merge vai conflitar em `handoff.md` — resolva mantendo esta
-> versão e conferindo se algo do adendo ficou de fora.
+Estava pronta desde 2026-08-06 e **já rodando em produção**, sem nunca ter sido mergeada: a
+`main` é que estava atrás. Conferido comparando o código colado do Studio com o da branch —
+idênticos, 1583 linhas. Os 4 passos do deploy dela (migration `0003`, redeploy, build dos
+templates, upload no bucket) já tinham rodado: os `.docx` baixados do bucket trazem
+`JUIZO_TRIBUNAL`, `CLASSE_ATIVO`, `CAPITAL_INVESTIDO` e `I_LO`, que só existem nos templates
+gerados por aquele `_build_template.py`.
 
 ### 3. 🟡 `contatos_auxiliares` sem migration
 
@@ -136,18 +110,18 @@ Bloqueado no jurídico.
 
 ### 7. 🟢 `qualificacao_complemento` dos investidores já cadastrados
 
-Coluna criada pela migration `0003` (branch #2). Preencher estado civil, profissão e
-representante legal de PJ. Só via SQL — a tela de CRUD de investidores não expõe o campo.
+Coluna criada pela migration `0003`. O campo passou a existir no modal de investidor em
+2026-08-11, então dá para preencher pela interface — mas os investidores cadastrados antes
+seguem com `null`, e a qualificação deles sai sem estado civil nem profissão.
 
 ### 8. 🟢 Limpeza de repo
 
 - `origin/contratos-teste` — 1 commit à frente da `main`, mas o conteúdo (portão de crédito
-  reprovado em `_acShowOk`) **já está na `main`** em `app.js:6799`. Branch morta, pode deletar.
-- `supabase/seeds/peticoes-templates/__pycache__/_build_template.cpython-314.pyc` está
-  versionado. Adicionar `__pycache__/` ao `.gitignore` e `git rm --cached`.
+  reprovado em `_acShowOk`) **já está na `main`**. Branch morta, pode deletar.
 - `ai_livre.docx` e `_modelo_original_ai_livre.docx` seguem no repo, mas `ai_livre` foi
   removido de `TEMPLATES` em `b2680ea` ("simplifica — Sonnet + remove ai_livre"). Órfãos.
 - 14 branches remotas, a maioria já mergeada. Podar as mergeadas reduz ruído.
+- ~~`__pycache__` versionado~~ — resolvido em `30e8974`.
 
 ### 9. 🟢 Refinamentos que continuam abertos
 
@@ -159,18 +133,57 @@ representante legal de PJ. Só via SQL — a tela de CRUD de investidores não e
 
 ---
 
+## O que falta deployar
+
+A branch **`fix/contratos-precatorio`** (commits `d9337bc` e `2118b6b`) está pronta e testada
+localmente, **não deployada**. Ordem:
+
+```
+1. git push + merge na main   → GitHub Pages publica o front (hard reload: Ctrl+Shift+R)
+2. Studio → Edge Functions → gerar-contrato → colar index.ts → Deploy → conferir Logs
+```
+
+Os dois lados são independentes: o front antigo continua funcionando com a função nova (não
+manda `tipos`, então cai no automático), e o front novo com a função antiga mandaria `tipos`
+para quem os ignora — ou seja, **deploy a função primeiro** se for fazer um de cada vez.
+
+Nada de bucket, nada de migration: nenhum template mudou e nenhuma coluna foi criada.
+
+### Testes locais (rodam sem Supabase)
+
+```cmd
+node supabase/functions/gerar-contrato/_tests/test-tipos.mjs
+node supabase/functions/gerar-contrato/_tests/test-quadro.mjs
+```
+
+O segundo precisa de um `.xlsx` do modelo da análise; sem ele, avisa e sai. Ver
+`supabase/functions/gerar-contrato/_tests/README.md`.
+
+### E2E depois do deploy
+
+| Caso | Esperado |
+|---|---|
+| RPV, análise com "Apenas o crédito principal", sem doc de escritório | cessão de crédito + intermediação + procuração. **Não pede escritório** |
+| RPV, análise com "Crédito principal e honorários" | 5 documentos; pede doc do escritório |
+| Precatório, automático | 2 documentos: intermediação + procuração. Nunca cessão |
+| Manual, só procuração marcada | 1 documento, sem intermediação |
+| Precatório com intermediador que só existe em `A. Análises` | pasta criada em `B. Processos`, aviso no painel de sucesso |
+| Análise em pasta com nome do escritório (caso Klemm) | localiza pelo nº do processo na subpasta |
+| Investidor novo com sexo + "solteiro, engenheiro civil" | qualificação sai completa no contrato |
+
+---
+
 ## Checklist do Studio (só dá pra conferir logado)
 
 Project ref: `uekoindsadcthbdkkbjt`
 
-- [ ] `contratos-templates` contém os 5 `.docx` com os nomes exatos de `TEMPLATES`
-      (`index.ts:44`). **Se qualquer um faltar, toda requisição falha** — o passo 8 carrega
-      os 5 incondicionalmente, antes de saber quais serão usados
+- [x] `contratos-templates` tem os 5 `.docx` de `TEMPLATES` — conferido em 2026-08-11 pelos
+      arquivos baixados do bucket. **Se qualquer um faltar, toda requisição falha**: o passo 8
+      carrega os 5 incondicionalmente, antes de saber quais serão usados
+- [x] Migrations `0001`, `0002` e `0003` aplicadas (a função em produção lê
+      `qualificacao_complemento` sem erro)
 - [ ] `peticoes-templates` contém os 8 `.docx` de `gerar-peticao/index.ts:24`
 - [ ] `peticoes-input-ia` existe
-- [ ] Versão deployada de `gerar-contrato` == `index.ts` da `main` (ou da branch #2, se já
-      deployada)
-- [ ] Migrations aplicadas: `0001`, `0002`, e `0003` se a branch #2 já subiu
 - [ ] `configuracoes` tem as 4 chaves: `anthropic_api_key`, `google_oauth_client_id`,
       `google_oauth_client_secret`, `google_oauth_refresh_token` (+ `advbox_token`)
 - [ ] Secrets do item 5 rotacionados?
@@ -186,11 +199,11 @@ O handoff antigo pedia estas coisas. Todas caíram; ficam registradas para ningu
 |---|---|
 | Subir os 5 templates de `credijuris-contratos\templates\` | **Não faça.** Aquela pasta ficou *atrás* do bucket (testemunhas antigas, `intermediacao.docx` sem marcadores de gênero). A fonte de verdade é o bucket; o gerador é `seeds/contratos-templates/_build_template.py` |
 | Fix `.single()` → `.maybeSingle()` em `parametros_atualizacao` | Código não existe mais no `app.js` |
-| Dropdown `gc-tipo` com as 2 variantes de honorários | Feito, `index.html:~880` |
+| Dropdown `gc-tipo` com as 2 variantes de honorários | Substituído em 2026-08-11 por lista de checkboxes: `Automático` + escolha manual dos 5 contratos |
 | Upload da apresentação pelo browser | **Arquitetura mudou.** A análise agora é *puxada do Drive* (`A. Análises de crédito / {categoria} / {intermediador} / {cedente - processo}`). O browser só sobe documentos do cedente/escritório. Front manda `numero_processo` e `categoria` |
 | Autocomplete de intermediador | Feito — dropdown populado via `acao: 'listar_intermediadores'` |
 | Tela CRUD de investidores | Feita (`8288d32`), aba Carteiras |
-| Detecção de checkbox pela IA | Substituída por leitura determinística do XML (`detectCheckboxesFromXlsx`); a IA só entra como fallback e é sobrescrita |
+| Detecção de checkbox pela IA | A IA **não é mais consultada** para isso. `detectCreditosNegociadosFromXlsx()` lê o quadro direto do XML e falha alto se não conseguir. Ver [Como o quadro da análise é lido](#como-o-quadro-da-análise-é-lido) |
 | Upsert em `contratos_jobs` | Feito, `index.ts:1304` |
 | Só 1 modelo de petição (`levantamento`) | Hoje são 8: levantamento, sequestro, ilegitimidade, rpv_complementar, registro_publico, homologacao + ai_com_qualif/ai_sem_qualif (fluxo IA) |
 
@@ -204,17 +217,50 @@ O handoff antigo pedia estas coisas. Todas caíram; ficam registradas para ningu
 4. Carrega os 5 templates do bucket e coleta a união das variáveis `{{...}}`
 5. Extrai cedente + escritório via Claude — o nome do cedente define qual pasta buscar
 6. Refresh do token Google
-7. Localiza e baixa a análise no Drive (export se for Google Sheets nativo)
-8. Extrai a apresentação via Claude, depois **sobrescreve as 3 checkboxes** com a leitura
-   determinística do XLSX
+7. Localiza e baixa a análise no Drive (export se for Google Sheets nativo). A pasta é
+   procurada por cedente → escritório → nº do processo no nome → nº do processo em subpasta →
+   pasta única. `debug.leaf_casou_por` diz qual critério valeu
+8. Extrai a apresentação via Claude; depois **sobrescreve** os créditos negociados e o
+   `CAPITAL_INVESTIDO` com a leitura determinística do XLSX (dois `try` independentes)
 9. Junta variáveis (apresentação > cedente/escritório > investidor), aplica title case e
    marcadores de gênero (`C_*`, `I_*`, `S_*`, `I_QL`)
-10. `determinarTipos()` decide os contratos pelas checkboxes (ou pelo `tipo` explícito)
+10. `determinarTipos(tipo, tipos, aprVars, categoria)` decide o conjunto, nesta precedência:
+    escolha manual do operador → dropdown de tipo único → categoria precatório → quadro da análise
 11. Preenche templates (JSZip + xmldom) e sobe em 3 pastas do Drive:
     - `2. Contratos assinados` — contratos gerados (nunca sobrescreve: colisão gera versão datada)
     - `1. Análise(s) de crédito` — cópia da análise baixada (best-effort)
     - `4. Documentos do cedente e advogado` — docs do cedente (best-effort)
+    - a pasta do intermediador em `B. Processos` é criada se não existir
 12. Atualiza o job, limpa o bucket temp, retorna URLs
+
+### Quais contratos saem
+
+| | RPV | Precatórios |
+|---|---|---|
+| **Automático** | cessões conforme o quadro da análise + intermediação + procuração | intermediação + procuração, sempre. Nenhuma cessão |
+| **Manual** | exatamente o que o operador marcar — nada é acrescentado | idem |
+
+O contrato de intermediação é o *"Contrato de originação, intermediação e gestão de ativo"*,
+que já contempla a cessão onerosa no próprio corpo — é por isso que precatório não tem cessão
+avulsa.
+
+### Como o quadro da análise é lido
+
+O modelo da análise mudou em 2026-08: as 3 checkboxes viraram **um dropdown** em `sheet1!C3`
+com `Apenas o crédito principal` / `Crédito principal e honorários` / `Apenas os honorários`.
+"Honorários" não separa contratuais de sucumbenciais, então as duas cessões saem juntas.
+
+`detectCreditosNegociadosFromXlsx()`:
+
+- aceita rótulo em `t="s"` (sharedStrings), `t="inlineStr"` e `t="str"` — o modelo novo **não
+  tem `sharedStrings.xml`**, usa `inlineStr`
+- decodifica entidades XML antes de comparar: `cr&#233;dito` normalizaria para `cr233dito`
+- lê **só a aba que contém o quadro**. As abas de precificação (modelo verde / modelo azul)
+  repetem "Crédito Principal" e "Honorários Contratuais" como rótulo de tabela
+- ainda entende o formato antigo de 3 checkboxes booleanas
+- **lança erro** dizendo célula e texto lido quando não consegue. A IA não é fallback: chute
+  errado aqui gera o conjunto errado de documento jurídico. Se a planilha estiver ilegível, o
+  operador desmarca "Automático" e escolhe na tela
 
 ---
 
@@ -225,8 +271,9 @@ O handoff antigo pedia estas coisas. Todas caíram; ficam registradas para ningu
   que não rodam em Deno.
 - **DOCX/XLSX de input:** texto extraído com JSZip + regex no XML.
 - **Preenchimento de DOCX:** JSZip + xmldom, preserva 100% do layout (igual ao `filler.py`).
-- **Checkboxes e "Valor total da operação" lidos direto do XML**, sem IA — a IA errava com
-  input grande. Google Sheets exporta checkbox como célula booleana (`t="b"`, `1`/`0`).
+- **Créditos negociados e "Valor total da operação" lidos direto do XML**, sem IA — a IA erra
+  com input grande, e nos créditos negociados o erro troca o conjunto de contratos. Nos
+  créditos a leitura é obrigatória (falha alto); no valor é best-effort com a IA como fallback.
 - **Templates `.docx` não são versionados.** O repo é público e servido por GitHub Pages;
   todo template traz CPF e endereço residencial de pessoa física — versionar deixaria os
   arquivos baixáveis pela URL do site. Versionado é só o que os reproduz (`_build_template.py`,
@@ -254,7 +301,18 @@ O handoff antigo pedia estas coisas. Todas caíram; ficam registradas para ningu
 5. **GitHub Pages e Jekyll:** `.nojekyll` + cache-busting no `?v=` do `app.js` são o que
    destrava o deploy (`7e02492`). Ao mexer no `app.js`, bumpar a versão no `index.html`.
 6. **PowerShell 5.1 lê UTF-8 como ANSI** no `Get-Content`. Os arquivos do repo estão em
-   UTF-8; se aparecer mojibake no terminal, é o terminal, não o arquivo.
+   UTF-8; se aparecer mojibake no terminal, é o terminal, não o arquivo. E `Set-Content
+   -Encoding utf8` **escreve BOM** — não use pra reescrever `index.html`/`.ts`.
+7. **A análise vem de uma árvore do Drive, o upload vai pra outra.** O dropdown de
+   intermediador lê `A. Análises de crédito/{categoria}`, mas os contratos sobem em
+   `B. Processos/{categoria}`. As duas não andam juntas — por isso a pasta do intermediador é
+   criada quando falta na segunda.
+8. **O nome da pasta da análise não é sempre o do cedente.** Em operação de honorários ela vem
+   com o nome do escritório. Não confie no nome; o nº do processo é a chave única.
+9. **Mudança no modelo da análise quebra a leitura do quadro em silêncio** se a leitura não
+   falhar alto. Foi o que aconteceu quando as checkboxes viraram dropdown: a IA assumiu e
+   passou a pedir documento de escritório em operação sem honorários. Ao mexer no modelo,
+   rode `_tests/test-quadro.mjs` apontando pra planilha nova.
 
 ---
 
@@ -264,6 +322,6 @@ O handoff antigo pedia estas coisas. Todas caíram; ficam registradas para ningu
 - Site: https://operacoes-credijuris.github.io/controledecessoes/
 - Supabase project ref: `uekoindsadcthbdkkbjt`
 - Projeto Python de referência: `credijuris-contratos/` (fora do GitHub; templates
-  desatualizados, ver pendência #2 — a lógica ainda serve de referência)
+  desatualizados — a lógica ainda serve de referência)
 - Mapa completo de variáveis dos templates: `supabase/seeds/contratos-templates/README.md`
-  (existe na branch `feat/templates-layout-novo`)
+- Testes locais: `supabase/functions/gerar-contrato/_tests/README.md`

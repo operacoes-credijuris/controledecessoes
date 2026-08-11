@@ -1694,6 +1694,14 @@ function _gcShowOk(data){
       <div class="gc-pendentes-hint">Edite manualmente nos arquivos .docx no Drive.</div>
     </div>`:'';
   const tipos=Array.isArray(data.tipos_gerados)?data.tipos_gerados:[];
+  // A pasta do intermediador em "B. Processos" pode não existir ainda (só em
+  // "A. Análises de crédito"): a função cria. Avisar deixa erro de digitação visível,
+  // que senão só apareceria como uma pasta nova e vazia no Drive.
+  const criadaBlock=data.intermediador_criado?`
+    <div class="gc-pendentes">
+      ⓘ Criei a pasta <strong>${esc(data.intermediador_criado)}</strong> em <em>B. Processos</em>, que ainda não existia lá.
+      <div class="gc-pendentes-hint">Se o nome não for esse, apague a pasta no Drive e gere de novo.</div>
+    </div>`:'';
   r.innerHTML=`
     <div class="gc-result-ok">
       <div class="gc-result-title ok">✓ ${tipos.length} contrato(s) gerado(s)</div>
@@ -1701,6 +1709,7 @@ function _gcShowOk(data){
       <a href="${esc(data.drive_folder_url)}" target="_blank" rel="noopener" class="btn btn-gold btn-sm">
         Abrir pasta no Drive ↗
       </a>
+      ${criadaBlock}
       ${pendBlock}
     </div>`;
 }
