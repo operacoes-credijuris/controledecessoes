@@ -1,4 +1,9 @@
 .claude/
+__pycache__/
+
+# Material temporário de debug (função deployada, templates com PII, prints)
+# O repo é público e servido por GitHub Pages: nada daqui pode ser comitado.
+fix bugs/
 
 # Seeds com PII / secrets — nunca comitar
 supabase/seeds/investidores.sql

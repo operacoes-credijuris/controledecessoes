@@ -1,316 +1,269 @@
-# Handoff — Gerador de Contratos no site Credijuris
+# Handoff — Controle de Cessões Credijuris
 
-## Objetivo do projeto
-
-Adicionar uma aba **"Gerar Contratos"** no site de Controle de Cessões da Credijuris (https://github.com/operacoes-credijuris/controledecessoes), permitindo que o operador:
-
-1. Suba documentos (PDF/imagem/DOCX/XLSX) de cedente, escritório e apresentação do crédito
-2. Escolha um investidor de uma lista
-3. Digite o nome do intermediador (pasta no Google Drive)
-4. Clique "Gerar Contratos"
-
-E o sistema:
-1. Lê os documentos via Claude API (claude-opus-4-5) extraindo as variáveis (CPF, RG, endereço, valores, número de processo, etc.)
-2. **Detecta automaticamente** quais contratos gerar lendo 3 checkboxes do quadro "Vai ser negociado aqui quais créditos?" na análise de RPV (.xlsx): Crédito Principal, Honorários Contratuais, Honorários Sucumbenciais
-3. Preenche até 5 templates `.docx` pré-prontos (cessão de crédito, cessão de honorários contratuais, cessão de honorários sucumbenciais, intermediação, procuração) substituindo as variáveis `{{NOME_VARIAVEL}}`
-4. Faz upload no Drive em **duas pastas distintas**:
-   - **Contratos gerados** → `Credijuris - Atualizado / B. Processos / Requisições de Pequeno Valor / <Intermediador> / <Cedente> - <Processo> / 2. Contratos assinados`
-   - **Arquivos brutos da apresentação** (a própria análise + qualquer anexo) → mesma estrutura, em `1. Análise(s) de crédito`
-5. Nomeia cada `.docx` no formato pedido: `Contrato de Cessão de X - Cedente v. Cessionário - Processo.docx`
-
-Tudo isso **portado do projeto Python original** (`credijuris-contratos/`) que já fazia parte disso via CLI local. A meta é integrar no site para qualquer operador usar pelo navegador, sem instalar Python/LibreOffice.
-
-**Restrições importantes:**
-- O site é estático no GitHub Pages — backend só pode ser Supabase Edge Functions (Deno/TypeScript)
-- Não vai gerar PDF, só `.docx` (decisão do usuário pra simplificar)
-- A IA preenche APENAS as variáveis `{{...}}` — texto jurídico dos templates é INTOCÁVEL
-- Os 3 booleans das checkboxes (`NEGOCIAR_CREDITO_PRINCIPAL`, `NEGOCIAR_HONORARIOS_CONTRATUAIS`, `NEGOCIAR_HONORARIOS_SUCUMBENCIAIS`) substituem a antiga variável `TIPO_CREDITO_NEGOCIADO` (dropdown único)
+> **Revisado em 2026-08-11** por auditoria do código na `main` (`6b4ca6e`). A versão anterior
+> deste arquivo era de 2026-05-21 e estava ~3 meses e ~200 commits atrás da realidade:
+> descrevia como "pendente" coisas que já foram entregues e não mencionava dois módulos
+> inteiros que entraram depois. O que segue foi conferido contra o código, não contra memória.
+>
+> **O que NÃO consegui verificar daqui:** nada do lado Supabase (conteúdo dos buckets, qual
+> versão de cada Edge Function está deployada, quais migrations rodaram, se os secrets foram
+> rotacionados). Esses itens estão na seção [Checklist do Studio](#checklist-do-studio-só-dá-pra-conferir-logado).
 
 ---
 
-## Estado atual
+## O que o sistema é hoje
 
-### ✅ Pronto e em produção
-- Site original refatorado: CSS/JS extraídos do HTML (era 6329 linhas inline) — commits `78ebc72`, `9d38b63`
-- Pane "Gerar Contratos" no site: HTML + CSS + JS, item de sidebar sob "Operacional" — commit `cf74cc6`
-- Schema Supabase: tabelas `investidores` (17 registros migrados do JSON), `contratos_jobs` (auditoria), `configuracoes` (secrets)
-- 2 Storage buckets privados criados: `contratos-templates` e `contratos-input` (uploads temp)
-- **RLS de Storage permissivo aplicado** — 5 policies criadas (SELECT em templates, todas as 4 ops em input) com `bucket_id` apenas, sem checagem por `auth.uid()` no path. O erro `new row violates row-level security policy` está resolvido.
-- **4 secrets em `configuracoes`**: `anthropic_api_key`, `google_oauth_client_id`, `google_oauth_client_secret`, `google_oauth_refresh_token` (todos com tamanho de valor coerente: 108, 73, 35, 103 caracteres)
-- **Edge Function `gerar-contrato` deployada** com o slug correto (após resolver problema do slug `smart-responder`)
-- **Verify JWT desligado** no gateway (a função valida o JWT internamente)
-- Fix do 406 `parametros_atualizacao` (trocado `.single()` por `.maybeSingle()` em `app.js`)
-- **Análise de RPV no modelo novo** gerada para o Gilson Balduino para servir de teste (cabeçalho preenchido com checkbox de Crédito Principal marcada) — arquivo em `Downloads/Análise de RPV - GILSON BALDUINO DA SILVA - 5222044-59.2024.8.09.0168 (modelo novo).xlsx`
+Site estático em GitHub Pages (`index.html` + `assets/css/app.css` + `assets/js/app.js`,
+6.6k linhas) com backend em Supabase Edge Functions (Deno/TypeScript). Sem build step,
+sem Node local — deploy do front é `git push`, deploy de função é colar no Studio.
 
-### 🟡 Pronto localmente, ainda não deployado/aplicado
-Mudanças grandes no `index.ts` e `index.html` para a nova arquitetura de **checkboxes + 5 templates + nome novo de arquivo + upload em duas pastas**. As alterações de código estão prontas mas **falta**:
-1. **Subir os 5 templates `.docx` para o bucket `contratos-templates`** (atuais arquivos no bucket são de versão anterior + falta as 2 variantes de honorários):
-   - `cessao_credito.docx` (atualizado)
-   - `cessao_honorarios_contratuais.docx` (novo)
-   - `cessao_honorarios_sucumbenciais.docx` (novo)
-   - `intermediacao.docx` (atualizado)
-   - `procuracao.docx` (atualizado)
+**Módulos:**
 
-   Caminho local: `C:\Users\Windows 10\Desktop\novo projeto\credijuris-contratos\templates\`
-   
-   **Cuidado:** subir somente os `.docx`, ignorar os `.bak`. Recomendado também deletar o `cessao_honorarios.docx` antigo do bucket.
+| Módulo | Onde | Estado |
+|---|---|---|
+| Visão Geral (dashboard, prazos fatais, publicações DJEN, resumo IA de movimentações) | `pane-dashboard` | produção |
+| Acompanhamento Processual (cessões, RPV, requerimentos, encerrados) | `pane-acompanhamento` | produção |
+| Telefones e Contatos | `pane-contatos` | produção |
+| Carteiras / Investidores (CRUD pela interface) | `pane-carteiras` | produção |
+| **Análise de Crédito** (Portão 1, due diligence, precificação) | `pane-credito` | produção — **não estava no handoff antigo** |
+| **Gerar Contratos** | `pane-contratos` | produção |
+| **Gerar Petição** (8 modelos + fluxo IA) | modal em Urgências → Fatais | produção |
 
-2. **Redeployar a Edge Function** com o `index.ts` atualizado. Como o usuário não tem Node.js instalado, o caminho é via Studio web:
-   ```cmd
-   type "C:\Users\Windows 10\Desktop\novo projeto\controledecessoes-main\supabase\functions\gerar-contrato\index.ts" | clip
-   ```
-   Depois: Studio → Edge Functions → `gerar-contrato` → Code → cola → Deploy.
+**Edge Functions chamadas pelo front — 7, das quais só 3 têm código no repo:**
 
-3. **Atualizar `app.js` no servidor** (GitHub Pages — autodeploy via push) com o fix do `.maybeSingle()` (já está no arquivo local mas precisa commitar).
+| Função | Fonte no repo? | Chamada em |
+|---|---|---|
+| `gerar-contrato` | ✅ `supabase/functions/gerar-contrato/index.ts` (1456 linhas) | `app.js:1549,1682` |
+| `gerar-peticao` | ✅ `supabase/functions/gerar-peticao/index.ts` (945 linhas) | 2 pontos |
+| `resumir-movimentacoes` | ✅ | 2 pontos |
+| `advbox-proxy` | ✅ (via URL `functions/v1/`) | 3 pontos |
+| `gerar-analise-rpv` | ❌ **nenhuma versão, em nenhuma branch** | `app.js:6735,6940,7062` |
+| `buscar-judit` | ❌ **idem** | `app.js` |
+| `dd-credor` | ❌ **idem** | `app.js` |
+| `resolver-pasta` | ❌ **idem** | `app.js` |
 
-### ⏳ Mudanças contidas neste handoff (resumo do diff)
+**Buckets exigidos pelo código:** `contratos-templates`, `contratos-input`,
+`peticoes-templates`, `peticoes-input-ia` (+ o que `gerar-analise-rpv` usar, desconhecido).
 
-**`supabase/functions/gerar-contrato/index.ts`** — mudanças desde a versão anterior:
-- `TEMPLATES`: agora tem 5 chaves (sem `cessao_honorarios`, com 2 variantes); `REQUIRED_PAPEIS` idem
-- `TIPOS_POR_NEGOCIO` removido (não é mais necessário — checkboxes determinam direto)
-- `DRIVE_PASTA_ANALISE = '1. Análise(s) de crédito'` constante adicionada
-- `SCHEMA_APRESENTACAO_FIXOS`: trocou `TIPO_CREDITO_NEGOCIADO` por 3 booleans (`NEGOCIAR_CREDITO_PRINCIPAL`, `NEGOCIAR_HONORARIOS_CONTRATUAIS`, `NEGOCIAR_HONORARIOS_SUCUMBENCIAIS`) com descrição explicando à IA como mapear `1/TRUE` vs `0/FALSE` do XLSX
-- `parseBool(v)` helper adicionado — aceita "true"/"1"/"sim"/"yes"/"marcado"
-- `determinarTipos(tipoExplicito, aprVars)` reescrita: lê os 3 booleans, monta lista de cessões + intermediação + procuração; lança erro claro se nenhuma checkbox for marcada
-- `sanitizeFilenamePart`, `nomeContratoArquivo(tipo, dados)` adicionados — gera nome no padrão "Contrato de Cessão de X - Cedente v. Cessionário - Processo.docx" (para honorários, Cedente = `ESCRITORIO_NOME`; nos demais = `CEDENTE_NOME`)
-- `mimeForExtension(ext)` adicionado para upload genérico
-- `driveGarantirEstruturaCedente` retorna agora `{ contratosId, analiseId }`
-- `driveUploadBytes(token, name, parentId, bytes, mime, sobrescrever)` adicionado (refatoração do `driveUploadDocx` que virou wrapper compat)
-- Após upload dos contratos para `2. Contratos assinados`, novo loop **best-effort** baixa cada arquivo de apresentação do bucket e sobe para `1. Análise(s) de crédito` com o nome original e mime detectado
-- Payload de retorno inclui `analise_folder_url` e `analise_uploads`
-- `insert` em `contratos_jobs` virou `upsert` (`onConflict: 'id'`, com reset de `erro_msg`) — corrige erro de duplicate key em retries
-
-**`index.html`** — dropdown `gc-tipo`:
-- Removida opção `cessao_honorarios` (genérica)
-- Adicionadas opções `cessao_honorarios_contratuais` e `cessao_honorarios_sucumbenciais`
-- Hint atualizado para explicar o modo auto via checkboxes
-
-**`assets/js/app.js`** — micro-fix:
-- `.single()` → `.maybeSingle()` na chamada de `parametros_atualizacao` (resolve 406)
+**Tabelas referenciadas:** `configuracoes`, `investidores`, `contratos_jobs`,
+`contatos_auxiliares`. **Migrations no repo cobrem só as 3 primeiras.**
 
 ---
 
-## Arquivos em trabalho
+## Pendências
 
-### Frontend (site, deploy automático via GitHub Pages)
+Em ordem de risco, não de esforço.
+
+### 1. 🔴 Quatro Edge Functions existem só deployadas — sem código-fonte em lugar nenhum
+
+`gerar-analise-rpv`, `buscar-judit`, `dd-credor` e `resolver-pasta` são invocadas pelo
+`app.js` e sustentam o módulo Análise de Crédito inteiro. Rodei `git log --all` e
+`git rev-list --all --objects`: **nunca foram comitadas em nenhuma branch**. O único lugar
+onde esse código existe é dentro do projeto Supabase.
+
+Consequência: um deploy errado, um rollback do Studio ou a perda do projeto apaga o módulo
+sem backup. Também não dá para revisar, versionar ou reproduzir localmente.
+
+**Como resolver:** Studio → Edge Functions → cada uma → Code → copiar → salvar em
+`supabase/functions/<nome>/index.ts` → commitar. É a pendência mais barata de resolver e a
+mais cara de ignorar.
+
+### 2. 🔴 Branch `feat/templates-layout-novo` pronta e não mergeada
+
+Último commit do projeto (`25cc123`, 2026-08-06 — mais recente que a `main`, que parou em
+2026-07-31). Traz:
+
+- `supabase/migrations/0003_investidores_qualificacao.sql` — adiciona `investidores.qualificacao_complemento`
+- `supabase/functions/gerar-contrato/index.ts` (+140 linhas) — 3 variáveis novas
+  (`JUIZO_TRIBUNAL`, `CLASSE_ATIVO`, `CAPITAL_INVESTIDO`), `detectValorTotalOperacaoFromXlsx()`,
+  `qualificacao_complemento` na qualificação, `LO: ['lo','la']` em `GENERO_PALAVRAS`,
+  `nomeContratoArquivo('intermediacao')` com o título novo
+- `supabase/seeds/contratos-templates/` — `_build_template.py`, `README.md`,
+  `_dados_locais_template.py` (os `.docx` ficam gitignored de propósito, ver
+  [Decisões](#decisões-arquiteturais))
+
+Procuração e intermediação foram reescritas pelo jurídico no layout novo; a intermediação
+virou *"Contrato de originação, intermediação e gestão de ativo"*, com remuneração em 3
+camadas e performance escalonada por faixa de TIR.
+
+**A ordem do deploy importa** (inverter faz sair `.docx` com placeholder literal):
+
 ```
-controledecessoes-main/
-├── index.html                    ← dropdown gc-tipo atualizado (linhas ~771-779)
-├── assets/
-│   ├── css/app.css               ← estilos GC (linhas 2020+)
-│   └── js/app.js                 ← módulo GC (linhas ~660–880); fix maybeSingle (linha 2562)
+1. SQL Editor      → migration 0003
+2. Edge Functions  → colar index.ts → Deploy → conferir Logs
+3. Local           → python supabase/seeds/contratos-templates/_build_template.py
+4. Storage         → subir procuracao.docx, intermediacao.docx, cessao_credito.docx
 ```
 
-### Backend (Supabase)
-```
-controledecessoes-main/supabase/
-├── functions/gerar-contrato/
-│   └── index.ts                  ← ~950 linhas após as mudanças — pipeline com 5 templates, checkboxes, dois destinos no Drive
-├── migrations/
-│   └── 0001_contratos_setup.sql  ← schema base (já rodado — porém a tabela `configuracoes` já existia e não recebeu `descricao` nem `updated_at` automaticamente; foram adicionados via `alter table add column if not exists`)
-├── seeds/
-│   ├── investidores.sql          ← PII, gitignored, já rodado
-│   ├── configuracoes_template.sql← template no repo
-│   └── configuracoes.sql         ← secrets reais, gitignored, já rodado
-└── STORAGE_SETUP.md              ← instruções dos buckets
-```
+Enquanto isso não for feito e mergeado, `main` e produção divergem do que o jurídico
+entregou. **Verificar no Studio se algum desses 4 passos já rodou antes de repetir.**
 
-### Projeto Python de referência (NÃO modificar)
-```
-credijuris-contratos/              ← origem da lógica, ainda funciona via CLI
-├── main.py
-├── src/                           ← extractor.py, filler.py, drive_uploader.py
-├── templates/                     ← cessao_credito.docx, cessao_honorarios_contratuais.docx (novo),
-│                                    cessao_honorarios_sucumbenciais.docx (novo), intermediacao.docx, procuracao.docx
-│                                    + arquivos .bak (versões anteriores — NÃO subir pro bucket)
-├── .env                           ← ANTHROPIC_API_KEY
-├── client_secrets.json            ← Google OAuth client
-└── token.json                     ← Google OAuth refresh_token
-```
+> ⚠️ Essa branch também alterou o `handoff.md` (adendo de 2026-08-06). Este arquivo aqui foi
+> reescrito na `main`, então o merge vai conflitar em `handoff.md` — resolva mantendo esta
+> versão e conferindo se algo do adendo ficou de fora.
 
----
+### 3. 🟡 `contatos_auxiliares` sem migration
 
-## Erros / coisas que tentamos e não deram certo
+A tabela é lida e escrita em 3 pontos do `app.js`, mas não existe em
+`supabase/migrations/`. Quem recriar o banco do zero pelas migrations quebra a aba
+Telefones e Contatos. Extrair o DDL do Studio e adicionar como `0004_*.sql`.
 
-### 1. Conversão para PHP com partials
-**O que foi tentado:** refatorar `index.html` (6329 linhas) em `index.php` + 6 partials + `config.php`.
-**Por que deu errado:** servidor é GitHub Pages, estático puro, não roda PHP.
-**Resolução:** revertido para `index.html` enxuto (899 linhas) com CSS/JS externos.
+### 4. 🟡 `STORAGE_SETUP.md` desatualizado — descreve um estado que não existe mais
 
-### 2. Nome de arquivo com acento no Storage upload
-**O que foi tentado:** subir `Análise de RPV - GILSON ... .xlsx` direto pro bucket `contratos-input`.
-**Erro:** `Invalid key: ...Análise_de_RPV_...`
-**Por que:** Supabase Storage não aceita caracteres acentuados em nomes de objetos.
-**Resolução:** commit `28cc9ab` — normalização via `String.prototype.normalize('NFD')` + remoção de marcas combinantes + regex pra trocar não-word por `_`.
+Diz "2 buckets" e lista 4 templates, incluindo `cessao_honorarios.docx`, que foi
+substituído pelas duas variantes (contratuais/sucumbenciais) em maio. Não menciona
+`peticoes-templates` nem `peticoes-input-ia`. Quem seguir esse doc para montar um ambiente
+novo monta errado.
 
-### 3. Botão "Gerar Contratos" sem estilo `:disabled`
-**Resolução:** commit `9d38b63` — adicionou `background:#1e2433; color:#4b5563; cursor:not-allowed`.
+### 5. 🟡 Secrets vazados em maio, rotação nunca confirmada
 
-### 4. RLS de Storage com `(storage.foldername(name))[1] = auth.uid()::text`
-**O que foi tentado:** policy restritiva por user_id no path.
-**Erro:** `new row violates row-level security policy` (mesmo com path correto).
-**Por que:** o parsing/contexto da policy em Storage não bateu — diagnóstico minucioso seria lento.
-**Resolução:** policies permissivas (qualquer authenticated, sem restrição de pasta). Aceitável para MVP com operadores internos. Endurecer depois é item de refinamento.
+Em 2026-05, durante debug, o conteúdo de `configuracoes.sql` (4 secrets reais) foi colado
+no chat. A rotação foi anotada como pendente e **não há evidência de que tenha acontecido**:
 
-### 5. Erro 406 em `/rest/v1/configuracoes?chave=eq.parametros_atualizacao`
-**O que era:** PostgREST retornando 406 porque a chamada usava `.single()` mas a row não existia.
-**Por que:** `.single()` exige exatamente 1 linha; com 0 retorna 406.
-**Resolução:** trocado para `.maybeSingle()` em `app.js:2562` (retorna `null` em vez de erro).
-
-### 6. Edge Function deployada com slug errado (`smart-responder`)
-**Sintoma:** preflight OPTIONS retornava 404, browser bloqueava com "CORS error" e o JS surface mensagem `Failed to send a request to the Edge Function`.
-**Por que:** quando a função foi criada no Studio originalmente, foi com o nome padrão de template `smart-responder`. Depois, alguém renomeou apenas o **display name** para `gerar-contrato`, mas o **slug** (parte da URL) é imutável após a criação — o aviso da própria UI dizia "Your slug and endpoint URL will remain the same".
-**Resolução:** deletou-se a função `smart-responder` e criou-se uma nova com slug correto `gerar-contrato` desde a criação.
-
-### 7. `Secret 'anthropic_api_key' não configurado em configuracoes`
-**O que era:** Edge Function rodando, mas a tabela `configuracoes` no projeto Supabase atual estava sem as chaves necessárias (tinha só `advbox_token` e `gemini_key`).
-**Por que:** o seed `configuracoes.sql` provavelmente foi rodado num projeto Supabase diferente em sessão anterior, ou nunca foi rodado neste.
-**Resolução:**
-1. ALTER TABLE add column if not exists `descricao` e `updated_at` (a tabela pré-existia com schema simples e a migration `0001` foi no-op para `configuracoes` por causa do `create table if not exists`)
-2. INSERT do seed com `on conflict (chave) do update`
-3. 4 chaves agora presentes com tamanhos coerentes (108/73/35/103)
-
-### 8. `Erro criando job: duplicate key value violates unique constraint "contratos_jobs_pkey"`
-**O que era:** após uma tentativa que falhou (intermediador errado), uma segunda tentativa com o mesmo `job_id` violava a PK.
-**Por que:** o `job_id` no client (`app.js:689,856`) só é regenerado em sucesso ou ao entrar na aba. Erros mantêm o id. A Edge Function fazia `.insert(...)` em vez de upsert.
-**Resolução:** dois layers
-- **Unblock imediato:** `delete from public.contratos_jobs where status = 'erro';` (apaga a row órfã, permitindo retry com o mesmo job_id)
-- **Fix permanente:** `index.ts` agora faz `.upsert(..., { onConflict: 'id' })` com reset de `erro_msg`. Depende do redeploy.
-
-### 9. ⚠️ Vazamento de secrets na conversa
-**Contexto:** durante o debug do erro 7, o operador colou o conteúdo do arquivo `configuracoes.sql` (com os 4 secrets reais) no chat.
-**Mitigação imediata:** anotado em `~/.claude/projects/.../memory/project_secret_rotation_pendente.md`.
-**Pendente pós-MVP:** rotacionar todas as 4 credenciais:
-1. Anthropic key em https://console.anthropic.com/settings/keys
-2. Google OAuth `client_secret` em console.cloud.google.com
-3. Refresh token regerado via `python credijuris-contratos/main.py`
+1. `anthropic_api_key` → https://console.anthropic.com/settings/keys
+2. `google_oauth_client_secret` → console.cloud.google.com
+3. `google_oauth_refresh_token` → regerar via `python credijuris-contratos/main.py`
 4. Atualizar `configuracoes.sql` local e re-executar o seed
 
----
+Se já foi rotacionado, **marque isso aqui** para não ficar aparecendo como pendência a cada
+revisão. Se não foi: são 3 meses de exposição.
 
-## Próximo passo
+### 6. 🟢 Modelos novos dos 3 templates de cessão
 
-### 1. Subir os 5 templates atualizados para o bucket
+`cessao_credito`, `cessao_honorarios_contratuais` e `cessao_honorarios_sucumbenciais`
+seguem no layout antigo. Cada operação hoje gera 2 documentos no visual novo e 3 no antigo.
+Bloqueado no jurídico.
 
-Supabase Studio → **Storage** → bucket `contratos-templates` → **Upload file** com os 5 `.docx` de:
-```
-C:\Users\Windows 10\Desktop\novo projeto\credijuris-contratos\templates\
-```
+### 7. 🟢 `qualificacao_complemento` dos investidores já cadastrados
 
-Não subir nenhum `.bak`. Opcionalmente, apagar o `cessao_honorarios.docx` antigo do bucket.
+Coluna criada pela migration `0003` (branch #2). Preencher estado civil, profissão e
+representante legal de PJ. Só via SQL — a tela de CRUD de investidores não expõe o campo.
 
-### 2. Redeployar a Edge Function
+### 8. 🟢 Limpeza de repo
 
-No CMD/PowerShell normal (sem admin):
-```cmd
-type "C:\Users\Windows 10\Desktop\novo projeto\controledecessoes-main\supabase\functions\gerar-contrato\index.ts" | clip
-```
+- `origin/contratos-teste` — 1 commit à frente da `main`, mas o conteúdo (portão de crédito
+  reprovado em `_acShowOk`) **já está na `main`** em `app.js:6799`. Branch morta, pode deletar.
+- `supabase/seeds/peticoes-templates/__pycache__/_build_template.cpython-314.pyc` está
+  versionado. Adicionar `__pycache__/` ao `.gitignore` e `git rm --cached`.
+- `ai_livre.docx` e `_modelo_original_ai_livre.docx` seguem no repo, mas `ai_livre` foi
+  removido de `TEMPLATES` em `b2680ea` ("simplifica — Sonnet + remove ai_livre"). Órfãos.
+- 14 branches remotas, a maioria já mergeada. Podar as mergeadas reduz ruído.
 
-Depois Studio → Edge Functions → `gerar-contrato` → **Code** → seleciona tudo, deleta, cola (Ctrl+V) → **Deploy**.
+### 9. 🟢 Refinamentos que continuam abertos
 
-Confirma na aba **Versions/Deployments** que a versão nova subiu com timestamp recente. Olha **Logs** para garantir que não há erro de boot/import.
-
-### 3. Testar end-to-end com o Gilson "modelo novo"
-
-1. Hard reload no site: **Ctrl + Shift + R**
-2. Aba "Gerar Contratos"
-3. Preencher:
-   - Investidor: qualquer da lista
-   - Intermediador: nome de pasta que existe no Drive
-4. Subir:
-   - Apresentação: `Downloads/Análise de RPV - GILSON BALDUINO DA SILVA - 5222044-59.2024.8.09.0168 (modelo novo).xlsx`
-   - Cedente: qualquer RG/CPF/comprovante do Gilson (PDF ou imagem)
-5. Clicar **Gerar Contratos** e aguardar 30–90s
-
-### 4. Resultado esperado
-
-- **Drive → `2. Contratos assinados`:** 3 arquivos `.docx`
-  - `Contrato de Cessão de Crédito Principal - GILSON BALDUINO DA SILVA - 5222044-59.2024.8.09.0168.docx`
-  - `Contrato de Intermediação - GILSON BALDUINO DA SILVA - 5222044-59.2024.8.09.0168.docx`
-  - `Procuração - GILSON BALDUINO DA SILVA - 5222044-59.2024.8.09.0168.docx`
-- **Drive → `1. Análise(s) de crédito`:** o `.xlsx` da análise e quaisquer outros anexos que tenham sido subidos como apresentação
-- **Site:** painel verde com link "Abrir pasta no Drive ↗"
-
-### 5. Erros prováveis pós-testes e como tratar
-
-| Mensagem | Causa | Fix |
-|---|---|---|
-| `Claude API 401` | API key errada | Atualizar `anthropic_api_key` em `configuracoes` |
-| `Google OAuth refresh falhou` | refresh_token revogado | Regenerar via `python main.py` local |
-| `'Credijuris - Atualizado' não encontrado` | Conta do token sem acesso ao Drive certo | Compartilhar a pasta com a conta Google do token |
-| `Intermediador '...' não encontrado` | Nome digitado não bate com pasta no Drive | A resposta lista as opções disponíveis — copia uma |
-| `Nenhuma checkbox marcada...` | A IA leu como "0/false" todas as 3 checkboxes | Conferir a planilha — abrir no Sheets/Excel, marcar pelo menos uma checkbox de fato (não só digitar texto na célula D) |
-| `Template '...' não encontrado no bucket` | Algum dos 5 `.docx` não foi subido para `contratos-templates` | Subir o que falta |
-
-### 6. Refinamentos pós-MVP (não bloqueante)
-
-- Rotacionar os 4 secrets (vazaram no chat — ver erro #9 acima)
-- Voltar policy de Storage para versão restrita por user_id (depois de entender por que falhava)
-- Tela CRUD pra editar investidores (hoje só via SQL)
-- Autocomplete do intermediador puxando lista do Drive (Edge Function nova `list-intermediadores`)
-- Upgrade para `claude-opus-4-7` (atualmente `claude-opus-4-5` por compat com Python original)
-- Migração da Q&A completa do modelo antigo → novo (até agora só o cabeçalho do modelo novo foi preenchido para teste; se quiser uma análise totalmente migrada, é trabalho adicional de mapear ~30 perguntas com offset de 2 linhas)
-- Considerar mostrar 2 links no painel de sucesso: um pros contratos, outro pra análise (o payload já retorna `analise_folder_url`)
+- RLS de Storage segue permissivo (qualquer `authenticated`, sem checagem de path) — foi
+  decisão consciente de MVP, ver [Armadilhas](#armadilhas-conhecidas) #4
+- `gerar-contrato` usa `claude-opus-4-5`; `gerar-peticao` usa `claude-sonnet-4-5`. Avaliar
+  atualizar os dois para a geração atual de modelos
+- Painel de sucesso mostra 1 link (contratos); o payload já devolve `analise_folder_url`
 
 ---
 
-## Decisões arquiteturais relevantes
+## Checklist do Studio (só dá pra conferir logado)
 
-- **Modelo Claude:** `claude-opus-4-5` (matching projeto Python). Constante `CLAUDE_MODEL` no topo do `index.ts`.
-- **PDF input:** envia direto pra Claude API como `type:document` — eliminou necessidade de `pdfplumber`/`pymupdf` (não rodam em Deno).
-- **DOCX/XLSX input:** extrai texto via JSZip + regex em XML — funciona em Deno sem dependências pesadas.
-- **DOCX template filling:** JSZip + xmldom — preserva 100% do layout (mesma abordagem do `filler.py`).
-- **Detecção de checkboxes do XLSX:** Google Sheets exporta cada checkbox como uma célula booleana (`t="b"`) com valor `1` (TRUE) ou `0` (FALSE). O extrator atual já lê isso e passa pra Claude como texto tipo `"Crédito principal: | 1"`. O prompt do schema fala explicitamente em "1/TRUE" vs "0/FALSE" pra IA mapear corretamente.
-- **Google Drive auth:** OAuth user-delegated. Refresh_token em `configuracoes`, function troca por access_token a cada chamada.
-- **Storage temp:** browser sobe pra `contratos-input/{uid}/{job_id}/`, função lê, processa, apaga ao fim.
-- **Upsert em `contratos_jobs`:** permite retry com mesmo `job_id` sem violar PK; reseta `erro_msg` automaticamente.
+Project ref: `uekoindsadcthbdkkbjt`
 
----
-
-## Contatos / links úteis
-
-- Repo do site: https://github.com/operacoes-credijuris/controledecessoes
-- Supabase project ref: `uekoindsadcthbdkkbjt`
-- GitHub Pages URL: `https://operacoes-credijuris.github.io/controledecessoes/`
-- Projeto Python de referência: pasta `credijuris-contratos/` (não está no GitHub)
+- [ ] `contratos-templates` contém os 5 `.docx` com os nomes exatos de `TEMPLATES`
+      (`index.ts:44`). **Se qualquer um faltar, toda requisição falha** — o passo 8 carrega
+      os 5 incondicionalmente, antes de saber quais serão usados
+- [ ] `peticoes-templates` contém os 8 `.docx` de `gerar-peticao/index.ts:24`
+- [ ] `peticoes-input-ia` existe
+- [ ] Versão deployada de `gerar-contrato` == `index.ts` da `main` (ou da branch #2, se já
+      deployada)
+- [ ] Migrations aplicadas: `0001`, `0002`, e `0003` se a branch #2 já subiu
+- [ ] `configuracoes` tem as 4 chaves: `anthropic_api_key`, `google_oauth_client_id`,
+      `google_oauth_client_secret`, `google_oauth_refresh_token` (+ `advbox_token`)
+- [ ] Secrets do item 5 rotacionados?
 
 ---
 
-_Última atualização: 2026-05-13 — após resolução do RLS de Storage, fix do slug `smart-responder` → `gerar-contrato`, preenchimento dos 4 secrets em `configuracoes`, upsert em `contratos_jobs`, e implementação das 5 mudanças arquiteturais (5 templates, checkboxes, nome novo, upload duplo) ainda pendentes de redeploy._
+## Já resolvido — não refazer
 
----
+O handoff antigo pedia estas coisas. Todas caíram; ficam registradas para ninguém
+"consertar" o que já está certo.
 
-## Adendo 2026-05-21 — Função "Gerar Petição" (branch `feat/gerar-peticao`)
-
-Em **Urgências → Pendências → Fatais**, cada card cuja tarefa do Advbox seja `levantamento` ganha um botão 📄 ao lado do prazo. Clicando, abre um modal pedindo 3 campos (nº do evento, data da homologação, créditos cedidos); o resto (CNJ, juízo, cessionário, dados bancários) é puxado da plataforma. Resultado: `.docx` baixado direto no navegador.
-
-### Componentes criados
-
-- **Edge Function:** `supabase/functions/gerar-peticao/index.ts` — reutiliza o motor `JSZip + xmldom` do `gerar-contrato` (funções `fillTemplate`/`fillParagraph`), mas **sem Claude** (dados já estruturados) e **sem Drive** (retorna base64 pro browser).
-- **Bucket Supabase (precisa criar manualmente):** `peticoes-templates`.
-- **Template versionado no repo:** `supabase/seeds/peticoes-templates/levantamento.docx`, gerado por `_build_template.py` a partir do modelo enviado pelo usuário. 7 placeholders inseridos preservando 100% da formatação.
-- **Frontend:** botão `peticaoBtn(r)` em `assets/js/app.js` (próximo a `navBtn`), inserido no template do card em `_renderPrazosCol`. Modal e fluxo (`_openPeticaoModal`/`_submitPeticao`) logo abaixo. HTML do modal em `index.html` antes de `</body>`; CSS em `assets/css/app.css` (classes `.al-peticao-btn`, `.pet-modal-*`, `.pet-*`).
-
-### Setup no Supabase (uma vez)
-
-1. **Criar bucket** `peticoes-templates` no Dashboard (privado — só a edge function acessa via service-role).
-2. **Upload** de `supabase/seeds/peticoes-templates/levantamento.docx` na raiz do bucket, **com esse nome exato**.
-3. **Deploy:** `supabase functions deploy gerar-peticao`.
-
-### Placeholders no template
-
-| Placeholder | Origem |
+| Pedido antigo | Situação |
 |---|---|
-| `{{ENDERECAMENTO_JUIZO}}` | `rec.orgaoJulgador` + `rec.tribunal` |
-| `{{NUMERO_PROCESSO}}` | `rec.numeroProcesso` |
-| `{{NOME_CESSIONARIO}}` | `rec.cessionario` |
-| `{{NUMERO_EVENTO}}` | input do usuário no modal |
-| `{{DATA_HOMOLOGACAO}}` | input do usuário, convertido para "dia de mês de ano" |
-| `{{CREDITOS_CEDIDOS}}` | checkboxes do modal, concatenados em PT ("A e B", "A, B e C") |
-| `{{DADOS_BANCARIOS}}` | lookup na tabela `investidores` por nome do cessionário |
+| Subir os 5 templates de `credijuris-contratos\templates\` | **Não faça.** Aquela pasta ficou *atrás* do bucket (testemunhas antigas, `intermediacao.docx` sem marcadores de gênero). A fonte de verdade é o bucket; o gerador é `seeds/contratos-templates/_build_template.py` |
+| Fix `.single()` → `.maybeSingle()` em `parametros_atualizacao` | Código não existe mais no `app.js` |
+| Dropdown `gc-tipo` com as 2 variantes de honorários | Feito, `index.html:~880` |
+| Upload da apresentação pelo browser | **Arquitetura mudou.** A análise agora é *puxada do Drive* (`A. Análises de crédito / {categoria} / {intermediador} / {cedente - processo}`). O browser só sobe documentos do cedente/escritório. Front manda `numero_processo` e `categoria` |
+| Autocomplete de intermediador | Feito — dropdown populado via `acao: 'listar_intermediadores'` |
+| Tela CRUD de investidores | Feita (`8288d32`), aba Carteiras |
+| Detecção de checkbox pela IA | Substituída por leitura determinística do XML (`detectCheckboxesFromXlsx`); a IA só entra como fallback e é sobrescrita |
+| Upsert em `contratos_jobs` | Feito, `index.ts:1304` |
+| Só 1 modelo de petição (`levantamento`) | Hoje são 8: levantamento, sequestro, ilegitimidade, rpv_complementar, registro_publico, homologacao + ai_com_qualif/ai_sem_qualif (fluxo IA) |
 
-### Adicionar novos tipos de petição
+---
 
-- Em `assets/js/app.js`, ampliar `_PETICAO_TIPO_MAP` com `{ match: /regex/, tipo: 'slug', label: 'Nome' }`.
-- Em `supabase/functions/gerar-peticao/index.ts`, ampliar o objeto `TEMPLATES`.
-- Subir o novo `.docx` ao bucket com placeholders `{{ASSIM}}`.
+## Fluxo atual do `gerar-contrato`
+
+1. Valida JWT → lê secrets de `configuracoes` → lê investidor
+2. `upsert` do job (`status=processing`) — permite retry com mesmo `job_id`
+3. Lista inputs do Storage: **só cedente e escritório**
+4. Carrega os 5 templates do bucket e coleta a união das variáveis `{{...}}`
+5. Extrai cedente + escritório via Claude — o nome do cedente define qual pasta buscar
+6. Refresh do token Google
+7. Localiza e baixa a análise no Drive (export se for Google Sheets nativo)
+8. Extrai a apresentação via Claude, depois **sobrescreve as 3 checkboxes** com a leitura
+   determinística do XLSX
+9. Junta variáveis (apresentação > cedente/escritório > investidor), aplica title case e
+   marcadores de gênero (`C_*`, `I_*`, `S_*`, `I_QL`)
+10. `determinarTipos()` decide os contratos pelas checkboxes (ou pelo `tipo` explícito)
+11. Preenche templates (JSZip + xmldom) e sobe em 3 pastas do Drive:
+    - `2. Contratos assinados` — contratos gerados (nunca sobrescreve: colisão gera versão datada)
+    - `1. Análise(s) de crédito` — cópia da análise baixada (best-effort)
+    - `4. Documentos do cedente e advogado` — docs do cedente (best-effort)
+12. Atualiza o job, limpa o bucket temp, retorna URLs
+
+---
+
+## Decisões arquiteturais
+
+- **Preenche APENAS `{{VARIAVEIS}}`.** Texto jurídico dos templates é INTOCÁVEL.
+- **PDF vai direto pra Claude** como `type:document` — elimina `pdfplumber`/`pymupdf`,
+  que não rodam em Deno.
+- **DOCX/XLSX de input:** texto extraído com JSZip + regex no XML.
+- **Preenchimento de DOCX:** JSZip + xmldom, preserva 100% do layout (igual ao `filler.py`).
+- **Checkboxes e "Valor total da operação" lidos direto do XML**, sem IA — a IA errava com
+  input grande. Google Sheets exporta checkbox como célula booleana (`t="b"`, `1`/`0`).
+- **Templates `.docx` não são versionados.** O repo é público e servido por GitHub Pages;
+  todo template traz CPF e endereço residencial de pessoa física — versionar deixaria os
+  arquivos baixáveis pela URL do site. Versionado é só o que os reproduz (`_build_template.py`,
+  `README.md`, `_dados_locais_template.py`). Mesma regra de `seeds/investidores.sql`.
+- **Drive auth:** OAuth user-delegated, refresh_token em `configuracoes`, trocado por
+  access_token a cada chamada.
+- **Storage temp:** browser sobe em `contratos-input/{uid}/{job_id}/{papel}/`, a função lê,
+  processa e apaga.
+- **Sem geração de PDF** — só `.docx`, decisão do usuário.
+
+---
+
+## Armadilhas conhecidas
+
+1. **Slug de Edge Function é imutável.** Renomear o display name não muda a URL. Já custou
+   um "CORS error" fantasma (era 404 no preflight) quando a função nasceu como
+   `smart-responder`. Para corrigir: deletar e recriar com o slug certo.
+2. **Supabase Storage não aceita acento em nome de objeto.** Normalizar com
+   `normalize('NFD')` + remoção de marcas combinantes + `_` no lugar de não-word
+   (`28cc9ab`). Usar escapes Unicode no regex, não marcas literais (`5e05cfb`).
+3. **`.single()` retorna 406 quando não há linha.** Use `.maybeSingle()`.
+4. **RLS de Storage por `(storage.foldername(name))[1] = auth.uid()::text` não funcionou**
+   — `new row violates row-level security policy` mesmo com path correto. Trocado por
+   policies permissivas. Endurecer é item aberto.
+5. **GitHub Pages e Jekyll:** `.nojekyll` + cache-busting no `?v=` do `app.js` são o que
+   destrava o deploy (`7e02492`). Ao mexer no `app.js`, bumpar a versão no `index.html`.
+6. **PowerShell 5.1 lê UTF-8 como ANSI** no `Get-Content`. Os arquivos do repo estão em
+   UTF-8; se aparecer mojibake no terminal, é o terminal, não o arquivo.
+
+---
+
+## Links
+
+- Repo: https://github.com/operacoes-credijuris/controledecessoes
+- Site: https://operacoes-credijuris.github.io/controledecessoes/
+- Supabase project ref: `uekoindsadcthbdkkbjt`
+- Projeto Python de referência: `credijuris-contratos/` (fora do GitHub; templates
+  desatualizados, ver pendência #2 — a lógica ainda serve de referência)
+- Mapa completo de variáveis dos templates: `supabase/seeds/contratos-templates/README.md`
+  (existe na branch `feat/templates-layout-novo`)
