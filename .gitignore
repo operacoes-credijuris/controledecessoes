@@ -9,6 +9,17 @@ fix bugs/
 supabase/seeds/investidores.sql
 supabase/seeds/configuracoes.sql
 
+# Templates de contrato: os .docx trazem CPF e endereço residencial de pessoas
+# físicas (sócio, testemunhas). O repo é público e servido por GitHub Pages, então
+# um .docx aqui ficaria baixável pela URL do site. A fonte de verdade dos templates
+# é o bucket `contratos-templates`; aqui fica só o script que os gera.
+supabase/seeds/contratos-templates/*.docx
+supabase/seeds/contratos-templates/_dados_locais.py
+
+# Bytecode do Python — o .pyc de _dados_locais.py carrega os mesmos dados dentro
+__pycache__/
+*.pyc
+
 # Backup do index.html original
 index.html.original.bak
 

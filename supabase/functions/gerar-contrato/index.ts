@@ -143,6 +143,12 @@ const SCHEMA_APRESENTACAO_FIXOS: Vars = {
   NEGOCIAR_HONORARIOS_CONTRATUAIS: 'string "true" se a checkbox ao lado de "Honorários contratuais" estiver MARCADA (1/TRUE); "false" se DESMARCADA (0/FALSE)',
   NEGOCIAR_HONORARIOS_SUCUMBENCIAIS: 'string "true" se a checkbox ao lado de "Honorários sucumbenciais" estiver MARCADA (1/TRUE); "false" se DESMARCADA (0/FALSE)',
   DATA_EXTENSO: 'data de hoje por extenso ex: 07 de maio de 2025',
+  // Campos do quadro "Dados da operação" do contrato de intermediação (modelo novo).
+  JUIZO_TRIBUNAL: 'juízo e tribunal do processo, no formato "<vara/juizado> - <tribunal>", ex: "1ª Vara Cível de Goiânia - TJGO" ou "3º Juizado Especial Federal de Belo Horizonte - TRF6". Se só houver um dos dois, retorne o que houver. Se não encontrar, null',
+  CLASSE_ATIVO: 'classe do ativo cedido. Responda EXATAMENTE uma destas cinco opções, sem variações: "Precatório", "Honorário em precatório", "RPV", "Honorário em RPV combinado", "Honorário em RPV isolado". Use "RPV" para crédito principal de requisição de pequeno valor; "Honorário em RPV combinado" quando os honorários são cedidos junto com o principal; "Honorário em RPV isolado" quando só os honorários são cedidos. Se não conseguir determinar, null',
+  // Sobrescrito deterministicamente por detectValorTotalOperacaoFromXlsx() quando a
+  // planilha traz o quadro — a IA fica só como fallback.
+  CAPITAL_INVESTIDO: 'valor da célula rotulada "Valor total da operação" (quanto o investidor pagará), em R$ X.XXX,XX. Em análise de precatório o quadro lista 4 cenários e só um está preenchido — pegue o não-zerado. Se não encontrar, null',
 };
 
 const CLAUDE_SYSTEM_PROMPT =
@@ -232,7 +238,9 @@ function nomeContratoArquivo(tipo: string, dados: Vars): string {
     case 'cessao_honorarios_sucumbenciais':
       return `Contrato de Cessão de Honorários Sucumbenciais - ${cedenteHonorar} v. ${cessionario} - ${processo}.docx`;
     case 'intermediacao':
-      return `Contrato de Intermediação - ${cedentePF} v. ${cessionario} - ${processo}.docx`;
+      // Nome alinhado ao título do modelo novo ("Contrato de originação,
+      // intermediação e gestão de ativo"). O antigo era só "de Intermediação".
+      return `Contrato de Originação, Intermediação e Gestão de Ativo - ${cedentePF} v. ${cessionario} - ${processo}.docx`;
     case 'procuracao':
       return `Procuração - ${cedentePF} v. ${cessionario} - ${processo}.docx`;
     default:
@@ -411,6 +419,113 @@ async function detectCheckboxesFromXlsx(bytes: Uint8Array): Promise<Vars> {
     console.error('[gerar-contrato] detectCheckboxesFromXlsx falhou:', e);
   }
   return result;
+}
+
+// Formata número cru do xlsx (63240.13) no padrão dos contratos (R$ 63.240,13).
+function formatBRL(n: number): string {
+  const [inteiro, dec] = Math.abs(n).toFixed(2).split('.');
+  const comMilhar = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${n < 0 ? '-' : ''}R$ ${comMilhar},${dec}`;
+}
+
+// Coluna seguinte no alfabeto do Excel: X -> Y, Z -> AA, AZ -> BA.
+function nextCol(col: string): string {
+  const chars = col.split('');
+  let i = chars.length - 1;
+  while (i >= 0) {
+    if (chars[i] === 'Z') { chars[i] = 'A'; i--; }
+    else { chars[i] = String.fromCharCode(chars[i].charCodeAt(0) + 1); return chars.join(''); }
+  }
+  return 'A' + chars.join('');
+}
+
+// Quantas linhas abaixo do rótulo procurar o valor (cobre os 4 cenários do
+// precatório em linhas alternadas: rótulo em B5, valores em B6/B8/B10/B12).
+const VTO_LINHAS_ABAIXO = 12;
+
+// Lê o "Valor total da operação" (= Capital Investido da Cláusula 10.1 do contrato
+// de intermediação) DIRETO do XML, sem depender da IA. Mesma motivação do
+// detectCheckboxesFromXlsx: a IA erra em planilha grande.
+//
+// O rótulo é o mesmo nas duas análises, mas a geometria muda:
+//   • RPV        → rótulo em X4 ("Valor total da operação **sem considerar…"),
+//                  valor na célula À DIREITA (Y4). Há um 2º bloco em X41/Y41
+//                  (modelo azul) — só um dos dois costuma estar preenchido.
+//   • Precatório → rótulo em B5 (cabeçalho da coluna), valores ABAIXO em
+//                  B6/B8/B10/B12, um por cenário de negociação. Só um é != 0.
+//
+// Regra única que cobre os dois: candidatos = célula à direita + N células abaixo,
+// na mesma coluna; vence o primeiro numérico diferente de zero.
+async function detectValorTotalOperacaoFromXlsx(bytes: Uint8Array): Promise<string | null> {
+  try {
+    const zip = await JSZip.loadAsync(bytes);
+    const ss = await readSharedStrings(zip);
+    const alvo = normalizar('valor total da operacao');
+
+    for (const name of Object.keys(zip.files)) {
+      if (!name.match(/^xl\/worksheets\/sheet\d+\.xml$/)) continue;
+      const sx = await zip.file(name)?.async('string') || '';
+
+      // Indexa a planilha inteira por referência (A1, B12, …)
+      const valores = new Map<string, number>();   // só células numéricas
+      const rotulos: string[] = [];                // refs cujo texto casa com o alvo
+      const rowRe = /<row\b[^>]*\br="(\d+)"[^>]*>([\s\S]*?)<\/row>/g;
+      let rm: RegExpExecArray | null;
+      while ((rm = rowRe.exec(sx)) !== null) {
+        const cRe = /<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
+        let cm: RegExpExecArray | null;
+        while ((cm = cRe.exec(rm[2])) !== null) {
+          const attrs = (cm[1] ?? cm[2]) || '';
+          const inner = cm[3] ?? '';
+          const ref = (attrs.match(/\br="([A-Z]+\d+)"/) || [])[1];
+          if (!ref) continue;
+          const type = (attrs.match(/\bt="([^"]+)"/) || [])[1] || '';
+          const vMatch = inner.match(/<v>([^<]*)<\/v>/);
+          const isMatch = inner.match(/<is>[\s\S]*?<t[^>]*>([^<]*)<\/t>/);
+
+          let texto: string | null = null;
+          if (isMatch) texto = isMatch[1];
+          else if (type === 's' && vMatch) texto = ss[parseInt(vMatch[1], 10)] || '';
+
+          if (texto !== null) {
+            // startsWith, não includes: na análise de RPV existe o rótulo "Ganho de
+            // capital projetado … (Valor líquido com a atualização - valor total da
+            // operação)", que CONTÉM a frase mas cujo valor ao lado é outro número.
+            if (normalizar(texto).startsWith(alvo)) rotulos.push(ref);
+            continue;
+          }
+          // Célula numérica (inclui fórmula, que traz o valor em cache no <v>)
+          if (vMatch && type !== 'b') {
+            const n = parseFloat(vMatch[1]);
+            if (!isNaN(n)) valores.set(ref, n);
+          }
+        }
+      }
+      if (rotulos.length === 0) continue;
+
+      const achados: number[] = [];
+      for (const ref of rotulos) {
+        const [, col, linhaStr] = ref.match(/^([A-Z]+)(\d+)$/) || [];
+        if (!col) continue;
+        const linha = parseInt(linhaStr, 10);
+        const candidatos = [`${nextCol(col)}${linha}`];
+        for (let d = 1; d <= VTO_LINHAS_ABAIXO; d++) candidatos.push(`${col}${linha + d}`);
+        for (const c of candidatos) {
+          const v = valores.get(c);
+          if (v !== undefined && v !== 0) { achados.push(v); break; }
+        }
+      }
+      if (achados.length === 0) continue;
+      if (achados.length > 1) {
+        console.warn('[gerar-contrato] "Valor total da operação" ambíguo em', name, achados, '— usando o primeiro');
+      }
+      return formatBRL(achados[0]);
+    }
+  } catch (e) {
+    // Best-effort — se falhar, o valor da IA (se houver) permanece.
+    console.error('[gerar-contrato] detectValorTotalOperacaoFromXlsx falhou:', e);
+  }
+  return null;
 }
 
 async function extractXlsxText(bytes: Uint8Array): Promise<string> {
@@ -1110,6 +1225,10 @@ const GENERO_PALAVRAS: Record<string, [string, string]> = {
   NA:  ['nascido', 'nascida'],
   SR:  ['Sr.', 'Sra.'],
   RP:  ['representado', 'representada'],
+  // Pronome oblíquo enclítico: "representá-lo" / "representá-la". CUIDADO ao usar —
+  // só vale quando o objeto é a PARTE. Na procuração, o "conduzi-lo" da mesma frase
+  // se refere ao PROCESSO e continua masculino.
+  LO:  ['lo', 'la'],
   CE:  ['cessionário', 'cessionária'],
   CM:  ['CESSIONÁRIO', 'CESSIONÁRIA'],
   SO:  ['sócio', 'sócia'],
@@ -1134,11 +1253,20 @@ function marcadoresGenero(prefixo: string, genero: string | null | undefined): V
 // dígitos do campo cpf (14 = CNPJ); PF usa o gênero da coluna `genero`.
 // Mesmo padrão do _montarQualificacaoCessionario das petições. Não inclui o
 // nome (esse fica em {{INVESTIDOR_NOME}}).
-function montarQualificacaoInvestidor(inv: { cpf?: string | null; rg?: string | null; endereco?: string | null; genero?: string | null }): string {
+// `qualificacao_complemento` é texto livre da tabela `investidores` (migration 0003),
+// para os dados que os modelos novos pedem e o cadastro não tem campo próprio:
+//   • PF → estado civil e profissão. Ex.: "casada, empresária"
+//          → "Fulana, brasileira, casada, empresária, inscrita no CPF…"
+//   • PJ → representante legal, com a frase inteira, porque entra no fim.
+//          Ex.: "neste ato representada por João da Silva, sócio-administrador"
+// O órgão expedidor do RG não precisa de campo novo: a coluna `rg` é texto livre,
+// basta cadastrar "MG-12.345.678 SSP/MG".
+function montarQualificacaoInvestidor(inv: { cpf?: string | null; rg?: string | null; endereco?: string | null; genero?: string | null; qualificacao_complemento?: string | null }): string {
   const doc = String(inv.cpf ?? '').trim();
   const digitos = doc.replace(/\D/g, '');
   const endereco = String(inv.endereco ?? '').trim();
   const rg = String(inv.rg ?? '').trim();
+  const complemento = String(inv.qualificacao_complemento ?? '').trim().replace(/^,\s*|,\s*$/g, '');
   const fem = String(inv.genero ?? '').trim().toUpperCase().startsWith('F');
   const partes: string[] = [];
   if (digitos.length === 14) {
@@ -1146,9 +1274,11 @@ function montarQualificacaoInvestidor(inv: { cpf?: string | null; rg?: string | 
     partes.push('pessoa jurídica de direito privado');
     partes.push(`inscrita no CNPJ sob o nº ${doc}`);
     if (endereco) partes.push(`com sede em ${endereco}`);
+    if (complemento) partes.push(complemento);
   } else {
     // PF (11 dígitos ou desconhecido → trata como pessoa física)
     partes.push(fem ? 'brasileira' : 'brasileiro');
+    if (complemento) partes.push(complemento);
     partes.push(`${fem ? 'inscrita' : 'inscrito'} no CPF sob o nº ${doc}`);
     if (rg) partes.push(`${fem ? 'portadora' : 'portador'} do RG nº ${rg}`);
     if (endereco) partes.push(`residente e ${fem ? 'domiciliada' : 'domiciliado'} em ${endereco}`);
@@ -1409,6 +1539,12 @@ serve(async (req) => {
         for (const [k, v] of Object.entries(detectado)) {
           if (v != null) apresentacao[k] = v;
         }
+        // Mesmo tratamento pro "Valor total da operação" (= Capital Investido):
+        // leitura determinística ganha da IA quando encontra o quadro.
+        const vto = await detectValorTotalOperacaoFromXlsx(a.bytes);
+        checkboxDebug.capital_investido_ia = apresentacao.CAPITAL_INVESTIDO;
+        checkboxDebug.capital_investido_xlsx = vto;
+        if (vto) apresentacao.CAPITAL_INVESTIDO = vto;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         checkboxDebug.erro = msg;
